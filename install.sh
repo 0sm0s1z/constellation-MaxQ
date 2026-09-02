@@ -15,10 +15,12 @@ install_script bin/maxq-desktop-ghostty "$BIN/maxq-desktop-ghostty"
 install_script bin/maxq-desktop-launcher "$BIN/maxq-desktop-launcher"
 install_script bin/maxq-desktop-shortcuts "$BIN/maxq-desktop-shortcuts"
 install_script bin/maxq-desktop-chrome "$BIN/maxq-desktop-chrome"
+install_script bin/maxq-packages "$BIN/maxq-packages"
 for icon in chatgpt grok claude discord slack ghostty settings; do install_data "share/icons/$icon.png" "$ICON_SRC/$icon.png"; done
 if [ -n "$HERE" ] && [ -d "$HERE/share/theme" ]; then cp -a "$HERE/share/theme/." "$CONFIG/theme/src/"; fi
 if [ -n "$HERE" ] && [ -d "$HERE/cmd/maxq-api" ]; then cp -a "$HERE/cmd/maxq-api/." "$CONFIG/api-src/"; else
   for rel in go.mod main.go main_test.go desktop.go ui/index.html ui/mocha.css ui/sheet.js ui/sheet.ts; do mkdir -p "$(dirname "$CONFIG/api-src/$rel")"; curl -fsSL "$RAW_BASE/cmd/maxq-api/$rel" -o "$CONFIG/api-src/$rel"; done
 fi
+# No arguments means complete desired state: core + desktop + Chrome + packages/SBOM.
 if [ "$#" -eq 0 ]; then exec "$BIN/maxq" apply; fi
 exec "$BIN/maxq" "$@"
