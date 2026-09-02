@@ -1,4 +1,4 @@
-/* Catppuccin Mocha — thin MaxQ sheet. Not a cockpit. */
+/* Catppuccin Mocha — thin MaxQ sheet. */
 :root {
   --base: #1e1e2e;
   --mantle: #181825;
@@ -11,7 +11,6 @@
   --green: #a6e3a1;
   --red: #f38ba8;
   --peach: #fab387;
-  --blue: #89b4fa;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -21,26 +20,10 @@ html, body {
   color: var(--text);
   font: 14px/1.45 ui-sans-serif, system-ui, sans-serif;
 }
-body {
-  display: flex;
-  justify-content: center;
-  padding: 2.5rem 1rem;
-}
-.sheet {
-  width: min(28rem, 100%);
-}
-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-h1 {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
+body { display: flex; justify-content: center; padding: 2.5rem 1rem; }
+.sheet { width: min(28rem, 100%); }
+header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.25rem; }
+h1 { margin: 0; font-size: 1.6rem; font-weight: 650; letter-spacing: -0.02em; }
 .tag { margin: 0.15rem 0 0; color: var(--sub); font-size: 0.85rem; }
 .pill {
   font-size: 0.75rem;
@@ -50,7 +33,7 @@ h1 {
   color: var(--sub);
   text-transform: lowercase;
 }
-.pill.on { background: #313244; color: var(--green); }
+.pill.on { color: var(--green); }
 .pill.off { color: var(--peach); }
 .card {
   background: var(--base);
@@ -67,12 +50,7 @@ h2 {
   color: var(--mauve);
   font-weight: 600;
 }
-dl {
-  display: grid;
-  grid-template-columns: 4.5rem 1fr;
-  gap: 0.25rem 0.75rem;
-  margin: 0;
-}
+dl { display: grid; grid-template-columns: 4.5rem 1fr; gap: 0.25rem 0.75rem; margin: 0; }
 dt { color: var(--sub); }
 dd { margin: 0; word-break: break-word; }
 .row { display: flex; gap: 0.5rem; }
@@ -90,13 +68,5 @@ button:hover { border-color: var(--mauve); color: var(--mauve); }
 button.danger:hover { border-color: var(--red); color: var(--red); }
 button:disabled { opacity: 0.5; cursor: default; }
 .hint { margin: 0 0 0.6rem; color: var(--sub); font-size: 0.8rem; }
-.soon {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-  color: var(--overlay);
-  font-size: 0.8rem;
-}
-.soon span { cursor: default; }
 .msg { margin-top: 0.75rem; color: var(--red); font-size: 0.85rem; }
+.msg[data-kind="ok"] { color: var(--green); }
