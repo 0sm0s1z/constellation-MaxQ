@@ -1,0 +1,79 @@
+=== MaxQ prove ===
+version=0.1.0
+host=grokbot
+prefix=/home/box
+self=/home/box/constellation-MaxQ/bin/maxq
+started_utc=2026-09-02T09:39:39Z
+initial_status=applied
+
+-- step 1: revert if applied --
+MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
+
+-- step 2: apply --
+MaxQ applied. theme=mocha state=applied prefix=/home/box
+-- assert applied --
+[PASS] persist $HOME/bin exists
+[PASS] persist $HOME/.config/maxq exists
+[PASS] persist $HOME/.local exists
+[PASS] maxq.toml exists
+[PASS] theme mocha
+[PASS] state=applied in toml
+[PASS] gost stub disabled
+[PASS] state file applied
+[PASS] state file says applied
+[PASS] managed marker exists
+[PASS] profile.sh snippet exists
+[PASS] maxq-reconcile executable
+[PASS] CLI present at $HOME/bin/maxq
+[PASS] .profile has MaxQ markers
+[PASS] .bashrc has MaxQ markers
+[PASS] status reports applied
+
+-- step 3: revert --
+MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
+-- assert reverted (markers gone, tombstone present) --
+[PASS] maxq.toml gone
+[PASS] profile.sh snippet gone
+[PASS] managed marker gone
+[PASS] maxq-reconcile gone
+[PASS] tombstone last-revert.log exists
+[PASS] tombstone records revert
+[PASS] state file reverted
+[PASS] state file says reverted
+[PASS] .profile MaxQ markers gone
+[PASS] .bashrc MaxQ markers gone
+[PASS] status reports reverted
+[PASS] SSH directory preserved
+[PASS] github-0sm0s1z key preserved
+[PASS] Chrome profiles preserved
+[PASS] HOME still exists
+
+-- step 4: apply again (leave APPLIED) --
+MaxQ applied. theme=mocha state=applied prefix=/home/box
+-- assert applied (final) --
+[PASS] persist $HOME/bin exists
+[PASS] persist $HOME/.config/maxq exists
+[PASS] persist $HOME/.local exists
+[PASS] maxq.toml exists
+[PASS] theme mocha
+[PASS] state=applied in toml
+[PASS] gost stub disabled
+[PASS] state file applied
+[PASS] state file says applied
+[PASS] managed marker exists
+[PASS] profile.sh snippet exists
+[PASS] maxq-reconcile executable
+[PASS] CLI present at $HOME/bin/maxq
+[PASS] .profile has MaxQ markers
+[PASS] .bashrc has MaxQ markers
+[PASS] status reports applied
+
+=== MaxQ proof report ===
+result=PASS
+passed=47
+failed=0
+final_status=applied
+final_theme=theme = "mocha"
+gost=enabled = false
+ended_utc=2026-09-02T09:39:39Z
+left_state=APPLIED

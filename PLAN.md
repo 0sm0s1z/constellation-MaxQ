@@ -2,12 +2,12 @@
 
 v0: 1-13, 18-19.
 
-- [ ] **1.** Persist layout: HOME/bin, HOME/.config/maxq, HOME/.local
-- [ ] **2.** Curl installer + maxq CLI
-- [ ] **3.** Desired-state reconciler (post Update)
-- [ ] **4.** Shell profile (PATH, kickoff)
+- [x] **1.** Persist layout: HOME/bin, HOME/.config/maxq, HOME/.local
+- [x] **2.** Curl installer + maxq CLI
+- [x] **3.** Desired-state reconciler (post Update)
+- [x] **4.** Shell profile (PATH, kickoff)
 - [ ] **5.** Identity: hostname grokbot
-- [ ] **6.** Catppuccin Mocha system theme
+- [x] **6.** Catppuccin Mocha system theme (config default; full desktop later)
 - [ ] **7.** Ghostty + Mocha config
 - [ ] **8.** Chrome Mocha theme + managed policies
 - [ ] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale

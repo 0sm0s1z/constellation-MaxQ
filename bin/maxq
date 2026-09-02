@@ -1,0 +1,426 @@
+#!/usr/bin/env bash
+# constellation-MaxQ CLI
+# Persist-safe under $HOME. Do not put logic in /usr (optional ln -sfn only).
+# Commands: apply|configure  revert|unconfigure  status  prove
+set -euo pipefail
+
+MAXQ_VERSION="0.1.0"
+PREFIX="${MAXQ_HOME:-$HOME}"
+BIN="$PREFIX/bin"
+CONFIG="$PREFIX/.config/maxq"
+LOCAL="$PREFIX/.local"
+TOML="$CONFIG/maxq.toml"
+STATE_FILE="$CONFIG/state"
+PROFILE_SNIPPET="$CONFIG/profile.sh"
+MANAGED="$CONFIG/managed"
+RECONCILE="$BIN/maxq-reconcile"
+REVERT_LOG="$CONFIG/last-revert.log"
+BEGIN_MARK="# >>> maxq begin >>>"
+END_MARK="# <<< maxq end <<<"
+USR_LINK="/usr/local/bin/maxq"
+
+usage() {
+  cat <<EOF
+maxq ${MAXQ_VERSION} — take your Grok Bot to MaxQ.
+
+Usage: maxq <command>
+
+  apply, configure     Idempotent desired-state apply (persist under \$HOME)
+  revert, unconfigure  Remove MaxQ-owned files/markers only (not home/SSH/Chrome)
+  status               Print applied or reverted
+  prove                Revert/apply/assert cycle; leave APPLIED; exit 0 on pass
+  help                 This help
+  version              Print version
+
+Environment:
+  MAXQ_HOME    Prefix (default: \$HOME)
+EOF
+}
+
+die() { echo "maxq: $*" >&2; exit 1; }
+
+is_applied() {
+  if [ -f "$STATE_FILE" ]; then
+    [ "$(tr -d '[:space:]' < "$STATE_FILE" 2>/dev/null || true)" = "applied" ]
+    return $?
+  fi
+  [ -f "$TOML" ] && grep -q '^state = "applied"' "$TOML" 2>/dev/null
+}
+
+install_self() {
+  mkdir -p "$BIN"
+  local src dest
+  src="$(readlink -f "$0" 2>/dev/null || true)"
+  dest="$(readlink -f "$BIN/maxq" 2>/dev/null || true)"
+  if [ -n "$src" ] && [ -f "$src" ] && [ "$src" != "$dest" ]; then
+    cp -f "$src" "$BIN/maxq"
+  fi
+  if [ -f "$BIN/maxq" ]; then
+    chmod +x "$BIN/maxq"
+  fi
+}
+
+optional_usr_link() {
+  if [ -x "$BIN/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+    ln -sfn "$BIN/maxq" "$USR_LINK"
+  fi
+}
+
+remove_optional_usr_link() {
+  if [ -L "$USR_LINK" ] && [ -w /usr/local/bin ]; then
+    local target
+    target="$(readlink "$USR_LINK" 2>/dev/null || true)"
+    if [ "$target" = "$BIN/maxq" ]; then
+      rm -f "$USR_LINK"
+    fi
+  fi
+}
+
+write_toml() {
+  cat > "$TOML" <<EOF
+# constellation-MaxQ desired state (managed — do not edit by hand)
+# Catppuccin Mocha is the default theme.
+
+theme = "mocha"
+state = "applied"
+identity = "grokbot"
+
+[gost]
+enabled = false
+# CONNECT + MITM local proxy — stub until operator enables
+listen = "127.0.0.1:8080"
+EOF
+}
+
+write_profile_snippet() {
+  cat > "$PROFILE_SNIPPET" <<'EOF'
+# MaxQ managed profile snippet. Do not edit.
+# Prepend persist bin. Kickoff of maxq-reconcile is left to post-Update / herdr.
+
+if [ -d "$HOME/bin" ]; then
+  case ":$PATH:" in
+    *":$HOME/bin:"*) ;;
+    *) PATH="$HOME/bin:$PATH" ;;
+  esac
+fi
+export PATH
+EOF
+}
+
+write_reconcile() {
+  cat > "$RECONCILE" <<'EOF'
+#!/usr/bin/env bash
+# MaxQ desired-state reconciler (post Update). Stub.
+# Recreates persist layout and optional /usr/local/bin link. No /usr logic.
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local"
+if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq
+fi
+exit 0
+EOF
+  chmod +x "$RECONCILE"
+}
+
+profile_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — PATH + kickoff. Do not edit this block.
+if [ -r "\$HOME/.config/maxq/profile.sh" ]; then
+  . "\$HOME/.config/maxq/profile.sh"
+fi
+$END_MARK
+EOF
+}
+
+has_profile_block() {
+  local f="$1"
+  [ -f "$f" ] && grep -qF "$BEGIN_MARK" "$f"
+}
+
+install_profile_hook() {
+  local f="$1"
+  if [ ! -f "$f" ]; then
+    # do not create a brand-new shell rc with only our block if the user
+    # never had one — but .profile/.bashrc exist on this image; still safe.
+    touch "$f"
+  fi
+  if has_profile_block "$f"; then
+    return 0
+  fi
+  # ensure trailing newline then append marked block
+  if [ -s "$f" ] && [ "$(tail -c 1 "$f" | wc -l)" -eq 0 ]; then
+    printf '\n' >> "$f"
+  fi
+  printf '\n' >> "$f"
+  profile_block >> "$f"
+}
+
+strip_profile_hook() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  if ! has_profile_block "$f"; then
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp "${f}.maxq.XXXXXX")"
+  awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+    $0 == b { skip=1; next }
+    $0 == e { skip=0; next }
+    !skip { print }
+  ' "$f" > "$tmp"
+  # drop extra trailing blank lines we may have introduced, keep one
+  awk '
+    { lines[NR]=$0 }
+    END {
+      end=NR
+      while (end>0 && lines[end] ~ /^$/) end--
+      for (i=1;i<=end;i++) print lines[i]
+      if (end>0) print ""
+    }
+  ' "$tmp" > "$f"
+  rm -f "$tmp"
+}
+
+cmd_apply() {
+  mkdir -p "$BIN" "$CONFIG" "$LOCAL"
+  install_self
+  write_toml
+  write_profile_snippet
+  write_reconcile
+  printf 'applied\n' > "$STATE_FILE"
+  printf 'constellation-MaxQ\n' > "$MANAGED"
+  install_profile_hook "$PREFIX/.profile"
+  install_profile_hook "$PREFIX/.bashrc"
+  optional_usr_link
+  echo "MaxQ applied. theme=mocha state=applied prefix=$PREFIX"
+}
+
+cmd_revert() {
+  mkdir -p "$CONFIG"
+  local ts host
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  host="$(hostname 2>/dev/null || echo unknown)"
+
+  {
+    echo "maxq revert $ts"
+    echo "host=$host"
+    echo "prefix=$PREFIX"
+    echo "user=${USER:-$(id -un 2>/dev/null || echo unknown)}"
+    echo "removed:"
+  } > "$REVERT_LOG"
+
+  strip_profile_hook "$PREFIX/.profile"
+  strip_profile_hook "$PREFIX/.bashrc"
+  echo "  profile hooks (.profile .bashrc)" >> "$REVERT_LOG"
+
+  remove_optional_usr_link
+  echo "  optional usr link (if owned)" >> "$REVERT_LOG"
+
+  # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
+  local p
+  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -f "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+
+  printf 'reverted\n' > "$STATE_FILE"
+  {
+    echo "preserved:"
+    echo "  HOME=$PREFIX (not deleted)"
+    echo "  SSH=$PREFIX/.ssh (untouched)"
+    echo "  Chrome logins/profiles (untouched)"
+    echo "  CLI=$BIN/maxq (kept so apply can run again; install.sh can restore)"
+    echo "state=reverted"
+  } >> "$REVERT_LOG"
+
+  echo "MaxQ reverted. tombstone=$REVERT_LOG"
+}
+
+cmd_status() {
+  if is_applied; then
+    echo "applied"
+  else
+    echo "reverted"
+  fi
+}
+
+# --- prove -----------------------------------------------------------------
+
+PROVE_PASS=0
+PROVE_FAIL=0
+
+prove_ok() {
+  local name="$1"
+  shift
+  if "$@"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+    return 0
+  fi
+  echo "[FAIL] $name"
+  PROVE_FAIL=$((PROVE_FAIL + 1))
+  return 0
+}
+
+prove_grep() {
+  local name="$1" file="$2" pat="$3"
+  if [ -f "$file" ] && grep -qE "$pat" "$file"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+  else
+    echo "[FAIL] $name"
+    PROVE_FAIL=$((PROVE_FAIL + 1))
+  fi
+}
+
+prove_nogrep() {
+  local name="$1" file="$2" pat="$3"
+  if [ ! -f "$file" ] || ! grep -qE "$pat" "$file"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+  else
+    echo "[FAIL] $name"
+    PROVE_FAIL=$((PROVE_FAIL + 1))
+  fi
+}
+
+assert_applied_tree() {
+  prove_ok "persist \$HOME/bin exists" test -d "$BIN"
+  prove_ok "persist \$HOME/.config/maxq exists" test -d "$CONFIG"
+  prove_ok "persist \$HOME/.local exists" test -d "$LOCAL"
+  prove_ok "maxq.toml exists" test -f "$TOML"
+  prove_grep "theme mocha" "$TOML" 'theme = "mocha"'
+  prove_grep "state=applied in toml" "$TOML" 'state = "applied"'
+  prove_grep "gost stub disabled" "$TOML" 'enabled = false'
+  prove_ok "state file applied" test -f "$STATE_FILE"
+  prove_grep "state file says applied" "$STATE_FILE" '^applied$'
+  prove_ok "managed marker exists" test -f "$MANAGED"
+  prove_ok "profile.sh snippet exists" test -f "$PROFILE_SNIPPET"
+  prove_ok "maxq-reconcile executable" test -x "$RECONCILE"
+  prove_ok "CLI present at \$HOME/bin/maxq" test -x "$BIN/maxq"
+  prove_ok ".profile has MaxQ markers" has_profile_block "$PREFIX/.profile"
+  prove_ok ".bashrc has MaxQ markers" has_profile_block "$PREFIX/.bashrc"
+  prove_ok "status reports applied" test "$(cmd_status)" = "applied"
+}
+
+not_has_profile_block() {
+  ! has_profile_block "$1"
+}
+
+assert_reverted_tree() {
+  prove_ok "maxq.toml gone" test ! -e "$TOML"
+  prove_ok "profile.sh snippet gone" test ! -e "$PROFILE_SNIPPET"
+  prove_ok "managed marker gone" test ! -e "$MANAGED"
+  prove_ok "maxq-reconcile gone" test ! -e "$RECONCILE"
+  prove_ok "tombstone last-revert.log exists" test -s "$REVERT_LOG"
+  prove_grep "tombstone records revert" "$REVERT_LOG" 'maxq revert'
+  prove_ok "state file reverted" test -f "$STATE_FILE"
+  prove_grep "state file says reverted" "$STATE_FILE" '^reverted$'
+  prove_ok ".profile MaxQ markers gone" not_has_profile_block "$PREFIX/.profile"
+  prove_ok ".bashrc MaxQ markers gone" not_has_profile_block "$PREFIX/.bashrc"
+  prove_ok "status reports reverted" test "$(cmd_status)" = "reverted"
+}
+
+cmd_prove() {
+  set +e
+  local start_utc host self
+  start_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  host="$(hostname 2>/dev/null || echo unknown)"
+  self="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+
+  local had_ssh=0 had_chrome=0 had_github_key=0
+  [ -d "$PREFIX/.ssh" ] && had_ssh=1
+  [ -e "$PREFIX/.ssh/github-0sm0s1z" ] && had_github_key=1
+  ls -d "$PREFIX"/chrome-profile* >/dev/null 2>&1 && had_chrome=1
+
+  echo "=== MaxQ prove ==="
+  echo "version=$MAXQ_VERSION"
+  echo "host=$host"
+  echo "prefix=$PREFIX"
+  echo "self=$self"
+  echo "started_utc=$start_utc"
+  echo "initial_status=$(cmd_status)"
+  echo
+
+  echo "-- step 1: revert if applied --"
+  if is_applied; then
+    cmd_revert
+  else
+    echo "already reverted; skipping initial revert"
+  fi
+  echo
+
+  echo "-- step 2: apply --"
+  cmd_apply
+  echo "-- assert applied --"
+  assert_applied_tree
+  echo
+
+  echo "-- step 3: revert --"
+  cmd_revert
+  echo "-- assert reverted (markers gone, tombstone present) --"
+  assert_reverted_tree
+
+  if [ "$had_ssh" -eq 1 ]; then
+    prove_ok "SSH directory preserved" test -d "$PREFIX/.ssh"
+  fi
+  if [ "$had_github_key" -eq 1 ]; then
+    prove_ok "github-0sm0s1z key preserved" test -e "$PREFIX/.ssh/github-0sm0s1z"
+  fi
+  if [ "$had_chrome" -eq 1 ]; then
+    prove_ok "Chrome profiles preserved" sh -c "ls -d \"$PREFIX\"/chrome-profile* >/dev/null 2>&1"
+  fi
+  prove_ok "HOME still exists" test -d "$PREFIX"
+  echo
+
+  echo "-- step 4: apply again (leave APPLIED) --"
+  cmd_apply
+  echo "-- assert applied (final) --"
+  assert_applied_tree
+  echo
+
+  local result="PASS"
+  if [ "$PROVE_FAIL" -ne 0 ]; then
+    result="FAIL"
+  fi
+  echo "=== MaxQ proof report ==="
+  echo "result=$result"
+  echo "passed=$PROVE_PASS"
+  echo "failed=$PROVE_FAIL"
+  echo "final_status=$(cmd_status)"
+  echo "final_theme=$(grep -E '^theme' "$TOML" 2>/dev/null || true)"
+  echo "gost=$(grep -E 'enabled' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  echo "left_state=APPLIED"
+
+  if [ "$result" = "PASS" ]; then
+    exit 0
+  fi
+  exit 1
+}
+
+main() {
+  local cmd="${1:-status}"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+  case "$cmd" in
+    apply|configure) cmd_apply "$@" ;;
+    revert|unconfigure) cmd_revert "$@" ;;
+    status) cmd_status "$@" ;;
+    prove) cmd_prove "$@" ;;
+    help|-h|--help) usage ;;
+    version|-V|--version) echo "$MAXQ_VERSION" ;;
+    *)
+      echo "maxq: unknown command: $cmd" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"
