@@ -4,12 +4,14 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,8 +19,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"embed"
 )
 
 //go:embed ui/index.html ui/mocha.css ui/sheet.js
@@ -30,33 +30,20 @@ type gostInfo struct {
 	Enabled   bool   `json:"enabled"`
 	Running   bool   `json:"running"`
 	Listen    string `json:"listen"`
-	Upstream  string `json:"upstream"`
-	Iface     string `json:"iface"`
 	Intercept bool   `json:"intercept"`
-}
-
-type clisInfo struct {
-	Installed   string `json:"installed"`
-	Skipped     string `json:"skipped"`
-	Preexisting string `json:"preexisting"`
-}
-
-type apiInfo struct {
-	Listen string `json:"listen"`
 }
 
 type statusResp struct {
 	State string   `json:"state"`
 	Theme string   `json:"theme"`
 	Gost  gostInfo `json:"gost"`
-	Clis  clisInfo `json:"clis"`
-	API   apiInfo  `json:"api"`
+	API   struct {
+		Listen string `json:"listen"`
+	} `json:"api"`
 }
 
 type proxyReq struct {
-	Enabled  *bool   `json:"enabled"`
-	Upstream *string `json:"upstream"`
-	Iface    *string `json:"iface"`
+	Enabled *bool `json:"enabled"`
 }
 
 type server struct {
@@ -76,13 +63,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "maxq-api: HOME unset")
 		os.Exit(1)
 	}
+
 	s := &server{
 		prefix:  prefix,
 		config:  filepath.Join(prefix, ".config", "maxq"),
 		maxqBin: filepath.Join(prefix, "bin", "maxq"),
 	}
 	s.listen = sanitizeListen(s.loadListen())
-	if err := s.serve(); err != nil {
+	if err := s.serve(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(os.Stderr, "maxq-api:", err)
 		os.Exit(1)
 	}
@@ -96,11 +84,11 @@ func (s *server) loadListen() string {
 	if b, err := os.ReadFile(p); err == nil {
 		for _, line := range strings.Split(string(b), "\n") {
 			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "[") {
-				if strings.HasPrefix(line, "[") {
-					break
-				}
+			if line == "" || strings.HasPrefix(line, "#") {
 				continue
+			}
+			if strings.HasPrefix(line, "[") {
+				break
 			}
 			if strings.HasPrefix(line, "listen") {
 				_, rest, ok := strings.Cut(line, "=")
@@ -127,37 +115,71 @@ func sanitizeListen(v string) string {
 		return defaultListen
 	}
 	host, port, err := net.SplitHostPort(v)
-	if err != nil {
+	if err != nil || port == "" {
 		return defaultListen
 	}
-	if host == "localhost" {
-		host = "127.0.0.1"
+	if strings.EqualFold(host, "localhost") {
+		return net.JoinHostPort("127.0.0.1", port)
 	}
 	ip := net.ParseIP(host)
 	if ip == nil || !ip.IsLoopback() {
 		fmt.Fprintf(os.Stderr, "maxq-api: refusing non-loopback listen %q; using %s\n", v, defaultListen)
 		return defaultListen
 	}
-	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 10 && ip4[1] == 0 {
-		fmt.Fprintf(os.Stderr, "maxq-api: refusing 10.0.0.0/16 listen %q; using %s\n", v, defaultListen)
-		return defaultListen
-	}
 	return net.JoinHostPort(host, port)
 }
 
-func isLoopbackAddr(addr string) bool {
-	host, _, err := net.SplitHostPort(addr)
+func hostPort(v string) (string, string, bool) {
+	host, port, err := net.SplitHostPort(v)
 	if err != nil {
-		host = addr
+		return "", "", false
+	}
+	return strings.Trim(host, "[]"), port, true
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
 }
 
-func (s *server) onlyLocal(next http.Handler) http.Handler {
+func (s *server) localHostPort(v string) bool {
+	host, port, ok := hostPort(v)
+	if !ok || !isLoopbackHost(host) {
+		return false
+	}
+	_, wantPort, ok := hostPort(s.listen)
+	return ok && port == wantPort
+}
+
+func (s *server) allowedOrigin(r *http.Request) bool {
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if origin == "" {
+		return true // curl/local clients
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" || u.User != nil || u.Path != "" {
+		return false
+	}
+	return s.localHostPort(u.Host)
+}
+
+func (s *server) guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isLoopbackAddr(r.RemoteAddr) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'")
+
+		host, _, ok := hostPort(r.RemoteAddr)
+		if !ok || !isLoopbackHost(host) || !s.localHostPort(r.Host) {
 			http.Error(w, "local only", http.StatusForbidden)
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !s.allowedOrigin(r) {
+			http.Error(w, "local origin required", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -174,7 +196,7 @@ func (s *server) serve() error {
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
-	mux.Handle("/", http.FileServer(http.FS(ui)))
+	mux.Handle("GET /", http.FileServer(http.FS(ui)))
 
 	ln, err := net.Listen("tcp", s.listen)
 	if err != nil {
@@ -182,85 +204,89 @@ func (s *server) serve() error {
 	}
 	fmt.Fprintf(os.Stderr, "maxq-api listen %s (loopback, no Chrome proxy)\n", s.listen)
 	srv := &http.Server{
-		Handler:           s.onlyLocal(mux),
+		Handler:           s.guard(mux),
 		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
 	return srv.Serve(ln)
 }
 
-func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.status())
 }
 
-func (s *server) handleApply(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleApply(w http.ResponseWriter, _ *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.runMaxq("apply"); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
-	st := s.status()
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "state": st.State, "status": st})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": s.status()})
 }
 
-func (s *server) handleRevert(w http.ResponseWriter, r *http.Request) {
-	// Flush 200 first: maxq revert stops this process via pidfile.
+func (s *server) handleRevert(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// A normal `maxq revert` stops the API via api.pid. For an API-triggered
+	// revert, temporarily detach that pidfile so the command can finish and
+	// report errors before this process exits itself.
+	pidPath := filepath.Join(s.config, "api.pid")
+	pid, err := os.ReadFile(pidPath)
+	if err != nil && !os.IsNotExist(err) {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "cannot read api pidfile"})
+		return
+	}
+	if len(pid) > 0 {
+		if err := os.Remove(pidPath); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "cannot detach api pidfile"})
+			return
+		}
+	}
+	if err := s.runMaxq("revert"); err != nil {
+		if len(pid) > 0 {
+			_ = os.WriteFile(pidPath, pid, 0o644)
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "state": "reverted"})
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
 	go func() {
-		time.Sleep(200 * time.Millisecond)
-		_ = s.runMaxq("revert")
+		time.Sleep(100 * time.Millisecond)
+		os.Exit(0)
 	}()
 }
 
 func (s *server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	var req proxyReq
-	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16))
-	if len(body) > 0 {
-		if err := json.Unmarshal(body, &req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
-			return
-		}
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1024))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "expected JSON {\"enabled\":true|false}"})
+		return
 	}
-	if req.Enabled != nil {
-		if *req.Enabled {
-			if err := s.runMaxq("proxy", "on"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
-		} else {
-			if err := s.runMaxq("proxy", "off"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
-		}
+	if req.Enabled == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "enabled is required"})
+		return
 	}
-	if req.Upstream != nil {
-		up := strings.TrimSpace(*req.Upstream)
-		if up == "" {
-			up = "none"
-		}
-		if err := s.runMaxq("proxy", "upstream", up); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-			return
-		}
+
+	sub := "off"
+	if *req.Enabled {
+		sub = "on"
 	}
-	if req.Iface != nil {
-		iface := strings.TrimSpace(*req.Iface)
-		if iface == "" {
-			iface = "none"
-		}
-		if err := s.runMaxq("proxy", "iface", iface); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-			return
-		}
+	if err := s.runMaxq("proxy", sub); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+		return
 	}
-	st := s.status()
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": st})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": s.status()})
 }
 
 func (s *server) status() statusResp {
@@ -279,25 +305,19 @@ func (s *server) status() statusResp {
 	if theme == "" {
 		theme = "mocha"
 	}
-	gostPID := filepath.Join(s.config, "gost.pid")
-	return statusResp{
+
+	st := statusResp{
 		State: state,
 		Theme: theme,
 		Gost: gostInfo{
 			Enabled:   asBool(sec(toml, "gost", "enabled")),
-			Running:   pidRunning(gostPID),
+			Running:   pidRunning(filepath.Join(s.config, "gost.pid")),
 			Listen:    orDefault(sec(toml, "gost", "listen"), "127.0.0.1:8080"),
-			Upstream:  sec(toml, "gost", "upstream"),
-			Iface:     sec(toml, "gost", "iface"),
 			Intercept: asBool(sec(toml, "gost", "intercept")),
 		},
-		Clis: clisInfo{
-			Installed:   sec(toml, "clis", "installed"),
-			Skipped:     sec(toml, "clis", "skipped"),
-			Preexisting: sec(toml, "clis", "preexisting"),
-		},
-		API: apiInfo{Listen: s.listen},
 	}
+	st.API.Listen = s.listen
+	return st
 }
 
 func (s *server) runMaxq(args ...string) error {
@@ -324,11 +344,9 @@ func (s *server) runMaxq(args ...string) error {
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(true)
-	_ = enc.Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func pidRunning(path string) bool {
@@ -383,18 +401,14 @@ func tomlGet(path, section, key string) string {
 			continue
 		}
 		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
-			name := strings.TrimSpace(trim[1 : len(trim)-1])
-			in = name == section
+			in = strings.TrimSpace(trim[1:len(trim)-1]) == section
 			continue
 		}
 		if !in {
 			continue
 		}
 		name, rest, ok := strings.Cut(trim, "=")
-		if !ok {
-			continue
-		}
-		if strings.TrimSpace(name) == key {
+		if ok && strings.TrimSpace(name) == key {
 			return unquote(strings.TrimSpace(rest))
 		}
 	}
