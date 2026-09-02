@@ -4,6 +4,7 @@ P="${MAXQ_HOME:-$HOME}"; B="$P/bin"; C="$P/.config/maxq"; L="$P/.local"; S="$C/d
 D="$C/defaults.toml"; J="$C/icons-src"; I="$L/share/icons/maxq"; A="$L/share/applications"; X="$P/.config/xfce4/helpers.rc"
 H="$L/share/xfce4/helpers"; E="$P/Desktop"; K="$P/.config/plank/dock1/launchers"; R="$C/launcher"
 G="$B/ghostty"; GD="$A/ghostty.desktop"; LA="$B/maxq-launcher"; OS="$B/maxq-open-site"
+WP="$L/share/backgrounds/maxq/mocha.png"; GTK="$L/share/themes/MaxQ-Catppuccin-Mocha"; CUR="$L/share/icons/MaxQ-Catppuccin-Mocha"; GC="$P/.config/ghostty/config"; GT="$P/.config/ghostty/themes/catppuccin-mocha.conf"
 KEY='/commands/custom/<Super>space'; BEGIN='# >>> maxq desktop begin >>>'; END='# <<< maxq desktop end <<<'
 export PATH="$B:$PATH"
 for lib in ghostty launcher shortcuts chrome; do
@@ -34,7 +35,18 @@ for k in ('chatgpt','grok','claude','discord','slack'):
  if u.scheme not in {'http','https'} or not u.netloc:raise SystemExit(1)
 PY
 }
-apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
+apply_wallpaper_live(){
+  [ -s "$WP" ] || fail 'Mocha wallpaper missing after core apply'
+  [ -n "${DISPLAY:-}" ] || return 0
+  if command -v hsetroot >/dev/null 2>&1 && DISPLAY="$DISPLAY" hsetroot -fill "$WP" >/dev/null 2>&1; then echo hsetroot > "$S/wallpaper-live"; return 0; fi
+  if command -v xfconf-query >/dev/null 2>&1; then
+    local p hit=0
+    while IFS= read -r p; do case "$p" in */last-image|*/image-path) xfconf-query -c xfce4-desktop -p "$p" -s "$WP" >/dev/null 2>&1 && hit=1 || true;; esac; done < <(xfconf-query -c xfce4-desktop -l 2>/dev/null || true)
+    if [ "$hit" -eq 1 ]; then echo xfce > "$S/wallpaper-live"; return 0; fi
+  fi
+  fail 'DISPLAY set but neither hsetroot nor XFCE backdrop applied the Mocha wallpaper'
+}
+apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; apply_wallpaper_live; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
 revert_desktop(){
   mkdir -p "$C"; remove_chrome_theme_profiles; restore_keybind; restore_default_terminal; remove_shortcuts
   rm -f "$LA" "$OS" "$R/mocha.rasi"
@@ -47,6 +59,8 @@ revert_desktop(){
 FAIL=0
 ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
 check_desktop(){
+  ok 'Mocha wallpaper on disk' test -s "$WP"; ok 'GTK Mocha theme on disk' test -s "$GTK/gtk-3.0/gtk.css"; ok 'cursor Mocha theme on disk' test -s "$CUR/index.theme"; ok 'Ghostty Mocha config on disk' grep -q 'theme = catppuccin-mocha.conf' "$GC"; ok 'Ghostty Mocha theme on disk' test -s "$GT"
+  [ -z "${DISPLAY:-}" ] || ok 'wallpaper live apply recorded' test -s "$S/wallpaper-live"
   ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty wrapper --version' "$G" --version
   ok 'Ghostty Mesa 4.5 wrapper' ghostty_wrapper_ok
   [ -z "${DISPLAY:-}" ] || ok 'Ghostty X11 loads OpenGL 4.x' ghostty_gl_probe
@@ -54,10 +68,7 @@ check_desktop(){
   ok 'defaults.toml valid' valid_defaults; ok 'launcher choice rofi' grep -qx rofi "$S/launcher"; ok 'rofi works' rofi -version; ok 'Mocha launcher theme' test -s "$R/mocha.rasi"; ok 'launcher executable' test -x "$LA"
   ok 'Super+Space launcher binding' test "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA"
   ok 'box-chrome current-display opener' sh -c "grep -q box-chrome '$OS' && ! grep -Eq -- '--user-data-dir|chrome-profile-[0-9]' '$OS'"
-  ok 'Chrome Mocha unpacked manifest' test -s "$CHROME_THEME_DIR/manifest.json"
-  ok 'Chrome Mocha skeleton' chrome_external_json_ok "$CHROME_SKEL_JSON"
-  ok 'all existing Chrome profiles seeded' check_all_chrome_profiles_seeded
-  ok 'Chrome profile reconciler installed' chrome_reconciler_safe
+  ok 'Chrome Mocha unpacked manifest' test -s "$CHROME_THEME_DIR/manifest.json"; ok 'Chrome Mocha skeleton' chrome_external_json_ok "$CHROME_SKEL_JSON"; ok 'all existing Chrome profiles seeded' check_all_chrome_profiles_seeded; ok 'Chrome/full desired-state reconciler installed' chrome_reconciler_safe
   local n; for n in ai chatgpt grok claude discord slack settings ghostty; do ok "PNG icon $n" png_ok "$I/$n.png"; done
   for n in ai chatgpt grok claude discord slack settings; do ok "shortcut $n" test -s "$A/maxq-$n.desktop"; ok "shortcut $n uses PNG" grep -q "Icon=$I/$n.png" "$A/maxq-$n.desktop"; done
   ok 'Ghostty desktop uses PNG' grep -q "Icon=$I/ghostty.png" "$GD"
@@ -69,6 +80,4 @@ prove_desktop(){
   apply_desktop; check_desktop; revert_desktop; ok 'defaults.toml survives revert' test -s "$D"; [ -z "$h" ] || ok 'operator defaults unchanged' test "$(sha256sum "$D" | cut -d' ' -f1)" = "$h"
   apply_desktop; check_desktop; [ "$FAIL" -eq 0 ]
 }
-case "${1:-status}" in
- apply|configure) apply_desktop;; revert|unconfigure) revert_desktop;; prove) prove_desktop;; status) [ -f "$S/state" ] && cat "$S/state" || echo reverted;; *) fail 'usage: maxq-desktop apply|revert|prove|status';;
-esac
+case "${1:-status}" in apply|configure) apply_desktop;; revert|unconfigure) revert_desktop;; prove) prove_desktop;; status) [ -f "$S/state" ] && cat "$S/state" || echo reverted;; *) fail 'usage: maxq-desktop apply|revert|prove|status';; esac
