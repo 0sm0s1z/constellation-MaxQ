@@ -1,0 +1,109 @@
+# sourced by maxq-desktop
+ROFI_VERSION="1.7.5-0.1+b2"
+ROFI_PIN_URL="https://deb.debian.org/debian/pool/main/r/rofi/rofi_1.7.5-0.1+b2_amd64.deb"
+ROFI_CACHE="$C/cli-cache"
+ROFI_ROOT_CACHE="$ROFI_CACHE/rofi-root--maxq-${ROFI_VERSION}_amd64.deb"
+
+rofi_runs(){ command -v rofi >/dev/null 2>&1 && rofi -version >/dev/null 2>&1; }
+cache_rofi_root(){
+  mkdir -p "$ROFI_CACHE"
+  [ -s "$ROFI_ROOT_CACHE" ] && return 0
+  [ -f "$S/rofi-owned" ] && [ -d "$L/opt/rofi" ] && [ "$(command -v rofi 2>/dev/null || true)" = "$B/rofi" ] || return 0
+  command -v dpkg-deb >/dev/null 2>&1 || return 0
+  local t; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-rofi-cache.XXXXXX")"; mkdir -p "$t/root/DEBIAN"
+  cp -a "$L/opt/rofi/." "$t/root/"
+  cat > "$t/root/DEBIAN/control" <<EOF2
+Package: maxq-rofi-root
+Version: $ROFI_VERSION
+Architecture: amd64
+Maintainer: constellation-MaxQ
+Description: HOME-only cached rofi runtime tree for constellation-MaxQ
+EOF2
+  if dpkg-deb --build "$t/root" "$t/rofi-root.deb" >/dev/null 2>&1 && [ -s "$t/rofi-root.deb" ]; then mv -f "$t/rofi-root.deb" "$ROFI_ROOT_CACHE"; fi
+  rm -rf "$t"
+}
+apt_cache_pkg(){
+  local pkg="$1" prefix="$2" attempt t f
+  command -v apt-get >/dev/null 2>&1 || return 1
+  for attempt in 1 2 3; do
+    t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-rofi-deb.XXXXXX")"
+    if (cd "$t" && apt-get download "$pkg" >/dev/null 2>&1); then
+      f="$(find "$t" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+      if [ -n "$f" ]; then mv -f "$f" "$ROFI_CACHE/${prefix}$(basename "$f")"; rm -rf "$t"; return 0; fi
+    fi
+    rm -rf "$t"; sleep "$attempt"
+  done
+  return 1
+}
+fetch_rofi_pin(){
+  local dest="$ROFI_CACHE/rofi-pkg--rofi_${ROFI_VERSION}_amd64.deb" part attempt
+  part="${dest}.part"
+  [ -s "$dest" ] && return 0
+  for attempt in 1 2 3 4; do
+    rm -f "$part"
+    if curl -fL --retry 2 --retry-delay 1 -o "$part" "$ROFI_PIN_URL" && [ -s "$part" ]; then mv -f "$part" "$dest"; return 0; fi
+    sleep "$attempt"
+  done
+  rm -f "$part"; return 1
+}
+have_rofi_pkg_cache(){ compgen -G "$ROFI_CACHE/rofi-pkg--*.deb" >/dev/null 2>&1; }
+install_rofi(){
+  mkdir -p "$ROFI_CACHE"
+  if rofi_runs; then cache_rofi_root; echo rofi > "$S/launcher"; return; fi
+  command -v dpkg-deb >/dev/null 2>&1 || fail 'rofi missing; dpkg-deb unavailable for HOME-only extract'
+
+  rm -rf "$L/opt/rofi"; mkdir -p "$L/opt/rofi"
+  if [ -s "$ROFI_ROOT_CACHE" ]; then
+    dpkg-deb -x "$ROFI_ROOT_CACHE" "$L/opt/rofi" || fail 'cached rofi runtime extract failed'
+  else
+    if ! have_rofi_pkg_cache; then apt_cache_pkg rofi 'rofi-pkg--' || fetch_rofi_pin || fail 'rofi package download failed after retries and pinned fallback'; fi
+    if command -v apt-cache >/dev/null 2>&1; then
+      local dep safe
+      while read -r dep; do
+        [ -n "$dep" ] || continue; safe="$(printf '%s' "$dep" | tr -c 'A-Za-z0-9_.+-' '_')"
+        compgen -G "$ROFI_CACHE/rofi-dep-${safe}--*.deb" >/dev/null 2>&1 || apt_cache_pkg "$dep" "rofi-dep-${safe}--" || true
+      done < <(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances rofi 2>/dev/null | awk '/^[[:space:]]*Depends:/ {gsub(/[<>]/,"",$2); if($2!="rofi")print $2}' | sort -u)
+    fi
+    local pkg
+    for pkg in "$ROFI_CACHE"/rofi-pkg--*.deb "$ROFI_CACHE"/rofi-dep-*--*.deb; do [ ! -f "$pkg" ] || dpkg-deb -x "$pkg" "$L/opt/rofi" || true; done
+  fi
+
+  local real; real="$(find "$L/opt/rofi" -type f -path '*/usr/bin/rofi' -print -quit)"; [ -x "$real" ] || fail 'rofi binary missing after cached extract'
+  cat > "$B/rofi" <<EOF2
+#!/usr/bin/env bash
+export XDG_DATA_DIRS="$L/opt/rofi/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export LD_LIBRARY_PATH="$L/opt/rofi/usr/lib/x86_64-linux-gnu:$L/opt/rofi/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH:-}"
+exec "$real" "\$@"
+EOF2
+  chmod +x "$B/rofi"; rofi -version >/dev/null 2>&1 || fail 'persist rofi does not run'
+  : > "$S/rofi-owned"; cache_rofi_root; echo rofi > "$S/launcher"
+}
+install_launcher(){
+  cat > "$R/mocha.rasi" <<'RASI'
+* { bg: #1e1e2eff; bg2: #181825ff; fg: #cdd6f4ff; sub: #a6adc8ff; accent: #cba6f7ff; surface: #313244ff; background-color: transparent; text-color: @fg; }
+window { width: 42%; border: 2px; border-color: @accent; border-radius: 14px; background-color: @bg; padding: 10px; }
+inputbar { background-color: @bg2; border-radius: 10px; padding: 10px 12px; }
+entry { placeholder: "Launch app or MaxQ shortcut..."; placeholder-color: @sub; }
+listview { lines: 9; columns: 1; spacing: 4px; }
+element { padding: 9px 10px; border-radius: 9px; }
+element selected { background-color: @surface; }
+element-icon { size: 28px; }
+RASI
+  cat > "$LA" <<EOF2
+#!/usr/bin/env bash
+export PATH="$B:\$PATH"
+exec rofi -show drun -modi drun,run -show-icons -matching fuzzy -theme "$R/mocha.rasi"
+EOF2
+  chmod +x "$LA"
+}
+install_keybind(){
+  command -v xfconf-query >/dev/null 2>&1 || fail 'xfconf-query missing; cannot bind Super+Space'
+  [ -f "$S/key-saved" ] || { xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" > "$S/key-prev" 2>/dev/null || true; : > "$S/key-saved"; }
+  if xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" >/dev/null 2>&1; then xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -s "$LA"; else xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -n -t string -s "$LA"; fi
+}
+restore_keybind(){
+  command -v xfconf-query >/dev/null 2>&1 || return 0
+  [ "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA" ] || return 0
+  local prev=""; [ -f "$S/key-prev" ] && prev="$(cat "$S/key-prev")"
+  if [ -n "$prev" ]; then xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -s "$prev"; else xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -r >/dev/null 2>&1 || true; fi
+}

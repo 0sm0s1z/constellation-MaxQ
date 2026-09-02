@@ -1,0 +1,122 @@
+# sourced by maxq-desktop
+GHOSTTY_VERSION="1.3.1"
+GHOSTTY_APPIMAGE_URL="https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v${GHOSTTY_VERSION}/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage"
+GHOSTTY_APPIMAGE="$C/cli-cache/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage"
+GHOSTTY_PREEXISTING="$C/cli-cache/ghostty-preexisting.bin"
+
+ghostty_ok(){ [ -x "$G" ] && "$G" --version >/dev/null 2>&1; }
+ghostty_wrapper_ok(){ [ -x "$G" ] && grep -q '^export LIBGL_ALWAYS_SOFTWARE=1$' "$G" 2>/dev/null && grep -q '^export MESA_GL_VERSION_OVERRIDE=4.5$' "$G" 2>/dev/null && grep -q '^export MESA_GLSL_VERSION_OVERRIDE=450$' "$G" 2>/dev/null && grep -q '^export GTK_A11Y=none$' "$G" 2>/dev/null && ! grep -q 'GALLIUM_DRIVER' "$G" 2>/dev/null; }
+fetch_cached(){
+  local url="$1" dest="$2" part attempt
+  part="${dest}.part"
+  [ -s "$dest" ] && return 0
+  mkdir -p "$(dirname "$dest")"
+  for attempt in 1 2 3 4; do
+    rm -f "$part"
+    if curl -fL --retry 2 --retry-delay 1 -o "$part" "$url" && [ -s "$part" ]; then mv -f "$part" "$dest"; return 0; fi
+    sleep "$attempt"
+  done
+  rm -f "$part"; return 1
+}
+write_ghostty_wrapper(){
+  cat > "$G" <<EOF2
+#!/usr/bin/env bash
+set -euo pipefail
+export LIBGL_ALWAYS_SOFTWARE=1
+export MESA_GL_VERSION_OVERRIDE=4.5
+export MESA_GLSL_VERSION_OVERRIDE=450
+export GTK_A11Y=none
+exec "$GHOSTTY_APPIMAGE" "\$@"
+EOF2
+  chmod +x "$G"
+}
+install_ghostty(){
+  mkdir -p "$C/cli-cache"
+  if ghostty_wrapper_ok && ghostty_ok; then [ -f "$S/ghostty-owned" ] || : > "$S/ghostty-preexisting"; return; fi
+
+  # Migrate the a870027 cache/raw AppImage without touching the network.
+  if [ ! -s "$GHOSTTY_APPIMAGE" ] && [ -s "$C/downloads/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage" ]; then
+    cp -f "$C/downloads/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage" "$GHOSTTY_APPIMAGE"
+  fi
+  if [ ! -s "$GHOSTTY_APPIMAGE" ] && [ -f "$S/ghostty-owned" ] && [ -x "$G" ] && "$G" --version >/dev/null 2>&1; then
+    cp -f "$G" "$GHOSTTY_APPIMAGE"
+  fi
+
+  # Preserve an operator-owned Ghostty while MaxQ temporarily owns the wrapper path.
+  if [ -x "$G" ] && [ ! -f "$S/ghostty-owned" ] && ! ghostty_wrapper_ok; then
+    cp -f "$G" "$GHOSTTY_PREEXISTING"; chmod +x "$GHOSTTY_PREEXISTING"; : > "$S/ghostty-preexisting"
+  fi
+
+  fetch_cached "$GHOSTTY_APPIMAGE_URL" "$GHOSTTY_APPIMAGE" || fail "Ghostty ${GHOSTTY_VERSION} AppImage download failed"
+  chmod +x "$GHOSTTY_APPIMAGE"
+  write_ghostty_wrapper
+  ghostty_ok || fail 'Ghostty wrapper --version failed'
+  echo constellation-MaxQ > "$S/ghostty-owned"
+}
+ghostty_gl_probe(){
+  [ -n "${DISPLAY:-}" ] || return 0
+  local log="$S/ghostty-gl-probe.log" pid i=0 pass=0
+  : > "$log"
+  GHOSTTY_LOG=stderr "$G" >"$log" 2>&1 & pid=$!
+  while [ "$i" -lt 50 ]; do
+    if grep -q 'loaded OpenGL 4\.' "$log" 2>/dev/null; then pass=1; break; fi
+    if grep -q 'OpenGL version is too old' "$log" 2>/dev/null; then break; fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1; i=$((i+1))
+  done
+  if grep -q 'OpenGL version is too old' "$log" 2>/dev/null; then pass=0; fi
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  [ "$pass" -eq 1 ]
+}
+install_ghostty_desktop(){
+  cat > "$GD" <<EOF2
+[Desktop Entry]
+Type=Application
+Name=Ghostty
+Comment=MaxQ default terminal
+Exec=$G
+Icon=$I/ghostty.png
+Terminal=false
+Categories=System;TerminalEmulator;
+X-MaxQ-Managed=true
+EOF2
+  cat > "$H/ghostty.desktop" <<EOF2
+[Xfce Helper]
+Name=Ghostty
+Category=TerminalEmulator
+Command=$G
+Parameter=%s
+StartupNotify=true
+EOF2
+  cp -f "$GD" "$E/Ghostty.desktop"; chmod +x "$E/Ghostty.desktop"
+}
+set_default_terminal(){
+  [ -f "$S/helper-saved" ] || { grep '^TerminalEmulator=' "$X" 2>/dev/null | tail -1 > "$S/helper-prev" || true; : > "$S/helper-saved"; }
+  mkdir -p "$(dirname "$X")"; touch "$X"
+  python3 - "$X" "$BEGIN" "$END" <<'PY'
+import sys
+p,b,e=sys.argv[1:]; out=[]; skip=False
+for line in open(p,encoding='utf-8').read().splitlines():
+ if line==b: skip=True; continue
+ if line==e: skip=False; continue
+ if not skip and not line.startswith('TerminalEmulator='): out.append(line)
+while out and not out[-1].strip(): out.pop()
+if out: out.append('')
+out += [b,'TerminalEmulator=ghostty',e]
+open(p,'w',encoding='utf-8').write('\n'.join(out)+'\n')
+PY
+}
+restore_default_terminal(){
+  [ -f "$X" ] || return 0; local prev=""; [ -f "$S/helper-prev" ] && prev="$(cat "$S/helper-prev")"
+  python3 - "$X" "$BEGIN" "$END" "$prev" <<'PY'
+import sys
+p,b,e,prev=sys.argv[1:]; out=[]; skip=False
+for line in open(p,encoding='utf-8').read().splitlines():
+ if line==b: skip=True; continue
+ if line==e: skip=False; continue
+ if not skip and not line.startswith('TerminalEmulator='): out.append(line)
+while out and not out[-1].strip(): out.pop()
+if prev: out += ([''] if out else [])+[prev]
+open(p,'w',encoding='utf-8').write('\n'.join(out)+('\n' if out else ''))
+PY
+}

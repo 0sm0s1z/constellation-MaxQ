@@ -1,0 +1,62 @@
+# sourced by maxq-desktop
+png_ok(){ python3 - "$1" <<'PY'
+import sys
+try: ok=open(sys.argv[1],'rb').read(8)==b'\x89PNG\r\n\x1a\n'
+except OSError: ok=False
+raise SystemExit(0 if ok else 1)
+PY
+}
+install_icons(){
+  local n provider
+  for n in chatgpt grok claude discord slack ghostty settings; do
+    [ -s "$J/$n.png" ] && png_ok "$J/$n.png" || fail "missing repo PNG icon: $J/$n.png"
+    cp -f "$J/$n.png" "$I/$n.png"
+  done
+  provider="$(python3 - "$D" <<'PY'
+import sys,tomllib
+print(tomllib.load(open(sys.argv[1],'rb')).get('default_ai_chat','chatgpt'))
+PY
+)"
+  case "$provider" in chatgpt|grok|claude) ;; *) provider=chatgpt;; esac
+  cp -f "$I/$provider.png" "$I/ai.png"
+  echo constellation-MaxQ > "$I/.maxq-owned"
+}
+install_site_opener(){ cat > "$OS" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+P="${MAXQ_HOME:-$HOME}"; D="$P/.config/maxq/defaults.toml"; target="${1:-ai}"
+if [ "$target" = settings ]; then url=http://127.0.0.1:7432/; else
+ url="$(python3 - "$D" "$target" <<'PY'
+import sys,tomllib
+d=tomllib.load(open(sys.argv[1],'rb')); t=sys.argv[2]; t=d.get('default_ai_chat','chatgpt') if t=='ai' else t; print(d.get('sites',{}).get(t,''))
+PY
+)"
+fi
+[ -n "$url" ] && [ -n "${DISPLAY:-}" ] || exit 3
+if [ -x "$P/bin/box-chrome" ]; then chrome="$P/bin/box-chrome"; elif command -v box-chrome >/dev/null 2>&1; then chrome="$(command -v box-chrome)"; else echo 'box-chrome missing; refusing generic Chrome/profile fallback' >&2; exit 4; fi
+exec env DISPLAY="$DISPLAY" "$chrome" "$url"
+EOF
+chmod +x "$OS"; }
+app(){ local id="$1" name="$2" ic="$3" target="$4"; cat > "$A/$id.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec=$OS $target
+Icon=$I/$ic.png
+Terminal=false
+Categories=Network;Chat;
+X-MaxQ-Managed=true
+EOF
+}
+install_apps(){
+  app maxq-ai 'MaxQ AI Chat' ai ai; app maxq-chatgpt ChatGPT chatgpt chatgpt; app maxq-grok Grok grok grok; app maxq-claude Claude claude claude; app maxq-discord Discord discord discord; app maxq-slack Slack slack slack; app maxq-settings 'MaxQ Settings' settings settings
+  cp -f "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"; cp -f "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"; cp -f "$A/maxq-grok.desktop" "$E/Grok.desktop"; cp -f "$A/maxq-claude.desktop" "$E/Claude.desktop"; cp -f "$A/maxq-discord.desktop" "$E/Discord.desktop"; cp -f "$A/maxq-slack.desktop" "$E/Slack.desktop"; cp -f "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
+  chmod +x "$E/Ghostty.desktop" "$E/MaxQ-AI-Chat.desktop" "$E/ChatGPT.desktop" "$E/Grok.desktop" "$E/Claude.desktop" "$E/Discord.desktop" "$E/Slack.desktop" "$E/MaxQ-Settings.desktop"
+}
+dock(){ printf '[PlankDockItemPreferences]\nLauncher=file://%s\n' "$2" > "$K/$1.dockitem"; }
+install_docks(){ dock maxq-00-ai "$A/maxq-ai.desktop"; dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"; dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"; dock maxq-40-ghostty "$GD"; }
+remove_shortcuts(){
+  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings}.desktop
+  rm -f "$E"/{Ghostty,MaxQ-AI-Chat,ChatGPT,Grok,Claude,Discord,Slack,MaxQ-Settings}.desktop "$K"/maxq-*.dockitem
+  rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty}.png "$I/.maxq-owned"
+}

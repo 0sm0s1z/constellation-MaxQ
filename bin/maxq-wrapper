@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Public MaxQ shim: preserves the existing core and composes desktop + package desired state.
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"; BIN="$PREFIX/bin"; CONFIG="$PREFIX/.config/maxq"; RUNTIME="$CONFIG/runtime"
+SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"; SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+CORE_SOURCE="$BIN/maxq-core"; DESKTOP="$BIN/maxq-desktop"; PACKAGES="$BIN/maxq-packages"; SAFE_CORE="$RUNTIME/maxq-core-safe"; PUBLIC="$BIN/maxq"
+repo_root=""
+if [ -x "$SELF_DIR/maxq" ] && [ -x "$SELF_DIR/maxq-desktop" ] && [ -f "$SELF_DIR/../cmd/maxq-api/main.go" ]; then repo_root="$(cd "$SELF_DIR/.." && pwd)"; fi
+install_runtime_parts(){
+  mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src" "$CONFIG/icons-src"
+  if [ -n "$repo_root" ]; then
+    cp -f "$SELF_DIR/maxq" "$CORE_SOURCE"; cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"; cp -f "$SELF_DIR/maxq-packages" "$PACKAGES"
+    for lib in ghostty launcher shortcuts chrome dark; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
+    chmod +x "$CORE_SOURCE" "$DESKTOP" "$PACKAGES"
+    if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then cp -f "$SELF" "$PUBLIC"; chmod +x "$PUBLIC"; fi
+    [ ! -d "$repo_root/cmd/maxq-api" ] || cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
+    [ ! -d "$repo_root/share/theme" ] || cp -a "$repo_root/share/theme/." "$CONFIG/theme/src/"
+    [ ! -d "$repo_root/share/icons" ] || cp -a "$repo_root/share/icons/." "$CONFIG/icons-src/"
+  else
+    [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
+    [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
+    [ -x "$PACKAGES" ] || { echo "maxq: missing $PACKAGES; rerun install.sh" >&2; exit 1; }
+    for lib in ghostty launcher shortcuts chrome dark; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
+  fi
+}
+prepare_safe_core(){ python3 - "$CORE_SOURCE" "$SAFE_CORE" <<'PY'
+import os,sys
+src,dest=sys.argv[1:]; text=open(src,encoding='utf-8').read()
+required={
+ '  install_self\n':'  : # public wrapper owns $HOME/bin/maxq\n',
+ '  optional_usr_link\n':'  : # persist-safe: no system-level link\n',
+ '  remove_optional_usr_link\n':'  : # persist-safe: no system-level link\n',
+ '# Recreates persist layout and optional /usr/local/bin link. No /usr logic.\n':'# Recreates the HOME-only persist layout.\n',
+ 'if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then\n  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq\nfi\n':'# HOME-only reconciler.\n',
+ 'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then\n':'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] || [ "$pid" = "${MAXQ_WRAPPER_PARENT_PID:-}" ]; }; then\n',
+ '  echo "ghostty_bin=skipped (no official linux amd64)"\n':'  echo "ghostty_bin=desktop-proof follows core proof"\n',
+ '  echo "chrome_theme_live=skipped (unpacked files only)"\n':'  echo "chrome_theme_live=desktop-proof follows core proof"\n',
+}
+for old,new in required.items():
+ if old not in text: raise SystemExit(f'maxq: core patch anchor missing: {old!r}')
+ text=text.replace(old,new,1)
+optional={
+ '# Binary: not installed by MaxQ (no official linux amd64 build; see docs/THEME.md).\n':'# Binary is installed by the MaxQ desktop composition wrapper.\n',
+ '  # No official linux amd64 Ghostty binary. Config-only; do not install AppImage.\n':'  # Ghostty binary is installed by the MaxQ desktop composition wrapper.\n',
+ 'Ghostty binary: skipped (no official linux amd64 build). Config-only.\n':'Ghostty binary: installed by MaxQ desktop composition under $HOME/bin.\n',
+ 'Chrome theme: files shipped; not live-applied (no flags, no managed policies).\n':'Chrome theme: live-seeded to all chrome-profile* via External Extensions; no managed policies.\n',
+ 'Chrome:  theme files unpacked under \\$HOME/.local/share/maxq; not live-applied.\n':'Chrome:  Mocha is live-seeded to every \\$HOME/chrome-profile* without managed policies.\n',
+}
+for old,new in optional.items(): text=text.replace(old,new,1)
+os.makedirs(os.path.dirname(dest),exist_ok=True); open(dest,'w',encoding='utf-8').write(text); os.chmod(dest,0o755)
+PY
+}
+run_core(){ local rc; export MAXQ_WRAPPER_PARENT_PID="$PPID"; set +e; "$SAFE_CORE" "$@"; rc=$?; set -e; return "$rc"; }
+install_runtime_parts; prepare_safe_core
+cmd="${1:-status}"; [ "$#" -eq 0 ] || shift
+case "$cmd" in
+ apply|configure) run_core apply "$@"; "$DESKTOP" apply; "$PACKAGES" apply;;
+ revert|unconfigure) "$PACKAGES" revert; "$DESKTOP" revert; run_core revert "$@";;
+ prove) "$PACKAGES" revert; "$DESKTOP" revert; run_core prove "$@"; "$DESKTOP" prove; "$PACKAGES" prove;;
+ status) run_core status "$@";;
+ *) run_core "$cmd" "$@";;
+esac

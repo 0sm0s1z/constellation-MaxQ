@@ -1,56 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaxQ</title>
-  <link rel="stylesheet" href="/mocha.css">
-</head>
-<body>
-  <main class="sheet">
-    <header>
-      <div>
-        <h1>MaxQ</h1>
-        <p class="tag">Take your Grok Bot to MaxQ.</p>
-      </div>
-      <span id="pill" class="pill">…</span>
-    </header>
-
-    <section id="status-card" class="card">
-      <h2>status</h2>
-      <dl>
-        <dt>state</dt><dd id="st-state">—</dd>
-        <dt>theme</dt><dd id="st-theme">—</dd>
-        <dt>gost</dt><dd id="st-gost">—</dd>
-        <dt>clis</dt><dd id="st-clis">—</dd>
-        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
-      </dl>
-    </section>
-
-    <section class="card">
-      <h2>desired state</h2>
-      <div class="row">
-        <button type="button" id="btn-apply">Apply</button>
-        <button type="button" id="btn-revert" class="danger">Revert</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
-      <div class="row">
-        <button type="button" id="btn-proxy-on">On</button>
-        <button type="button" id="btn-proxy-off">Off</button>
-      </div>
-    </section>
-
-    <nav class="soon">
-      <span title="later">vault</span>
-      <span title="later">oauth</span>
-      <span title="later">skills</span>
-    </nav>
-    <p id="msg" class="msg" hidden></p>
-  </main>
-  <script src="/sheet.js"></script>
-</body>
-</html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MaxQ</title><link rel="stylesheet" href="/mocha.css"></head>
+<body><main class="sheet">
+<header><div><h1>MaxQ</h1><p class="tag">Take your Grok Bot to MaxQ.</p></div><span id="pill" class="pill">…</span></header>
+<section class="card"><h2>status</h2><dl><dt>state</dt><dd id="st-state">—</dd><dt>theme</dt><dd id="st-theme">—</dd><dt>ghostty</dt><dd id="st-ghostty">—</dd><dt>launcher</dt><dd id="st-launcher">—</dd><dt>gost</dt><dd id="st-gost">—</dd><dt>clis</dt><dd id="st-clis">—</dd><dt>api</dt><dd id="st-api">127.0.0.1:7432</dd></dl></section>
+<section class="card"><h2>packages</h2><p class="hint">MaxQ SBOM inventory. This is not apt/yum and does not mutate packages.</p><ul id="packages" class="shortcut-list"><li>loading… <span>$HOME/.config/maxq/sbom.json</span></li></ul></section>
+<section class="card"><h2>defaults</h2><p class="hint">Operator overrides persist across <code>maxq revert</code>.</p><form id="defaults-form"><label>Default AI chat<select id="default-ai"><option value="chatgpt">ChatGPT</option><option value="grok">Grok</option><option value="claude">Claude</option></select></label><div class="sites"><label>ChatGPT <input id="site-chatgpt" type="url" required></label><label>Grok <input id="site-grok" type="url" required></label><label>Claude <input id="site-claude" type="url" required></label><label>Discord <input id="site-discord" type="url" required></label><label>Slack <input id="site-slack" type="url" required></label></div><button type="submit" id="btn-save-defaults">Save defaults</button></form></section>
+<section class="card"><h2>shortcuts</h2><ul id="shortcuts" class="shortcut-list"><li>Super+Space <span>launcher</span></li></ul></section>
+<section class="card compact"><h2>desired state</h2><div class="row"><button type="button" id="btn-apply">Apply</button><button type="button" id="btn-revert" class="danger">Revert</button></div></section>
+<section class="card compact"><h2>proxy</h2><p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p><div class="row"><button type="button" id="btn-proxy-on">On</button><button type="button" id="btn-proxy-off">Off</button></div></section>
+<p id="msg" class="msg" hidden></p></main><script src="/sheet.js"></script></body></html>
