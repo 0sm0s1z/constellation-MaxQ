@@ -7,7 +7,7 @@ G="$B/ghostty"; GD="$A/ghostty.desktop"; LA="$B/maxq-launcher"; OS="$B/maxq-open
 WP="$L/share/backgrounds/maxq/mocha.png"; GTK="$L/share/themes/MaxQ-Catppuccin-Mocha"; CUR="$L/share/icons/MaxQ-Catppuccin-Mocha"; GC="$P/.config/ghostty/config"; GT="$P/.config/ghostty/themes/catppuccin-mocha.conf"
 KEY='/commands/custom/<Super>space'; BEGIN='# >>> maxq desktop begin >>>'; END='# <<< maxq desktop end <<<'
 export PATH="$B:$PATH"
-for lib in ghostty launcher shortcuts chrome; do
+for lib in ghostty launcher shortcuts chrome dark; do
   f="$(dirname "$(readlink -f "$0")")/maxq-desktop-$lib"
   [ -r "$f" ] || { echo "maxq-desktop: missing $f" >&2; exit 1; }
   . "$f"
@@ -46,9 +46,9 @@ apply_wallpaper_live(){
   fi
   fail 'DISPLAY set but neither hsetroot nor XFCE backdrop applied the Mocha wallpaper'
 }
-apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; apply_wallpaper_live; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
+apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; apply_dark_mode; apply_wallpaper_live; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
 revert_desktop(){
-  mkdir -p "$C"; remove_chrome_theme_profiles; restore_keybind; restore_default_terminal; remove_shortcuts
+  mkdir -p "$C"; remove_chrome_theme_profiles; restore_keybind; restore_default_terminal; remove_shortcuts; restore_dark_mode
   rm -f "$LA" "$OS" "$R/mocha.rasi"
   if [ -f "$S/rofi-owned" ]; then cache_rofi_root; rm -f "$B/rofi"; rm -rf "$L/opt/rofi"; fi
   if [ -f "$S/ghostty-owned" ] && [ ! -s "$GHOSTTY_APPIMAGE" ] && [ -x "$G" ] && ! ghostty_wrapper_ok; then mkdir -p "$C/cli-cache"; cp -f "$G" "$GHOSTTY_APPIMAGE"; chmod +x "$GHOSTTY_APPIMAGE"; fi
@@ -59,7 +59,9 @@ revert_desktop(){
 FAIL=0
 ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
 check_desktop(){
-  ok 'Mocha wallpaper on disk' test -s "$WP"; ok 'GTK Mocha theme on disk' test -s "$GTK/gtk-3.0/gtk.css"; ok 'cursor Mocha theme on disk' test -s "$CUR/index.theme"; ok 'Ghostty Mocha config on disk' grep -q 'theme = catppuccin-mocha.conf' "$GC"; ok 'Ghostty Mocha theme on disk' test -s "$GT"
+  ok 'Mocha wallpaper on disk' test -s "$WP"; ok 'GTK Mocha theme on disk' test -s "$GTK/gtk-3.0/gtk.css"; ok 'xfwm4 Mocha theme on disk' test -d "$GTK/xfwm4"; ok 'cursor Mocha theme on disk' test -s "$CUR/index.theme"; ok 'Ghostty Mocha config on disk' grep -q 'theme = catppuccin-mocha.conf' "$GC"; ok 'Ghostty Mocha theme on disk' test -s "$GT"
+  ok 'XFCE dark mode persisted in home XML' dark_xml_ok
+  [ -z "${DISPLAY:-}" ] || ok 'XFCE dark mode live' dark_live_ok
   [ -z "${DISPLAY:-}" ] || ok 'wallpaper live apply recorded' test -s "$S/wallpaper-live"
   ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty wrapper --version' "$G" --version
   ok 'Ghostty Mesa 4.5 wrapper' ghostty_wrapper_ok
