@@ -8,14 +8,17 @@ Default in `maxq.toml` is `theme = "mocha"`. Latte is reserved as a future flag 
 - GTK: `$HOME/.local/share/themes/MaxQ-Catppuccin-Mocha` (official catppuccin/gtk Mocha Mauve, renamed)
 - Cursors: `$HOME/.local/share/icons/MaxQ-Catppuccin-Mocha` (official catppuccin/cursors Mocha Mauve, renamed)
 - GTK settings: `$HOME/.config/gtk-3.0/settings.ini` and `gtk-4.0/settings.ini` (MaxQ-owned block)
-- Ghostty: `$HOME/.config/ghostty/config` MaxQ block + `themes/catppuccin-mocha.conf`
+- Ghostty: `$HOME/bin/ghostty` + `$HOME/.config/ghostty/config` MaxQ block + `themes/catppuccin-mocha.conf` (default terminal)
+- Launcher + shortcuts: Super+Space riced launcher; Desktop/plank icons from `$HOME/.config/maxq/defaults.toml`
 - Chrome theme files: `$HOME/.local/share/maxq/chrome-theme-mocha` (unpacked official Mocha)
 
 Revert deletes those MaxQ-owned files only. It does not wipe `$HOME`, SSH, Chrome profiles, or Chrome managed policies.
 
-## Ghostty binary (gap)
+## Ghostty (default terminal)
 
-Ghostty does not publish an official Linux amd64 binary. Building it needs Zig plus GTK4/libadwaita; community AppImages need FUSE. MaxQ is **config-only** for Ghostty. Drop a `ghostty` binary in `$HOME/bin` yourself if you want the app; the Mocha config still applies.
+Official Ghostty does not ship a Linux amd64 binary. MaxQ still installs the app: download a community linux amd64 (Debian Trixie `.deb` extract from mkasberg/ghostty-ubuntu, or a Universal AppImage) into `$HOME/bin/ghostty`. Mocha config stays at `$HOME/.config/ghostty/`. Apply sets Ghostty as the default terminal via persist-safe desktop files and xfce helpers.rc — never `update-alternatives`.
+
+See docs/DESKTOP.md.
 
 ## Chrome theme (not live-applied)
 
