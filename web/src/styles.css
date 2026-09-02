@@ -27,6 +27,10 @@ body {
   background: color-mix(in srgb, var(--mauve) 32%, transparent);
   color: var(--text);
 }
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.88em;
+}
 
 #field {
   position: fixed;
@@ -138,7 +142,6 @@ button.copy:hover, button.copy.ok { color: var(--green); }
   font-size: 12px;
 }
 .meta b { color: var(--green); font-weight: 500; }
-.meta .dim { color: var(--overlay0); }
 .meta .warn { color: var(--peach); }
 
 .grid {
@@ -150,8 +153,8 @@ button.copy:hover, button.copy.ok { color: var(--green); }
   .grid.three { grid-template-columns: repeat(3, 1fr); }
   .grid.two { grid-template-columns: 1fr 1fr; }
 }
-section h2 {
-  margin: 0 0 0.4rem;
+h2 {
+  margin: 0 0 0.45rem;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 11px;
   font-weight: 500;
