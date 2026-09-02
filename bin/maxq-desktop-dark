@@ -90,6 +90,15 @@ tmp=p+'.tmp'; open(tmp,'w',encoding='utf-8').write(json.dumps(data,indent=2)+'\n
 PY
 }
 
+prev_get(){
+  python3 - "$DARK_PREV" "$1" <<'PY'
+import json,sys
+try:d=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception:d={}
+print(str(d.get(sys.argv[2],'')),end='')
+PY
+}
+
 apply_dark_mode(){
   [ -d "$GTK/xfwm4" ] || fail 'Mocha xfwm4 theme missing after core apply'
   save_dark_previous
@@ -132,17 +141,8 @@ restore_one(){
 
 restore_dark_mode(){
   [ -s "$DARK_PREV" ] || return 0
-  local vals
-  vals="$(python3 - "$DARK_PREV" <<'PY'
-import json,sys
-try:d=json.load(open(sys.argv[1],encoding='utf-8'))
-except Exception:d={}
-for k in ('xfwm_theme','net_theme','cursor_theme','prefer_dark'): print(str(d.get(k,'')))
-PY
-)"
-  local oldifs="$IFS"; IFS=$'\n'; set -- $vals; IFS="$oldifs"
-  restore_one xfwm4 /general/theme string "$XFWM_XML" /general/theme "${1:-}"
-  restore_one xsettings /Net/ThemeName string "$XSET_XML" /Net/ThemeName "${2:-}"
-  restore_one xsettings /Net/CursorThemeName string "$XSET_XML" /Net/CursorThemeName "${3:-}"
-  restore_one xsettings /Gtk/ApplicationPreferDarkTheme bool "$XSET_XML" /Gtk/ApplicationPreferDarkTheme "${4:-}"
+  restore_one xfwm4 /general/theme string "$XFWM_XML" /general/theme "$(prev_get xfwm_theme)"
+  restore_one xsettings /Net/ThemeName string "$XSET_XML" /Net/ThemeName "$(prev_get net_theme)"
+  restore_one xsettings /Net/CursorThemeName string "$XSET_XML" /Net/CursorThemeName "$(prev_get cursor_theme)"
+  restore_one xsettings /Gtk/ApplicationPreferDarkTheme bool "$XSET_XML" /Gtk/ApplicationPreferDarkTheme "$(prev_get prefer_dark)"
 }
