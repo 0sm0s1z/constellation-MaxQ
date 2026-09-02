@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 P="${MAXQ_HOME:-$HOME}"; B="$P/bin"; C="$P/.config/maxq"; L="$P/.local"; S="$C/desktop"
-D="$C/defaults.toml"; I="$L/share/icons/maxq"; A="$L/share/applications"; X="$P/.config/xfce4/helpers.rc"
+D="$C/defaults.toml"; J="$C/icons-src"; I="$L/share/icons/maxq"; A="$L/share/applications"; X="$P/.config/xfce4/helpers.rc"
 H="$L/share/xfce4/helpers"; E="$P/Desktop"; K="$P/.config/plank/dock1/launchers"; R="$C/launcher"
 G="$B/ghostty"; GD="$A/ghostty.desktop"; LA="$B/maxq-launcher"; OS="$B/maxq-open-site"
 KEY='/commands/custom/<Super>space'; BEGIN='# >>> maxq desktop begin >>>'; END='# <<< maxq desktop end <<<'
@@ -12,7 +12,7 @@ for lib in ghostty launcher shortcuts; do
   . "$f"
 done
 fail(){ echo "maxq-desktop: $*" >&2; exit 1; }
-dirs(){ mkdir -p "$B" "$C" "$L" "$S" "$I" "$A" "$H" "$E" "$K" "$R" "$L/opt"; }
+dirs(){ mkdir -p "$B" "$C" "$L" "$S" "$J" "$I" "$A" "$H" "$E" "$K" "$R" "$L/opt"; }
 defaults(){
   [ -e "$D" ] || cat > "$D" <<'TOML'
 default_ai_chat = "chatgpt"
@@ -46,14 +46,15 @@ FAIL=0
 ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
 check_desktop(){
   ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty --version' "$G" --version
-  ok 'Ghostty default helper' grep -qx 'TerminalEmulator=ghostty' "$X"; ok 'Ghostty desktop' test -s "$GD"; ok 'Ghostty plank item' test -s "$K/maxq-40-ghostty.dockitem"
+  ok 'Ghostty default helper' grep -qx 'TerminalEmulator=ghostty' "$X"; ok 'Ghostty desktop file installed' test -s "$GD"; ok 'Ghostty plank item written' test -s "$K/maxq-40-ghostty.dockitem"
   ok 'defaults.toml valid' valid_defaults; ok 'launcher choice rofi' grep -qx rofi "$S/launcher"; ok 'rofi works' rofi -version; ok 'Mocha launcher theme' test -s "$R/mocha.rasi"; ok 'launcher executable' test -x "$LA"
   ok 'Super+Space launcher binding' test "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA"
   ok 'box-chrome current-display opener' sh -c "grep -q box-chrome '$OS' && ! grep -Eq -- '--user-data-dir|chrome-profile-[0-9]' '$OS'"
-  local n; for n in ai chatgpt grok claude discord slack settings ghostty; do ok "icon $n" test -s "$I/$n.svg"; done
-  for n in ai chatgpt grok claude discord slack settings; do ok "shortcut $n" test -s "$A/maxq-$n.desktop"; done
+  local n; for n in ai chatgpt grok claude discord slack settings ghostty; do ok "PNG icon $n" png_ok "$I/$n.png"; done
+  for n in ai chatgpt grok claude discord slack settings; do ok "shortcut $n" test -s "$A/maxq-$n.desktop"; ok "shortcut $n uses PNG" grep -q "Icon=$I/$n.png" "$A/maxq-$n.desktop"; done
+  ok 'Ghostty desktop uses PNG' grep -q "Icon=$I/ghostty.png" "$GD"
   for n in maxq-00-ai maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings maxq-40-ghostty; do ok "plank $n" test -s "$K/$n.dockitem"; done
-  [ ! -f "$B/maxq-reconcile" ] || ok 'reconciler has no /usr/local/bin' sh -c "! grep -q /usr/local/bin '$B/maxq-reconcile'"
+  [ ! -f "$B/maxq-reconcile" ] || ok 'reconciler has no /usr/local/bin write' sh -c "! grep -Eq '^[[:space:]]*ln[[:space:]]+-sfn.*\/usr\/local\/bin' '$B/maxq-reconcile'"
 }
 prove_desktop(){
   FAIL=0; local h=""; [ -f "$D" ] && h="$(sha256sum "$D" | cut -d' ' -f1)"
