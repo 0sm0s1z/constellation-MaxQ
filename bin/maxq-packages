@@ -6,10 +6,11 @@ S="$C/packages"; OWN="$S/owned"; BACKUP="$S/backup"; SRC="$S/source"; CACHE="$C/
 NET_ROOT="$L/opt/netadmin"; NET_CACHE="$CACHE/netadmin"
 GO_VERSION="1.26.5"; GO_SHA256="5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"; GO_URL="https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
 BUN_VERSION="1.4.0"; BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
-NODE_VERSION="24.20.0"; NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz"
+NODE_VERSION="24.20.0"; NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz"
 TS_VERSION="7.0.2"
 DOCKER_VERSION="29.7.2"; DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz"
 GO_ROOT="$L/go"; BUN_ROOT="$L/opt/bun-${BUN_VERSION}"; NODE_ROOT="$L/opt/node-v${NODE_VERSION}"; TS_ROOT="$L/opt/typescript-${TS_VERSION}"; DOCKER_ROOT="$L/opt/docker-${DOCKER_VERSION}"
+export PATH="$B:$PATH"
 
 fail(){ echo "maxq-packages: $*" >&2; exit 1; }
 dirs(){ mkdir -p "$B" "$C" "$L/opt" "$S" "$OWN" "$BACKUP" "$SRC" "$CACHE" "$NET_CACHE"; }
@@ -30,7 +31,10 @@ restore_target(){
   rm -f "$OWN/$n" "$SRC/$n"; rm -rf "$BACKUP/$n"
 }
 fetch_cached(){
-  local url="$1" dest="$2" part="${dest}.part" attempt
+  local url dest part attempt
+  url="$1"
+  dest="$2"
+  part="${dest}.part"
   [ -s "$dest" ] && return 0
   mkdir -p "$(dirname "$dest")"
   for attempt in 1 2 3 4; do
@@ -155,9 +159,9 @@ PY
 }
 install_node(){
   if [ -x "$B/node" ] && owned node && "$B/node" --version 2>/dev/null | grep -q "v${NODE_VERSION}"; then return 0; fi
-  local arc="$CACHE/node-v${NODE_VERSION}-linux-x64.tar.xz" tmp src
+  local arc="$CACHE/node-v${NODE_VERSION}-linux-x64.tar.gz" tmp src
   fetch_cached "$NODE_URL" "$arc" || fail 'Node download failed'
-  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-node.XXXXXX")"; tar -xJf "$arc" -C "$tmp"
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-node.XXXXXX")"; tar -xzf "$arc" -C "$tmp"
   src="$tmp/node-v${NODE_VERSION}-linux-x64"; [ -x "$src/bin/node" ] || { rm -rf "$tmp"; fail 'Node archive missing binary'; }
   rm -rf "$NODE_ROOT"; mv "$src" "$NODE_ROOT"; rm -rf "$tmp"; : > "$OWN/node-root"
   local n; for n in node npm npx corepack; do [ -e "$NODE_ROOT/bin/$n" ] || continue; claim_target "$n"; ln -sfn "$NODE_ROOT/bin/$n" "$B/$n"; done
@@ -258,7 +262,7 @@ raise SystemExit(0 if a==b else 1)
 PY
 }
 prove_packages(){
-  local failn=0
+  local failn=0 n
   apply_packages
   check(){ local label="$1"; shift; if "$@" >/dev/null 2>&1; then echo "[PASS] $label"; else echo "[FAIL] $label"; failn=$((failn+1)); fi; }
   check 'traceroute version' "$B/traceroute" --version
@@ -274,7 +278,13 @@ prove_packages(){
   check 'Docker CLI version' "$B/docker" --version
   check 'Python 3 preexisting version' python3 --version
   refresh_sbom
+  check 'sbom.json exists' test -s "$SBOM"
   for n in traceroute dig nslookup host pingpp ping go bun node tsc docker; do check "SBOM maxq $n" sbom_has "$n" maxq; done
+  check 'SBOM required MaxQ dig' sbom_has dig maxq
+  check 'SBOM required MaxQ go' sbom_has go maxq
+  check 'SBOM required MaxQ bun' sbom_has bun maxq
+  check 'SBOM required MaxQ node' sbom_has node maxq
+  check 'SBOM required MaxQ docker' sbom_has docker maxq
   check 'SBOM python3 preexisting' sbom_has python3 preexisting
   check 'GET /sbom matches sbom.json' api_sbom_matches
   [ "$failn" -eq 0 ]
