@@ -38,15 +38,19 @@ apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml';
 revert_desktop(){
   mkdir -p "$C"; restore_keybind; restore_default_terminal; remove_shortcuts
   rm -f "$LA" "$OS" "$R/mocha.rasi"
-  if [ -f "$S/rofi-owned" ]; then rm -f "$B/rofi"; rm -rf "$L/opt/rofi"; fi
-  if [ -f "$S/ghostty-owned" ]; then rm -f "$G"; rm -rf "$L/opt/ghostty" "$L/opt/ghostty-appimage"; fi
+  if [ -f "$S/rofi-owned" ]; then cache_rofi_root; rm -f "$B/rofi"; rm -rf "$L/opt/rofi"; fi
+  if [ -f "$S/ghostty-owned" ] && [ ! -s "$GHOSTTY_APPIMAGE" ] && [ -x "$G" ] && ! ghostty_wrapper_ok; then mkdir -p "$C/cli-cache"; cp -f "$G" "$GHOSTTY_APPIMAGE"; chmod +x "$GHOSTTY_APPIMAGE"; fi
+  if [ -f "$S/ghostty-preexisting" ] && [ -x "$GHOSTTY_PREEXISTING" ]; then cp -f "$GHOSTTY_PREEXISTING" "$G"; chmod +x "$G"
+  elif [ -f "$S/ghostty-owned" ]; then rm -f "$G"; rm -rf "$L/opt/ghostty" "$L/opt/ghostty-appimage"; fi
   rm -rf "$S"
 }
 FAIL=0
 ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
 check_desktop(){
-  ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty --version' "$G" --version
-  ok 'Ghostty default helper' grep -qx 'TerminalEmulator=ghostty' "$X"; ok 'Ghostty desktop file installed' test -s "$GD"; ok 'Ghostty plank item written' test -s "$K/maxq-40-ghostty.dockitem"
+  ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty wrapper --version' "$G" --version
+  ok 'Ghostty Mesa 4.5 wrapper' ghostty_wrapper_ok
+  [ -z "${DISPLAY:-}" ] || ok 'Ghostty X11 loads OpenGL 4.x' ghostty_gl_probe
+  ok 'Ghostty default helper' grep -qx 'TerminalEmulator=ghostty' "$X"; ok 'Ghostty desktop file installed' test -s "$GD"; ok 'Ghostty desktop uses wrapper' grep -qx "Exec=$G" "$GD"; ok 'Ghostty plank item written' test -s "$K/maxq-40-ghostty.dockitem"
   ok 'defaults.toml valid' valid_defaults; ok 'launcher choice rofi' grep -qx rofi "$S/launcher"; ok 'rofi works' rofi -version; ok 'Mocha launcher theme' test -s "$R/mocha.rasi"; ok 'launcher executable' test -x "$LA"
   ok 'Super+Space launcher binding' test "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA"
   ok 'box-chrome current-display opener' sh -c "grep -q box-chrome '$OS' && ! grep -Eq -- '--user-data-dir|chrome-profile-[0-9]' '$OS'"
