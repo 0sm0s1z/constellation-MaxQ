@@ -8,6 +8,8 @@ One command turns the stock computer into a fully-equipped agent workstation.
 curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash
 ```
 
+Site (Vite + TypeScript, Catppuccin Mocha, terminal chrome): [`web/`](web/). Point Vercel at that directory.
+
 From a checkout:
 
 ```bash
@@ -26,7 +28,7 @@ Control API listens on loopback only (`http://127.0.0.1:7432/`). `maxq apply` st
 
 Persist under `$HOME` (`bin`, `.config/maxq`, `.local`). Theme default is Catppuccin Mocha (`theme = "mocha"` in `maxq.toml`; latte is a future flag only).
 
-Apply installs Mocha wallpaper, GTK, and cursors under `$HOME/.local/share`, a Ghostty Mocha config block, and the official Catppuccin Mocha Chrome theme unpacked at `$HOME/.local/share/maxq/chrome-theme-mocha` (Web Store id `bkkmolkhemgaeaeggcmfbghljjjoofoh`). Chrome is **not** live-applied (no flags, no managed policies). Ghostty is **config-only** — there is no official Linux amd64 binary. See [docs/THEME.md](docs/THEME.md). Operator CLIs (herdr, Vercel fx, grok, Codex, Claude Code) install into `$HOME/bin` when an official linux amd64 binary exists; OpenCode and Tailscale are left in place if they already persist. Skips are recorded in `$HOME/.config/maxq/clis.txt`. See [docs/CLIS.md](docs/CLIS.md).
+Apply installs Mocha wallpaper, GTK, and cursors under `$HOME/.local/share`, a Ghostty Mocha config block, and the official Catppuccin Mocha Chrome theme unpacked at `$HOME/.local/share/maxq/chrome-theme-mocha` (Web Store id `bkkmolkhemgaeaeggcmfbghljjjoofoh`). Chrome is **not** live-applied (no flags, no managed policies). Ghostty is **config-only** — there is no official Linux amd64 binary. See [docs/THEME.md](docs/THEME.md). Operator CLIs (herdr, Vercel fx, grok, Codex, Claude Code) install into `$HOME/bin` when an official linux amd64 binary exists; OpenCode and Tailscale from-scratch install is tracked in [issue #2](https://github.com/0sm0s1z/constellation-MaxQ/issues/2). Skips are recorded in `$HOME/.config/maxq/clis.txt`. See [docs/CLIS.md](docs/CLIS.md).
 
 The control API (`$HOME/bin/maxq-api`) binds `127.0.0.1:7432` (override with `$HOME/.config/maxq/api.toml`). Source lives in `cmd/maxq-api` (stdlib HTTP + embedded `ui/`). See [docs/API.md](docs/API.md).
 
