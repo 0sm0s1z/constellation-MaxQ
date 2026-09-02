@@ -49,3 +49,4 @@ v0: 1-13, 18-19.
 - [x] **45.** Apply writes `$HOME/.config/maxq/sbom.json` as `{name, version, path, source}` records (`source=maxq|preexisting`). Reconciler refreshes via full desired-state apply. Revert restores/preseves preexisting paths.
 - [x] **46.** Thin Mocha Settings Packages inventory + `GET /sbom`. Inventory only, not apt/yum package mutation.
 - [x] **47.** `curl | bash`, `install.sh`, and `maxq apply` install PLAN 41–46 by default together with desktop/Ghostty/rofi and all-profile Chrome Mocha desired state.
+- [x] **48.** Dark mode is the default desired state: xfwm4 `/general/theme`, xsettings `/Net/ThemeName`, and `/Net/CursorThemeName` are `MaxQ-Catppuccin-Mocha`; `/Gtk/ApplicationPreferDarkTheme=true`; persist per-channel XML under `$HOME/.config/xfce4/xfconf/`, apply live on DISPLAY, and restore saved previous XFCE values on revert. No `/usr` or `update-alternatives`.
