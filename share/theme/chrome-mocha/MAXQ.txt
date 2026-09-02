@@ -1,0 +1,17 @@
+Official Catppuccin Mocha Chrome theme (v5.0.0, google-store accent).
+Web Store ID: bkkmolkhemgaeaeggcmfbghljjjoofoh
+https://chrome.google.com/webstore/detail/catppuccin-chrome-theme-m/bkkmolkhemgaeaeggcmfbghljjjoofoh
+
+MaxQ ships this unpacked under this directory. Chrome does not let a
+persist-safe installer live-apply a theme without chrome://extensions
+developer mode or enterprise flags MaxQ will not set.
+
+To load unpacked:
+  1. Open chrome://extensions
+  2. Enable Developer mode
+  3. Load unpacked → this directory
+
+Or install from the Chrome Web Store using the ID above.
+
+MaxQ never writes Chrome ProxyMode/ProxyServer (or any file under
+/etc/opt/chrome/policies/managed/).

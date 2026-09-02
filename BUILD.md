@@ -7,3 +7,5 @@
 Do not put MaxQ in /usr (optional `ln -sfn` only). Persist under HOME. GOST is the local CONNECT proxy; MITM CA is generated under `$HOME/.config/maxq/ca` with intercept off by default. MaxQ never writes Chrome `ProxyMode`/`ProxyServer`. Stay light, especially UI. herdr is optional — gost is pidfile-supervised until herdr lands.
 
 v0 configure/unconfigure: `maxq apply`, `maxq revert`, `maxq prove`, `maxq status`, `maxq proxy`.
+
+Theme is Catppuccin Mocha under `$HOME/.local/share` and `$HOME/.config`. Ghostty is config-only. Chrome theme is unpacked files plus Web Store id `bkkmolkhemgaeaeggcmfbghljjjoofoh`; never write Chrome proxy policies.

@@ -1,16 +1,16 @@
 === MaxQ prove ===
-version=0.2.0
+version=0.3.0
 host=grokbot
 prefix=/home/box
-self=/home/box/constellation-MaxQ/bin/maxq
-started_utc=2026-09-02T09:46:56Z
+self=/home/box/constellation-MaxQ/maxq
+started_utc=2026-09-02T09:55:12Z
 initial_status=applied
 
 -- step 1: revert if applied --
 MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 
 -- step 2: apply --
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha
 -- assert applied --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -36,6 +36,15 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] no Chrome maxq-proxy.json
 [PASS] no /tmp/sand-egress-proxy
 [PASS] cxn-egress.json not recreated
+[PASS] wallpaper mocha.png present
+[PASS] GTK theme gtk.css present
+[PASS] GTK theme index.theme present
+[PASS] cursor theme index.theme present
+[PASS] gtk-3.0 settings.ini MaxQ block
+[PASS] Ghostty Mocha theme file present
+[PASS] Ghostty config MaxQ block
+[PASS] Chrome unpacked manifest present
+[PASS] Chrome theme note documents store id
 
 -- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --
 -- proxy on (gost process only, intercept=false, no Chrome policy) --
@@ -88,13 +97,20 @@ MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 [PASS] gost not running after revert
 [PASS] no Chrome maxq-proxy.json after revert
 [PASS] cxn-egress.json still absent
+[PASS] wallpaper gone on revert
+[PASS] GTK theme dir gone on revert
+[PASS] cursor theme dir gone on revert
+[PASS] Chrome unpacked theme gone on revert
+[PASS] Ghostty Mocha theme file gone on revert
+[PASS] Ghostty MaxQ block gone on revert
+[PASS] gtk-3.0 MaxQ block gone on revert
 [PASS] SSH directory preserved
 [PASS] github-0sm0s1z key preserved
 [PASS] Chrome profiles preserved
 [PASS] HOME still exists
 
 -- step 4: apply again (leave APPLIED, gost enabled=false) --
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha
 -- assert applied (final) --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -120,12 +136,21 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] no Chrome maxq-proxy.json
 [PASS] no /tmp/sand-egress-proxy
 [PASS] cxn-egress.json not recreated
+[PASS] wallpaper mocha.png present
+[PASS] GTK theme gtk.css present
+[PASS] GTK theme index.theme present
+[PASS] cursor theme index.theme present
+[PASS] gtk-3.0 settings.ini MaxQ block
+[PASS] Ghostty Mocha theme file present
+[PASS] Ghostty config MaxQ block
+[PASS] Chrome unpacked manifest present
+[PASS] Chrome theme note documents store id
 [PASS] final gost not running (enabled=false)
 [PASS] final intercept false
 
 === MaxQ proof report ===
 result=PASS
-passed=91
+passed=116
 failed=0
 final_status=applied
 final_theme=theme = "mocha"
@@ -134,5 +159,8 @@ intercept=intercept = false
 gost_version=gost v3.2.6 (go1.25.4 linux/amd64)
 ca=/home/box/.config/maxq/ca/maxq-ca.pem
 chrome_proxy_policy=never
-ended_utc=2026-09-02T09:47:05Z
+chrome_theme_store_id=bkkmolkhemgaeaeggcmfbghljjjoofoh
+chrome_theme_live=skipped (unpacked files only)
+ghostty_bin=skipped (no official linux amd64)
+ended_utc=2026-09-02T09:55:22Z
 left_state=APPLIED

@@ -6,7 +6,7 @@
 # Never write Chrome managed ProxyMode/ProxyServer policies.
 set -euo pipefail
 
-MAXQ_VERSION="0.2.0"
+MAXQ_VERSION="0.3.0"
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 CONFIG="$PREFIX/.config/maxq"
@@ -61,9 +61,11 @@ Environment:
   MAXQ_HOME    Prefix (default: \$HOME)
 
 Persist: \$HOME/bin, \$HOME/.config/maxq, \$HOME/.local
+Theme:   Catppuccin Mocha (latte is a future flag only)
 GOST:    \$HOME/bin/gost  (go-gost ${GOST_REL_VERSION})
 CA:      \$HOME/.config/maxq/ca  (kept across revert)
 Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
+Chrome:  theme files unpacked under \$HOME/.local/share/maxq; not live-applied.
 EOF
 }
 
@@ -210,7 +212,7 @@ write_toml() {
   sanitize_listen
   cat > "$TOML" <<EOF
 # constellation-MaxQ desired state (managed — do not edit by hand)
-# Catppuccin Mocha is the default theme.
+# Catppuccin Mocha is the default theme. latte is a future flag only.
 # Proxy is local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
 
 theme = "$THEME"
@@ -238,6 +240,8 @@ if [ -d "$HOME/bin" ]; then
   esac
 fi
 export PATH
+export GTK_THEME="MaxQ-Catppuccin-Mocha"
+export XCURSOR_THEME="MaxQ-Catppuccin-Mocha"
 EOF
 }
 
@@ -249,7 +253,7 @@ write_reconcile() {
 # Does not write Chrome policies.
 set -euo pipefail
 PREFIX="${MAXQ_HOME:-$HOME}"
-mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca" "$PREFIX/.config/maxq/theme" "$PREFIX/.local/share/themes" "$PREFIX/.local/share/icons" "$PREFIX/.local/share/backgrounds" "$PREFIX/.local/share/maxq"
 if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
   ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq
 fi
@@ -566,14 +570,584 @@ apply_proxy_runtime() {
   fi
 }
 
+# --- theme (PLAN 6-8, Catppuccin Mocha) -------------------------------------
+
+THEME_SRC="$CONFIG/theme/src"
+THEME_ROOT="$CONFIG/theme"
+GTK_THEME_NAME="MaxQ-Catppuccin-Mocha"
+CURSOR_THEME_NAME="MaxQ-Catppuccin-Mocha"
+GTK_THEME_DIR="$LOCAL/share/themes/$GTK_THEME_NAME"
+CURSOR_DIR="$LOCAL/share/icons/$CURSOR_THEME_NAME"
+WALLPAPER_DIR="$LOCAL/share/backgrounds/maxq"
+WALLPAPER="$WALLPAPER_DIR/mocha.png"
+CHROME_THEME_DIR="$LOCAL/share/maxq/chrome-theme-mocha"
+CHROME_STORE_ID="bkkmolkhemgaeaeggcmfbghljjjoofoh"
+GHOSTTY_DIR="$PREFIX/.config/ghostty"
+GHOSTTY_CONFIG="$GHOSTTY_DIR/config"
+GHOSTTY_THEME_FILE="$GHOSTTY_DIR/themes/catppuccin-mocha.conf"
+GHOSTTY_BIN="$BIN/ghostty"
+GTK3_INI="$PREFIX/.config/gtk-3.0/settings.ini"
+GTK4_INI="$PREFIX/.config/gtk-4.0/settings.ini"
+GTK_VENDOR_ZIP="catppuccin-mocha-mauve-gtk.zip"
+CURSOR_VENDOR_ZIP="catppuccin-mocha-mauve-cursors.zip"
+GTK_VENDOR_URL="https://github.com/catppuccin/gtk/releases/download/v1.0.3/catppuccin-mocha-mauve-standard+default.zip"
+CURSOR_VENDOR_URL="https://github.com/catppuccin/cursors/releases/download/v2.0.0/catppuccin-mocha-mauve-cursors.zip"
+CHROME_VENDOR_URL="https://github.com/catppuccin/chrome/releases/download/v5.0.0/catppuccin-chrome-mocha-google-store.zip"
+
+mark_owned() {
+  mkdir -p "$1"
+  printf 'constellation-MaxQ\n' > "$1/.maxq-owned"
+}
+
+theme_pack_candidates() {
+  local here src
+  src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  here="$(cd "$(dirname "$src")" && pwd)"
+  printf '%s\n' "$here/../share/theme"
+  printf '%s\n' "$here/share/theme"
+  printf '%s\n' "$THEME_SRC"
+}
+
+seed_theme_src() {
+  mkdir -p "$THEME_SRC"
+  local cand
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    [ -d "$cand" ] || continue
+    # Do not copy THEME_SRC onto itself.
+    if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$THEME_SRC" 2>/dev/null || true)" ]; then
+      continue
+    fi
+    cp -a "$cand"/. "$THEME_SRC"/
+  done < <(theme_pack_candidates)
+}
+
+download_if_missing() {
+  local dest="$1" url="$2"
+  [ -s "$dest" ] && return 0
+  mkdir -p "$(dirname "$dest")"
+  curl -fsSL -o "$dest" "$url" || rm -f "$dest"
+  [ -s "$dest" ]
+}
+
+generate_wallpaper() {
+  local dest="$1"
+  python3 - "$dest" <<'PY'
+import sys
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+dest = sys.argv[1]
+w, h = 1920, 1080
+crust, mantle, base = (17, 17, 27), (24, 24, 37), (30, 30, 46)
+text, sub, mauve = (205, 214, 244), (166, 173, 200), (203, 166, 247)
+blue, lavender, peach = (137, 180, 250), (180, 190, 254), (250, 179, 135)
+teal, green, sky = (148, 226, 213), (166, 227, 161), (137, 220, 235)
+red, yellow, pink = (243, 139, 168), (249, 226, 175), (245, 194, 231)
+img = Image.new("RGB", (w, h), crust)
+px = img.load()
+for y in range(h):
+    t = y / (h - 1)
+    if t < 0.45:
+        u = t / 0.45
+        r = int(crust[0] + (base[0] - crust[0]) * u)
+        g = int(crust[1] + (base[1] - crust[1]) * u)
+        b = int(crust[2] + (base[2] - crust[2]) * u)
+    else:
+        u = (t - 0.45) / 0.55
+        r = int(base[0] + (mantle[0] - base[0]) * u)
+        g = int(base[1] + (mantle[1] - base[1]) * u)
+        b = int(base[2] + (mantle[2] - base[2]) * u)
+    for x in range(w):
+        px[x, y] = (min(255, r + int(6 * x / (w - 1))), g, b)
+img = img.convert("RGBA")
+acc = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+
+def orb(cx, cy, rad, color, alpha):
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(layer).ellipse((cx-rad, cy-rad, cx+rad, cy+rad), fill=color+(alpha,))
+    return layer.filter(ImageFilter.GaussianBlur(radius=rad*0.35))
+
+for args in ((420,280,340,mauve,55),(1500,220,280,blue,50),(1620,820,360,teal,40),(280,860,260,peach,35),(980,520,220,lavender,30)):
+    acc = Image.alpha_composite(acc, orb(*args))
+img = Image.alpha_composite(img, acc)
+d = ImageDraw.Draw(img, "RGBA")
+bars = [red, peach, yellow, green, teal, sky, blue, lavender, mauve, pink]
+x0, y0, bw, bh, gap = 120, 860, 70, 28, 10
+for i, c in enumerate(bars):
+    x = x0 + i*(bw+gap)
+    d.rounded_rectangle((x, y0, x+bw, y0+bh), radius=8, fill=c+(230,))
+d.rectangle((0, 0, w, 6), fill=mauve+(255,))
+try:
+    font_lg = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+    font_sm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+    font_xs = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+except Exception:
+    font_lg = font_sm = font_xs = ImageFont.load_default()
+d.text((120, 280), "MaxQ", font=font_lg, fill=text+(255,))
+d.text((128, 420), "Catppuccin Mocha", font=font_sm, fill=mauve+(255,))
+d.text((128, 480), "Take your Grok Bot to MaxQ.", font=font_xs, fill=sub+(255,))
+q = img.convert("RGB").quantize(colors=64, method=Image.Quantize.MEDIANCUT)
+q.save(dest, format="PNG", optimize=True)
+PY
+}
+
+write_compact_gtk_theme() {
+  local dest="$1"
+  mkdir -p "$dest/gtk-3.0" "$dest/gtk-4.0"
+  cat > "$dest/index.theme" <<EOF
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=${GTK_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha (compact fallback)
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=${GTK_THEME_NAME}
+MetacityTheme=${GTK_THEME_NAME}
+CursorTheme=${CURSOR_THEME_NAME}
+ButtonLayout=close,minimize,maximize:menu
+EOF
+  cat > "$dest/gtk-3.0/gtk.css" <<'EOF'
+/* MaxQ Catppuccin Mocha compact GTK CSS (fallback if official zip missing). */
+@define-color theme_bg_color #1e1e2e;
+@define-color theme_fg_color #cdd6f4;
+@define-color theme_selected_bg_color #cba6f7;
+@define-color theme_selected_fg_color #1e1e2e;
+@define-color insensitive_bg_color #181825;
+@define-color insensitive_fg_color #6c7086;
+@define-color borders #313244;
+window, .background { background-color: #1e1e2e; color: #cdd6f4; }
+headerbar, .titlebar { background-color: #181825; color: #cdd6f4; border-bottom: 1px solid #313244; }
+button { background-color: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; }
+button:hover { background-color: #45475a; }
+button:checked, button:active { background-color: #cba6f7; color: #1e1e2e; }
+entry, spinbutton, combobox { background-color: #11111b; color: #cdd6f4; border: 1px solid #45475a; }
+selection, *:selected { background-color: #cba6f7; color: #1e1e2e; }
+tooltip { background-color: #181825; color: #cdd6f4; }
+scrollbar slider { background-color: #585b70; border-radius: 8px; }
+notebook tab { background-color: #181825; color: #a6adc8; }
+notebook tab:checked { background-color: #1e1e2e; color: #cdd6f4; }
+EOF
+  cp -f "$dest/gtk-3.0/gtk.css" "$dest/gtk-4.0/gtk.css"
+  mark_owned "$dest"
+}
+
+write_fallback_cursor() {
+  local dest="$1"
+  mkdir -p "$dest/cursors"
+  cat > "$dest/index.theme" <<EOF
+[Icon Theme]
+Name=${CURSOR_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha cursors (Adwaita inherit fallback)
+Inherits=Adwaita
+EOF
+  mark_owned "$dest"
+}
+
+write_chrome_fallback() {
+  local dest="$1"
+  mkdir -p "$dest/images"
+  cat > "$dest/manifest.json" <<'EOF'
+{
+  "manifest_version": 3,
+  "name": "Catppuccin Chrome Theme - Mocha",
+  "description": "Soothing pastel theme for Google Chrome - Catppuccin Mocha",
+  "version": "5.0.0",
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "theme": {
+    "colors": {
+      "frame": [17, 17, 27],
+      "frame_inactive": [17, 17, 27],
+      "frame_incognito": [69, 71, 90],
+      "frame_incognito_inactive": [147, 153, 178],
+      "bookmark_text": [205, 214, 244],
+      "tab_background_text": [186, 194, 222],
+      "tab_background_text_inactive": [166, 173, 200],
+      "tab_background_text_incognito": [186, 194, 222],
+      "tab_background_text_incognito_inactive": [166, 173, 200],
+      "tab_text": [205, 214, 244],
+      "toolbar": [30, 30, 46],
+      "toolbar_button_icon": [205, 214, 244],
+      "omnibox_text": [205, 214, 244],
+      "omnibox_background": [17, 17, 27],
+      "ntp_background": [30, 30, 46],
+      "ntp_link": [205, 214, 244],
+      "ntp_text": [205, 214, 244],
+      "button_background": [17, 17, 27]
+    }
+  }
+}
+EOF
+  python3 - "$dest/images" <<'PY'
+import os, sys
+from PIL import Image, ImageDraw
+d = sys.argv[1]
+os.makedirs(d, exist_ok=True)
+mauve, base, text = (203, 166, 247), (30, 30, 46), (205, 214, 244)
+for size in (16, 48, 128):
+    im = Image.new("RGBA", (size, size), base + (255,))
+    dr = ImageDraw.Draw(im)
+    m = max(1, size // 8)
+    dr.rounded_rectangle((m, m, size-m-1, size-m-1), radius=max(2, size//6), fill=mauve+(255,))
+    im.save(os.path.join(d, f"icon{size}.png"))
+PY
+}
+
+write_chrome_note() {
+  local dest="$1"
+  cat > "$dest/MAXQ.txt" <<EOF
+Official Catppuccin Mocha Chrome theme.
+Web Store ID: ${CHROME_STORE_ID}
+https://chrome.google.com/webstore/detail/catppuccin-chrome-theme-m/${CHROME_STORE_ID}
+
+MaxQ ships this unpacked under:
+  ${CHROME_THEME_DIR}
+
+Chrome will not live-apply a theme without chrome://extensions developer
+mode ("Load unpacked") or enterprise flags MaxQ will not set. Prove checks
+these files on disk and does not fail if Chrome is not showing the theme.
+
+MaxQ never writes Chrome ProxyMode/ProxyServer or any file under
+/etc/opt/chrome/policies/managed/.
+EOF
+}
+
+write_ghostty_theme_file() {
+  local dest="$1"
+  mkdir -p "$(dirname "$dest")"
+  if [ -f "$THEME_SRC/ghostty/catppuccin-mocha.conf" ]; then
+    cp -f "$THEME_SRC/ghostty/catppuccin-mocha.conf" "$dest"
+    return 0
+  fi
+  cat > "$dest" <<'EOF'
+# Catppuccin Mocha for Ghostty (official palette).
+palette = 0=#45475a
+palette = 1=#f38ba8
+palette = 2=#a6e3a1
+palette = 3=#f9e2af
+palette = 4=#89b4fa
+palette = 5=#f5c2e7
+palette = 6=#94e2d5
+palette = 7=#a6adc8
+palette = 8=#585b70
+palette = 9=#f38ba8
+palette = 10=#a6e3a1
+palette = 11=#f9e2af
+palette = 12=#89b4fa
+palette = 13=#f5c2e7
+palette = 14=#94e2d5
+palette = 15=#bac2de
+background = 1e1e2e
+foreground = cdd6f4
+cursor-color = f5e0dc
+cursor-text = 11111b
+selection-background = 353749
+selection-foreground = cdd6f4
+split-divider-color = 313244
+EOF
+}
+
+ghostty_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — Catppuccin Mocha. Do not edit this block.
+# Binary: not installed by MaxQ (no official linux amd64 build; see docs/THEME.md).
+theme = catppuccin-mocha.conf
+background = #1e1e2e
+foreground = #cdd6f4
+cursor-color = #f5e0dc
+window-theme = dark
+$END_MARK
+EOF
+}
+
+gtk_settings_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — Catppuccin Mocha. Do not edit this block.
+[Settings]
+gtk-theme-name=${GTK_THEME_NAME}
+gtk-cursor-theme-name=${CURSOR_THEME_NAME}
+gtk-application-prefer-dark-theme=1
+gtk-cursor-theme-size=24
+$END_MARK
+EOF
+}
+
+install_marked_block() {
+  local f="$1"
+  mkdir -p "$(dirname "$f")"
+  if [ ! -f "$f" ]; then
+    touch "$f"
+  fi
+  if has_profile_block "$f"; then
+    return 0
+  fi
+  if [ -s "$f" ] && [ "$(tail -c 1 "$f" | wc -l)" -eq 0 ]; then
+    printf '\n' >> "$f"
+  fi
+  printf '\n' >> "$f"
+  cat >> "$f"
+}
+
+extract_zip_dir() {
+  # extract_zip_dir zip dest [preferred-top-dir-glob]
+  local zip="$1" dest="$2" prefer="${3:-}"
+  local tmp pick
+  [ -s "$zip" ] || return 1
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-theme.XXXXXX")"
+  if ! unzip -q "$zip" -d "$tmp"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  pick=""
+  if [ -n "$prefer" ] && [ -d "$tmp/$prefer" ]; then
+    pick="$tmp/$prefer"
+  else
+    pick="$(python3 - "$tmp" <<'PY'
+import os, sys
+root = sys.argv[1]
+cands = []
+for name in sorted(os.listdir(root)):
+    p = os.path.join(root, name)
+    if os.path.isdir(p) and ("hdpi" not in name.lower()):
+        if os.path.isfile(os.path.join(p, "index.theme")) or os.path.isfile(os.path.join(p, "manifest.json")):
+            cands.append(p)
+if not cands:
+    for dirpath, dirnames, filenames in os.walk(root):
+        if "index.theme" in filenames or "manifest.json" in filenames:
+            cands.append(dirpath)
+            break
+print(cands[0] if cands else "")
+PY
+)"
+  fi
+  if [ -z "$pick" ] || [ ! -d "$pick" ]; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$dest"
+  mkdir -p "$(dirname "$dest")"
+  cp -a "$pick" "$dest"
+  rm -rf "$tmp"
+  return 0
+}
+
+rewrite_gtk_index() {
+  local dest="$1"
+  local idx="$dest/index.theme"
+  [ -f "$idx" ] || return 0
+  python3 - "$idx" "$GTK_THEME_NAME" "$CURSOR_THEME_NAME" <<'PY'
+import sys
+path, name, cursor = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path).read()
+repl = {
+    "Name=": f"Name={name}",
+    "GtkTheme=": f"GtkTheme={name}",
+    "MetacityTheme=": f"MetacityTheme={name}",
+    "CursorTheme=": f"CursorTheme={cursor}",
+}
+out = []
+for line in text.splitlines(True):
+    stripped = line.lstrip()
+    done = False
+    for k, v in repl.items():
+        if stripped.startswith(k):
+            nl = "\n" if line.endswith("\n") else ""
+            out.append(v + nl)
+            done = True
+            break
+    if not done:
+        out.append(line)
+open(path, "w").writelines(out)
+PY
+}
+
+rewrite_cursor_index() {
+  local dest="$1"
+  local idx="$dest/index.theme"
+  mkdir -p "$dest"
+  if [ -f "$idx" ]; then
+    python3 - "$idx" "$CURSOR_THEME_NAME" <<'PY'
+import sys
+path, name = sys.argv[1], sys.argv[2]
+lines = []
+for line in open(path):
+    if line.startswith("Name="):
+        lines.append(f"Name={name}\n")
+    else:
+        lines.append(line)
+open(path, "w").writelines(lines)
+PY
+  else
+    cat > "$idx" <<EOF
+[Icon Theme]
+Name=${CURSOR_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha cursors
+Inherits=Adwaita
+EOF
+  fi
+}
+
+install_wallpaper() {
+  mkdir -p "$WALLPAPER_DIR"
+  if [ -s "$THEME_SRC/wallpaper/mocha.png" ]; then
+    cp -f "$THEME_SRC/wallpaper/mocha.png" "$WALLPAPER"
+  else
+    generate_wallpaper "$WALLPAPER"
+  fi
+  mark_owned "$WALLPAPER_DIR"
+}
+
+install_gtk_theme() {
+  mkdir -p "$LOCAL/share/themes"
+  local zip="$THEME_SRC/vendor/$GTK_VENDOR_ZIP"
+  download_if_missing "$zip" "$GTK_VENDOR_URL" || true
+  if extract_zip_dir "$zip" "$GTK_THEME_DIR" "catppuccin-mocha-mauve-standard+default"; then
+    rewrite_gtk_index "$GTK_THEME_DIR"
+    mark_owned "$GTK_THEME_DIR"
+  else
+    write_compact_gtk_theme "$GTK_THEME_DIR"
+  fi
+}
+
+install_cursor_theme() {
+  mkdir -p "$LOCAL/share/icons"
+  local zip="$THEME_SRC/vendor/$CURSOR_VENDOR_ZIP"
+  download_if_missing "$zip" "$CURSOR_VENDOR_URL" || true
+  if extract_zip_dir "$zip" "$CURSOR_DIR" "catppuccin-mocha-mauve-cursors"; then
+    rewrite_cursor_index "$CURSOR_DIR"
+    mark_owned "$CURSOR_DIR"
+  else
+    write_fallback_cursor "$CURSOR_DIR"
+  fi
+}
+
+install_chrome_theme() {
+  mkdir -p "$LOCAL/share/maxq"
+  if [ -f "$THEME_SRC/chrome-mocha/manifest.json" ]; then
+    rm -rf "$CHROME_THEME_DIR"
+    cp -a "$THEME_SRC/chrome-mocha" "$CHROME_THEME_DIR"
+  else
+    local zip="$THEME_SRC/vendor/catppuccin-chrome-mocha-google-store.zip"
+    download_if_missing "$zip" "$CHROME_VENDOR_URL" || true
+    if ! extract_zip_dir "$zip" "$CHROME_THEME_DIR" ""; then
+      rm -rf "$CHROME_THEME_DIR"
+      write_chrome_fallback "$CHROME_THEME_DIR"
+    fi
+  fi
+  write_chrome_note "$CHROME_THEME_DIR"
+  mark_owned "$CHROME_THEME_DIR"
+  mark_owned "$LOCAL/share/maxq"
+}
+
+install_ghostty_theme() {
+  mkdir -p "$GHOSTTY_DIR/themes"
+  write_ghostty_theme_file "$GHOSTTY_THEME_FILE"
+  if ! has_profile_block "$GHOSTTY_CONFIG"; then
+    ghostty_block | install_marked_block "$GHOSTTY_CONFIG"
+  fi
+  # No official linux amd64 Ghostty binary. Config-only; do not install AppImage.
+  if [ -e "$GHOSTTY_BIN" ]; then
+    :
+  fi
+}
+
+install_gtk_settings() {
+  mkdir -p "$PREFIX/.config/gtk-3.0" "$PREFIX/.config/gtk-4.0"
+  if ! has_profile_block "$GTK3_INI"; then
+    gtk_settings_block | install_marked_block "$GTK3_INI"
+  fi
+  if ! has_profile_block "$GTK4_INI"; then
+    gtk_settings_block | install_marked_block "$GTK4_INI"
+  fi
+}
+
+write_theme_readme() {
+  mkdir -p "$THEME_ROOT"
+  cat > "$THEME_ROOT/README.md" <<EOF
+# MaxQ theme (Catppuccin Mocha)
+
+theme = mocha (latte is a future flag only).
+
+Installed (MaxQ-owned; revert removes these dest files):
+
+- wallpaper: $WALLPAPER
+- GTK: $GTK_THEME_DIR
+- cursor: $CURSOR_DIR
+- Ghostty config block: $GHOSTTY_CONFIG
+- Ghostty Mocha theme: $GHOSTTY_THEME_FILE
+- Chrome unpacked: $CHROME_THEME_DIR
+- Chrome Web Store ID: $CHROME_STORE_ID
+
+Ghostty binary: skipped (no official linux amd64 build). Config-only.
+Chrome theme: files shipped; not live-applied (no flags, no managed policies).
+Vendor cache kept at $THEME_SRC across revert (like the CA).
+EOF
+}
+
+apply_theme() {
+  # Always Mocha for v0. Latte is a flag only.
+  THEME="mocha"
+  seed_theme_src
+  install_wallpaper
+  install_gtk_theme
+  install_cursor_theme
+  install_ghostty_theme
+  install_chrome_theme
+  install_gtk_settings
+  write_theme_readme
+}
+
+revert_theme() {
+  strip_profile_hook "$GHOSTTY_CONFIG"
+  strip_profile_hook "$GTK3_INI"
+  strip_profile_hook "$GTK4_INI"
+  local p
+  for p in "$WALLPAPER" "$GHOSTTY_THEME_FILE"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -f "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+  for p in "$WALLPAPER_DIR" "$GTK_THEME_DIR" "$CURSOR_DIR" "$CHROME_THEME_DIR"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -rf "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+  # Drop empty parents we created, never $HOME/.local/share itself.
+  rmdir "$LOCAL/share/maxq" 2>/dev/null || true
+  rmdir "$GHOSTTY_DIR/themes" 2>/dev/null || true
+  if [ -f "$GHOSTTY_CONFIG" ] && [ ! -s "$GHOSTTY_CONFIG" ]; then
+    rm -f "$GHOSTTY_CONFIG"
+    rmdir "$GHOSTTY_DIR" 2>/dev/null || true
+  fi
+  if [ -f "$GTK3_INI" ] && [ ! -s "$GTK3_INI" ]; then
+    rm -f "$GTK3_INI"
+  fi
+  if [ -f "$GTK4_INI" ] && [ ! -s "$GTK4_INI" ]; then
+    rm -f "$GTK4_INI"
+  fi
+  # Keep $THEME_SRC (vendor cache) like the persist CA.
+}
+
+
 # --- apply / revert / status ------------------------------------------------
 
 cmd_apply() {
-  mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR"
+  mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR" \
+    "$LOCAL/share/themes" "$LOCAL/share/icons" "$LOCAL/share/backgrounds" \
+    "$CONFIG/theme"
   load_settings
+  THEME="mocha"
   install_self
   install_gost_binary
   ensure_ca
+  apply_theme
   write_toml
   write_profile_snippet
   write_reconcile
@@ -583,7 +1157,7 @@ cmd_apply() {
   install_profile_hook "$PREFIX/.bashrc"
   optional_usr_link
   apply_proxy_runtime
-  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX"
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX chrome_theme=$CHROME_THEME_DIR"
 }
 
 cmd_revert() {
@@ -611,6 +1185,9 @@ cmd_revert() {
   remove_optional_usr_link
   echo "  optional usr link (if owned)" >> "$REVERT_LOG"
 
+  revert_theme
+  echo "  MaxQ-owned theme dest files" >> "$REVERT_LOG"
+
   # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
   # Never delete Chrome policies (cxn-egress.json, sand.json, …).
   # Never destroy the persist CA.
@@ -632,6 +1209,7 @@ cmd_revert() {
     echo "  CA=$CA_DIR (kept)"
     echo "  CLI=$BIN/maxq (kept so apply can run again)"
     echo "  GOST=$GOST_BIN (kept)"
+    echo "  theme src cache=$THEME_SRC (kept, like CA)"
     echo "state=reverted"
   } >> "$REVERT_LOG"
 
@@ -814,6 +1392,15 @@ assert_applied_tree() {
   prove_ok "no Chrome maxq-proxy.json" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
   prove_ok "no /tmp/sand-egress-proxy" test ! -e /tmp/sand-egress-proxy
   prove_ok "cxn-egress.json not recreated" cxn_egress_untouched
+  prove_ok "wallpaper mocha.png present" test -s "$WALLPAPER"
+  prove_ok "GTK theme gtk.css present" test -s "$GTK_THEME_DIR/gtk-3.0/gtk.css"
+  prove_ok "GTK theme index.theme present" test -s "$GTK_THEME_DIR/index.theme"
+  prove_ok "cursor theme index.theme present" test -s "$CURSOR_DIR/index.theme"
+  prove_ok "gtk-3.0 settings.ini MaxQ block" has_profile_block "$GTK3_INI"
+  prove_ok "Ghostty Mocha theme file present" test -s "$GHOSTTY_THEME_FILE"
+  prove_ok "Ghostty config MaxQ block" has_profile_block "$GHOSTTY_CONFIG"
+  prove_ok "Chrome unpacked manifest present" test -s "$CHROME_THEME_DIR/manifest.json"
+  prove_grep "Chrome theme note documents store id" "$CHROME_THEME_DIR/MAXQ.txt" "$CHROME_STORE_ID"
 }
 
 not_has_profile_block() {
@@ -839,6 +1426,13 @@ assert_reverted_tree() {
   prove_ok "gost not running after revert" gost_not_running
   prove_ok "no Chrome maxq-proxy.json after revert" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
   prove_ok "cxn-egress.json still absent" cxn_egress_untouched
+  prove_ok "wallpaper gone on revert" test ! -e "$WALLPAPER"
+  prove_ok "GTK theme dir gone on revert" test ! -e "$GTK_THEME_DIR"
+  prove_ok "cursor theme dir gone on revert" test ! -e "$CURSOR_DIR"
+  prove_ok "Chrome unpacked theme gone on revert" test ! -e "$CHROME_THEME_DIR"
+  prove_ok "Ghostty Mocha theme file gone on revert" test ! -e "$GHOSTTY_THEME_FILE"
+  prove_ok "Ghostty MaxQ block gone on revert" not_has_profile_block "$GHOSTTY_CONFIG"
+  prove_ok "gtk-3.0 MaxQ block gone on revert" not_has_profile_block "$GTK3_INI"
 }
 
 assert_proxy_toggle() {
@@ -957,6 +1551,9 @@ cmd_prove() {
   echo "gost_version=$(gost_version)"
   echo "ca=$CA_PEM"
   echo "chrome_proxy_policy=never"
+  echo "chrome_theme_store_id=$CHROME_STORE_ID"
+  echo "chrome_theme_live=skipped (unpacked files only)"
+  echo "ghostty_bin=skipped (no official linux amd64)"
   echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "left_state=APPLIED"
 

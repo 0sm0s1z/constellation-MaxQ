@@ -25,6 +25,12 @@ else
 fi
 chmod +x "$BIN/maxq"
 
+# Theme pack (wallpaper/GTK/cursor/chrome/ghostty). Optional; apply can download/generate.
+if [ -n "$HERE" ] && [ -d "$HERE/share/theme" ]; then
+  mkdir -p "$PREFIX/.config/maxq/theme/src"
+  cp -a "$HERE/share/theme/." "$PREFIX/.config/maxq/theme/src/"
+fi
+
 if [ "$#" -eq 0 ]; then
   exec "$BIN/maxq" apply
 fi
