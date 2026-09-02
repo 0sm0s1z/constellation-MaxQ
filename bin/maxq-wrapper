@@ -10,7 +10,7 @@ install_runtime_parts(){
   mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src" "$CONFIG/icons-src"
   if [ -n "$repo_root" ]; then
     cp -f "$SELF_DIR/maxq" "$CORE_SOURCE"; cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"; cp -f "$SELF_DIR/maxq-packages" "$PACKAGES"
-    for lib in ghostty launcher shortcuts chrome; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
+    for lib in ghostty launcher shortcuts chrome dark; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
     chmod +x "$CORE_SOURCE" "$DESKTOP" "$PACKAGES"
     if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then cp -f "$SELF" "$PUBLIC"; chmod +x "$PUBLIC"; fi
     [ ! -d "$repo_root/cmd/maxq-api" ] || cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
@@ -20,7 +20,7 @@ install_runtime_parts(){
     [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
     [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
     [ -x "$PACKAGES" ] || { echo "maxq: missing $PACKAGES; rerun install.sh" >&2; exit 1; }
-    for lib in ghostty launcher shortcuts chrome; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
+    for lib in ghostty launcher shortcuts chrome dark; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
   fi
 }
 prepare_safe_core(){ python3 - "$CORE_SOURCE" "$SAFE_CORE" <<'PY'
