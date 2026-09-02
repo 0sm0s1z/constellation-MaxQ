@@ -14,6 +14,7 @@ install_script bin/maxq-desktop "$BIN/maxq-desktop"
 install_script bin/maxq-desktop-ghostty "$BIN/maxq-desktop-ghostty"
 install_script bin/maxq-desktop-launcher "$BIN/maxq-desktop-launcher"
 install_script bin/maxq-desktop-shortcuts "$BIN/maxq-desktop-shortcuts"
+install_script bin/maxq-desktop-chrome "$BIN/maxq-desktop-chrome"
 for icon in chatgpt grok claude discord slack ghostty settings; do install_data "share/icons/$icon.png" "$ICON_SRC/$icon.png"; done
 if [ -n "$HERE" ] && [ -d "$HERE/share/theme" ]; then cp -a "$HERE/share/theme/." "$CONFIG/theme/src/"; fi
 if [ -n "$HERE" ] && [ -d "$HERE/cmd/maxq-api" ]; then cp -a "$HERE/cmd/maxq-api/." "$CONFIG/api-src/"; else
