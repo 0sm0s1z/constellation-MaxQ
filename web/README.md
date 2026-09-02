@@ -1,6 +1,6 @@
 # MaxQ site
 
-Catppuccin Mocha marketing shell for constellation-MaxQ. Vite + TypeScript. Terminal chrome, constellation field, no framework.
+Catppuccin Mocha page for constellation-MaxQ. Vite + TypeScript. Quiet constellation field; terminal register only on commands and labels.
 
 ```bash
 cd web
@@ -10,10 +10,4 @@ npm run dev
 
 ## Vercel
 
-Import `0sm0s1z/constellation-MaxQ` and set **Root Directory** to `web`. Framework preset: Vite. Output: `dist`.
-
-Or from this folder:
-
-```bash
-npx vercel
-```
+Import `0sm0s1z/constellation-MaxQ` and set **Root Directory** to `web`.

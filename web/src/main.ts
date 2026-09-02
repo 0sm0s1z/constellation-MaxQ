@@ -15,10 +15,6 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   ops: { label: "ops", draw: renderOps },
 };
 
-function clock(): string {
-  return new Date().toISOString().slice(11, 19) + "Z";
-}
-
 function shell(inner: string, route: Route): string {
   const links = (Object.keys(routes) as Route[])
     .map((key) => {
@@ -29,18 +25,16 @@ function shell(inner: string, route: Route): string {
 
   return `
     <header class="topbar">
-      <div class="prompt">grokbot<span>@</span>maxq <span>~</span> $ constellation</div>
+      <a class="brand" href="#home"><img src="/mark.svg" alt="" />MaxQ</a>
       <nav class="nav">${links}</nav>
     </header>
     ${inner}
     <footer class="foot">
-      <span>MIT · persist-safe · mocha</span>
+      <span>MIT · mocha</span>
       <span>
         <a href="https://github.com/0sm0s1z/constellation-MaxQ">github</a>
         ·
         <a href="https://github.com/0sm0s1z/constellation-MaxQ/blob/main/docs/TRUST.md">trust</a>
-        ·
-        <span data-clock>${clock()}</span>
       </span>
     </footer>`;
 }
@@ -77,8 +71,3 @@ if (field instanceof HTMLCanvasElement) mountStarfield(field);
 
 draw();
 window.addEventListener("hashchange", draw);
-window.setInterval(() => {
-  document.querySelectorAll("[data-clock]").forEach((el) => {
-    el.textContent = clock();
-  });
-}, 1000);
