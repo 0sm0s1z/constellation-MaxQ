@@ -1,16 +1,22 @@
 === MaxQ prove ===
-version=0.3.0
+version=0.4.0
 host=grokbot
 prefix=/home/box
-self=/home/box/constellation-MaxQ/maxq
-started_utc=2026-09-02T09:55:12Z
+self=/home/box/constellation-MaxQ/bin/maxq
+started_utc=2026-09-02T10:02:28Z
 initial_status=applied
 
 -- step 1: revert if applied --
 MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 
 -- step 2: apply --
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha
+maxq: operator CLI herdr <- https://github.com/herdrdev/herdr/releases/latest/download/herdr-linux-x86_64
+maxq: operator CLI fx <- https://github.com/vercel-labs/fx/releases/download/v0.0.7/fx-linux-x86_64.tar.gz
+maxq: operator CLI grok <- https://x.ai/cli/grok-1.0.13-linux-x86_64.gz
+maxq: operator CLI codex <- https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz
+maxq: operator CLI claude <- https://downloads.claude.ai/claude-code-releases/2.1.258/linux-x64/claude
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
+owned_clis=claude codex fx grok herdr 
 -- assert applied --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -45,6 +51,16 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] Ghostty config MaxQ block
 [PASS] Chrome unpacked manifest present
 [PASS] Chrome theme note documents store id
+[PASS] clis.txt present on apply
+[PASS] managed-clis dir present on apply
+[PASS] opencode present on apply
+[PASS] tailscale present on apply
+[PASS] profile prepends HOME/bin
+[PASS] owned CLI claude present on apply
+[PASS] owned CLI codex present on apply
+[PASS] owned CLI fx present on apply
+[PASS] owned CLI grok present on apply
+[PASS] owned CLI herdr present on apply
 
 -- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --
 -- proxy on (gost process only, intercept=false, no Chrome policy) --
@@ -104,13 +120,28 @@ MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 [PASS] Ghostty Mocha theme file gone on revert
 [PASS] Ghostty MaxQ block gone on revert
 [PASS] gtk-3.0 MaxQ block gone on revert
+[PASS] managed-clis gone on revert
+[PASS] clis.txt gone on revert
+[PASS] cli-cache kept across revert
 [PASS] SSH directory preserved
 [PASS] github-0sm0s1z key preserved
 [PASS] Chrome profiles preserved
 [PASS] HOME still exists
+[PASS] opencode kept across revert (preexisting)
+[PASS] tailscale kept across revert (preexisting)
+[PASS] owned CLI claude gone on revert
+[PASS] owned CLI codex gone on revert
+[PASS] owned CLI fx gone on revert
+[PASS] owned CLI grok gone on revert
+[PASS] owned CLI herdr gone on revert
 
 -- step 4: apply again (leave APPLIED, gost enabled=false) --
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha
+maxq: operator CLI herdr <- https://github.com/herdrdev/herdr/releases/latest/download/herdr-linux-x86_64
+maxq: operator CLI fx <- https://github.com/vercel-labs/fx/releases/download/v0.0.7/fx-linux-x86_64.tar.gz
+maxq: operator CLI grok <- https://x.ai/cli/grok-1.0.13-linux-x86_64.gz
+maxq: operator CLI codex <- https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz
+maxq: operator CLI claude <- https://downloads.claude.ai/claude-code-releases/2.1.258/linux-x64/claude
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
 -- assert applied (final) --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -145,12 +176,29 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] Ghostty config MaxQ block
 [PASS] Chrome unpacked manifest present
 [PASS] Chrome theme note documents store id
+[PASS] clis.txt present on apply
+[PASS] managed-clis dir present on apply
+[PASS] opencode present on apply
+[PASS] tailscale present on apply
+[PASS] profile prepends HOME/bin
+[PASS] owned CLI claude present on apply
+[PASS] owned CLI codex present on apply
+[PASS] owned CLI fx present on apply
+[PASS] owned CLI grok present on apply
+[PASS] owned CLI herdr present on apply
 [PASS] final gost not running (enabled=false)
 [PASS] final intercept false
+[PASS] owned CLI claude restored on final apply
+[PASS] owned CLI codex restored on final apply
+[PASS] owned CLI fx restored on final apply
+[PASS] owned CLI grok restored on final apply
+[PASS] owned CLI herdr restored on final apply
+[PASS] opencode still present after final apply
+[PASS] tailscale still present after final apply
 
 === MaxQ proof report ===
 result=PASS
-passed=116
+passed=153
 failed=0
 final_status=applied
 final_theme=theme = "mocha"
@@ -162,5 +210,8 @@ chrome_proxy_policy=never
 chrome_theme_store_id=bkkmolkhemgaeaeggcmfbghljjjoofoh
 chrome_theme_live=skipped (unpacked files only)
 ghostty_bin=skipped (no official linux amd64)
-ended_utc=2026-09-02T09:55:22Z
+clis_installed=herdr fx grok codex claude
+clis_skipped=
+clis_preexisting=opencode tailscale tailscaled
+ended_utc=2026-09-02T10:02:43Z
 left_state=APPLIED

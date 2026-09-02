@@ -10,7 +10,7 @@ v0: 1-13, 18-19.
 - [x] **6.** Catppuccin Mocha system theme (wallpaper + GTK/cursor; latte flag later)
 - [x] **7.** Ghostty Mocha config (binary skipped: no official linux amd64)
 - [x] **8.** Chrome Mocha theme files + store id (no managed proxy policies)
-- [ ] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale
+- [x] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale
 - [ ] **10.** herdr supervises MaxQ daemons
 - [x] **11.** GOST local proxy (CONNECT + MITM)
 - [x] **12.** MaxQ CA (persist under HOME; trust install documented, not auto)
