@@ -1,32 +1,23 @@
 # sourced by maxq-desktop
-asset(){ curl -fsSL "https://api.github.com/repos/$1/releases/latest" | python3 -c 'import json,sys; d=json.load(sys.stdin); n=sys.argv[1]; print(next((a["browser_download_url"] for a in d.get("assets",[]) if n in a.get("name","")),""))' "$2"; }
+GHOSTTY_VERSION="1.3.1"
+GHOSTTY_APPIMAGE_URL="https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v${GHOSTTY_VERSION}/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage"
 ghostty_ok(){ [ -x "$G" ] && "$G" --version >/dev/null 2>&1; }
+fetch_cached(){ local url="$1" dest="$2"; [ -s "$dest" ] && return 0; mkdir -p "$(dirname "$dest")"; local part="${dest}.part"; if curl -fL --retry 3 --retry-delay 1 -o "$part" "$url" && [ -s "$part" ]; then mv -f "$part" "$dest"; return 0; fi; rm -f "$part"; return 1; }
 install_ghostty(){
   if ghostty_ok; then [ -f "$S/ghostty-owned" ] || : > "$S/ghostty-preexisting"; return; fi
-  local u t q; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-ghostty.XXXXXX")"
-  u="$(asset mkasberg/ghostty-ubuntu _amd64_trixie.deb || true)"
-  if [ -n "$u" ] && command -v dpkg-deb >/dev/null 2>&1 && curl -fL --retry 3 --retry-delay 1 -o "$t/ghostty.deb" "$u"; then
-    mkdir -p "$t/root"
-    if dpkg-deb -x "$t/ghostty.deb" "$t/root"; then
-      q="$(find "$t/root" -type f -path '*/usr/bin/ghostty' -print -quit 2>/dev/null || true)"
-      if [ -n "$q" ]; then
-        rm -rf "$L/opt/ghostty"; mkdir -p "$L/opt/ghostty"; cp -a "$t/root/." "$L/opt/ghostty/"
-        cp -f "$q" "$G"; chmod +x "$G"
-      fi
-    fi
-  fi
+  mkdir -p "$C/downloads"; local t app; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-ghostty.XXXXXX")"; app="$C/downloads/Ghostty-${GHOSTTY_VERSION}-x86_64.AppImage"
+  rm -f "$G"
+  fetch_cached "$GHOSTTY_APPIMAGE_URL" "$app" || { rm -rf "$t"; fail "Ghostty ${GHOSTTY_VERSION} AppImage download failed"; }
+  cp -f "$app" "$G"; chmod +x "$G"
   if ! ghostty_ok; then
-    rm -f "$G"; u="$(asset pkgforge-dev/ghostty-appimage x86_64.AppImage || true)"; [ -n "$u" ] || { rm -rf "$t"; fail 'no Ghostty amd64 asset'; }
-    curl -fL --retry 3 --retry-delay 1 -o "$t/ghostty.AppImage" "$u"; chmod +x "$t/ghostty.AppImage"; cp -f "$t/ghostty.AppImage" "$G"; chmod +x "$G"
-    if ! ghostty_ok; then
-      rm -f "$G"; (cd "$t" && ./ghostty.AppImage --appimage-extract >/dev/null 2>&1) || { rm -rf "$t"; fail 'Ghostty AppImage extract failed'; }
-      rm -rf "$L/opt/ghostty-appimage"; mv "$t/squashfs-root" "$L/opt/ghostty-appimage"
-      cat > "$G" <<EOF
+    rm -f "$G"; cp -f "$app" "$t/ghostty.AppImage"; chmod +x "$t/ghostty.AppImage"
+    (cd "$t" && ./ghostty.AppImage --appimage-extract >/dev/null 2>&1) || { rm -rf "$t"; fail 'Ghostty AppImage extract failed'; }
+    rm -rf "$L/opt/ghostty-appimage"; mv "$t/squashfs-root" "$L/opt/ghostty-appimage"
+    cat > "$G" <<EOF
 #!/usr/bin/env bash
 exec "$L/opt/ghostty-appimage/AppRun" "\$@"
 EOF
-      chmod +x "$G"
-    fi
+    chmod +x "$G"
   fi
   rm -rf "$t"; ghostty_ok || fail 'Ghostty --version failed'; echo constellation-MaxQ > "$S/ghostty-owned"
 }
@@ -37,7 +28,7 @@ Type=Application
 Name=Ghostty
 Comment=MaxQ default terminal
 Exec=$G
-Icon=$I/ghostty.svg
+Icon=$I/ghostty.png
 Terminal=false
 Categories=System;TerminalEmulator;
 X-MaxQ-Managed=true
