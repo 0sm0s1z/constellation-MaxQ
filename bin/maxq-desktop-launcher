@@ -2,14 +2,20 @@
 install_rofi(){
   if command -v rofi >/dev/null 2>&1 && rofi -version >/dev/null 2>&1; then echo rofi > "$S/launcher"; return; fi
   command -v apt-get >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1 || fail 'rofi missing; cannot install persist-safe fallback'
-  local t deb real; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-rofi.XXXXXX")"
+  local t deb real dep pkg; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-rofi.XXXXXX")"
   (cd "$t" && apt-get download rofi >/dev/null 2>&1) || { rm -rf "$t"; fail 'rofi package download failed'; }
   deb="$(find "$t" -maxdepth 1 -type f -name 'rofi*.deb' -print -quit)"; [ -n "$deb" ] || { rm -rf "$t"; fail 'rofi package missing'; }
-  rm -rf "$L/opt/rofi"; mkdir -p "$L/opt/rofi"; dpkg-deb -x "$deb" "$L/opt/rofi"
+  # Keep the fallback HOME-only: download, never install, dependency packages.
+  if command -v apt-cache >/dev/null 2>&1; then
+    while read -r dep; do [ -z "$dep" ] || (cd "$t" && apt-get download "$dep" >/dev/null 2>&1) || true; done < <(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances rofi 2>/dev/null | awk '/^[[:space:]]*Depends:/ {gsub(/[<>]/,"",$2); if($2!="rofi")print $2}' | sort -u)
+  fi
+  rm -rf "$L/opt/rofi"; mkdir -p "$L/opt/rofi"
+  for pkg in "$t"/*.deb; do [ ! -f "$pkg" ] || dpkg-deb -x "$pkg" "$L/opt/rofi" || true; done
   real="$(find "$L/opt/rofi" -type f -path '*/usr/bin/rofi' -print -quit)"; [ -x "$real" ] || { rm -rf "$t"; fail 'rofi binary missing'; }
   cat > "$B/rofi" <<EOF
 #!/usr/bin/env bash
 export XDG_DATA_DIRS="$L/opt/rofi/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export LD_LIBRARY_PATH="$L/opt/rofi/usr/lib/x86_64-linux-gnu:$L/opt/rofi/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH:-}"
 exec "$real" "\$@"
 EOF
   chmod +x "$B/rofi"; rm -rf "$t"; rofi -version >/dev/null 2>&1 || fail 'persist rofi does not run'; : > "$S/rofi-owned"; echo rofi > "$S/launcher"
