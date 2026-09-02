@@ -16,39 +16,166 @@
       <span id="pill" class="pill">…</span>
     </header>
 
-    <section id="status-card" class="card">
-      <h2>status</h2>
-      <dl>
-        <dt>state</dt><dd id="st-state">—</dd>
-        <dt>theme</dt><dd id="st-theme">—</dd>
-        <dt>gost</dt><dd id="st-gost">—</dd>
-        <dt>clis</dt><dd id="st-clis">—</dd>
-        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
-      </dl>
-    </section>
-
-    <section class="card">
-      <h2>desired state</h2>
-      <div class="row">
-        <button type="button" id="btn-apply">Apply</button>
-        <button type="button" id="btn-revert" class="danger">Revert</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
-      <div class="row">
-        <button type="button" id="btn-proxy-on">On</button>
-        <button type="button" id="btn-proxy-off">Off</button>
-      </div>
-    </section>
-
-    <nav class="soon">
-      <span title="later">vault</span>
-      <span title="later">oauth</span>
-      <span title="later">skills</span>
+    <nav class="tabs" aria-label="Settings">
+      <button class="tab active" data-page="overview">status</button>
+      <button class="tab" data-page="theme">theme</button>
+      <button class="tab" data-page="proxy">proxy</button>
+      <button class="tab" data-page="firewall">firewall</button>
+      <button class="tab" data-page="vault">vault</button>
+      <button class="tab" data-page="oauth">oauth</button>
+      <button class="tab" data-page="skills">skills</button>
+      <button class="tab" data-page="resources">resources</button>
+      <button class="tab" data-page="triggers">triggers</button>
     </nav>
+
+    <section class="page active" data-page-panel="overview">
+      <section class="card">
+        <h2>status</h2>
+        <dl>
+          <dt>state</dt><dd id="st-state">—</dd>
+          <dt>theme</dt><dd id="st-theme">—</dd>
+          <dt>gost</dt><dd id="st-gost">—</dd>
+          <dt>clis</dt><dd id="st-clis">—</dd>
+          <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
+        </dl>
+      </section>
+      <section class="card">
+        <h2>desired state</h2>
+        <div class="row">
+          <button type="button" id="btn-apply">Apply</button>
+          <button type="button" id="btn-revert" class="danger">Revert</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="theme">
+      <section class="card">
+        <h2>theme</h2>
+        <dl>
+          <dt>current</dt><dd id="theme-current">mocha</dd>
+          <dt>mode</dt><dd>read-only</dd>
+        </dl>
+        <p class="hint">Catppuccin Mocha only. Latte remains a future flag.</p>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="proxy">
+      <section class="card">
+        <h2>proxy</h2>
+        <p class="hint">GOST process only. No Chrome CONNECT policy, cxn-egress.json, or /tmp/sand-egress-proxy.</p>
+        <label>listen<input id="proxy-listen" value="127.0.0.1:8080" autocomplete="off"></label>
+        <label>upstream<input id="proxy-upstream" placeholder="none" autocomplete="off"></label>
+        <label>outbound interface / tunnel<input id="proxy-iface" placeholder="none" autocomplete="off"></label>
+        <label class="check"><input type="checkbox" id="proxy-intercept"> TLS intercept</label>
+        <div class="row">
+          <button type="button" id="btn-proxy-save">Save</button>
+          <button type="button" id="btn-proxy-on">Enable</button>
+          <button type="button" id="btn-proxy-off">Disable</button>
+        </div>
+        <p class="hint" id="proxy-runtime">default: enabled=false / intercept=false</p>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="firewall">
+      <section class="card">
+        <h2>firewall / listen policy</h2>
+        <dl>
+          <dt>policy</dt><dd id="fw-mode">loopback-only</dd>
+          <dt>api</dt><dd id="fw-api">127.0.0.1:7432</dd>
+          <dt>ports</dt><dd id="fw-ports">none opened</dd>
+          <dt>daemon</dt><dd>none</dd>
+        </dl>
+        <p class="hint">PLAN 20 surface only. This page does not open ports or install a firewall daemon.</p>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="vault">
+      <section class="card">
+        <h2>vault</h2>
+        <p>Shared bot-account import.</p>
+        <p class="hint" id="vault-note">Stub only. No secret ingestion, token printing, or secret logging in PLAN 20.</p>
+        <button type="button" disabled>Import account</button>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="oauth">
+      <section class="card">
+        <h2>oauth</h2>
+        <p>Connect Grok Build or similar CLI accounts.</p>
+        <p class="hint" id="oauth-note">Stub only. No live OAuth client is invented in PLAN 20.</p>
+        <button type="button" disabled>Connect account</button>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="skills">
+      <section class="card">
+        <h2>skills</h2>
+        <p class="hint">Persist-safe packs under <code id="skills-root">$HOME/.local/share/maxq/skills</code>.</p>
+        <div id="skills-list" class="empty">No skill packs installed.</div>
+        <div class="row">
+          <button type="button" disabled>Enable</button>
+          <button type="button" disabled>Edit</button>
+        </div>
+        <p class="hint">Catalog controls are stubs; PLAN 24–28 bodies are intentionally not included.</p>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="resources">
+      <section class="card">
+        <h2>host resources</h2>
+        <dl>
+          <dt>cpu</dt><dd id="res-cpu">—</dd>
+          <dt>ram</dt><dd id="res-ram">—</dd>
+          <dt>swap</dt><dd id="res-swap">—</dd>
+        </dl>
+      </section>
+      <section class="card">
+        <h2>chrome by display</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>display</th><th>profile</th><th>rss</th><th>procs</th></tr></thead>
+            <tbody id="chrome-rows"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="agent-chrome-note">Other agents are read-only.</p>
+        <div class="row">
+          <button type="button" id="btn-chrome-trim" disabled>Trim this agent</button>
+          <button type="button" id="btn-chrome-restart" class="danger" disabled>Restart this agent</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="triggers">
+      <section class="card">
+        <h2>webhook destination</h2>
+        <p class="hint">Persisted only in $HOME/.config/maxq/hooks.toml. Empty disables hooks. HTTPS only.</p>
+        <label>webhook URL<input type="password" id="hook-url" placeholder="https://…" autocomplete="new-password"></label>
+        <div class="row">
+          <button type="button" id="btn-hook-set">Set / rotate</button>
+          <button type="button" id="btn-hook-clear">Clear</button>
+          <button type="button" id="btn-hook-test">Test</button>
+        </div>
+        <p class="hint" id="hook-state">not configured</p>
+      </section>
+      <section class="card">
+        <h2>triggers</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>id</th><th>kind</th><th>spec</th><th>last fire</th><th>enabled</th></tr></thead>
+            <tbody id="trigger-rows"></tbody>
+          </table>
+        </div>
+        <p class="hint">Schedules use America/Los_Angeles. Shell probes fire on exit 0; stdout is discarded so secrets are not forwarded.</p>
+      </section>
+      <section class="card">
+        <h2>add trigger</h2>
+        <label>id<input id="trigger-id" placeholder="backup.done" autocomplete="off"></label>
+        <label>kind<select id="trigger-kind"><option value="schedule">schedule</option><option value="probe">probe</option></select></label>
+        <label>spec<input id="trigger-spec" placeholder="0 9 * * 1-5" autocomplete="off"></label>
+        <button type="button" id="btn-trigger-add">Add enabled</button>
+      </section>
+    </section>
+
     <p id="msg" class="msg" hidden></p>
   </main>
   <script src="/sheet.js"></script>
