@@ -1,20 +1,31 @@
 # MaxQ Catppuccin Mocha theme
 
-Default in `maxq.toml` is `theme = "mocha"`. Latte is reserved as a future flag only; apply still ships Mocha.
+Default in `maxq.toml` is `theme = "mocha"`. Latte is reserved as a future flag only; apply ships Mocha and makes the XFCE desktop dark by default.
 
 ## What apply installs (persist under `$HOME`)
 
-- Wallpaper: `$HOME/.local/share/backgrounds/maxq/mocha.png`
-- GTK: `$HOME/.local/share/themes/MaxQ-Catppuccin-Mocha` (official catppuccin/gtk Mocha Mauve, renamed)
-- Cursors: `$HOME/.local/share/icons/MaxQ-Catppuccin-Mocha` (official catppuccin/cursors Mocha Mauve, renamed)
-- GTK settings: `$HOME/.config/gtk-3.0/settings.ini` and `gtk-4.0/settings.ini` (MaxQ-owned block)
-- Ghostty: `$HOME/bin/ghostty` wrapper + `$HOME/.config/ghostty/config` MaxQ block + `themes/catppuccin-mocha.conf` (default terminal)
-- Launcher + shortcuts: Super+Space riced launcher; Desktop/plank icons from `$HOME/.config/maxq/defaults.toml`
-- Chrome theme files: `$HOME/.local/share/maxq/chrome-theme-mocha` (unpacked official Mocha)
-- Chrome store seed skeleton: `$HOME/.config/maxq/chrome-skel/External Extensions/bkkmolkhemgaeaeggcmfbghljjjoofoh.json`
+- Wallpaper: `$HOME/.local/share/backgrounds/maxq/mocha.png`, applied live on the current DISPLAY through `hsetroot` or XFCE backdrop state.
+- GTK: `$HOME/.local/share/themes/MaxQ-Catppuccin-Mocha` (official catppuccin/gtk Mocha Mauve, renamed), including the `xfwm4` window-manager theme.
+- Cursors: `$HOME/.local/share/icons/MaxQ-Catppuccin-Mocha` (official catppuccin/cursors Mocha Mauve, renamed).
+- GTK settings: `$HOME/.config/gtk-3.0/settings.ini` and `gtk-4.0/settings.ini` with `gtk-application-prefer-dark-theme=1` in the MaxQ-owned block.
+- XFCE dark defaults persisted in `$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/` and applied live when DISPLAY is set:
+  - `xfwm4 /general/theme = MaxQ-Catppuccin-Mocha`
+  - `xsettings /Net/ThemeName = MaxQ-Catppuccin-Mocha`
+  - `xsettings /Net/CursorThemeName = MaxQ-Catppuccin-Mocha`
+  - `xsettings /Gtk/ApplicationPreferDarkTheme = true`
+- Ghostty: `$HOME/bin/ghostty` wrapper + `$HOME/.config/ghostty/config` MaxQ block + `themes/catppuccin-mocha.conf` (default terminal).
+- Launcher + shortcuts: Super+Space riced launcher; Desktop/plank icons from `$HOME/.config/maxq/defaults.toml`.
+- Chrome theme files: `$HOME/.local/share/maxq/chrome-theme-mocha` (unpacked official Mocha).
+- Chrome store seed skeleton: `$HOME/.config/maxq/chrome-skel/External Extensions/bkkmolkhemgaeaeggcmfbghljjjoofoh.json`.
 - Every existing `$HOME/chrome-profile` and `$HOME/chrome-profile-*` gets a per-user-data-dir `External Extensions` seed for Catppuccin Chrome Theme - Mocha.
 
-Revert deletes MaxQ-owned files only. It does not wipe `$HOME`, SSH, or Chrome profiles. For a pre-existing external-extension JSON, MaxQ preserves and restores the previous file instead of deleting it.
+Revert deletes MaxQ-owned files only. It does not wipe `$HOME`, SSH, or Chrome profiles. For a pre-existing external-extension JSON, MaxQ preserves and restores the previous file instead of deleting it. XFCE theme/xsettings values are captured before MaxQ changes them and restored on revert; in particular, a previous xfwm4 theme such as `Default` is restored rather than replaced permanently.
+
+## XFCE dark mode default
+
+PLAN 48 closes the gap between having Mocha theme files on disk and actually rendering dark window chrome. `maxq apply` writes the per-channel XML under HOME for persistence and, when DISPLAY is set, also applies the four xfconf values through `xfconf-query`. `maxq prove` checks both the persisted XML and the live xfconf values when DISPLAY is available.
+
+No `/usr`, systemd, or `update-alternatives` state is used.
 
 ## Ghostty (default terminal)
 
