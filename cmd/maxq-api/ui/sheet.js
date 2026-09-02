@@ -8,7 +8,7 @@ function $(id) {
 }
 
 async function getStatus() {
-  const r = await fetch("/status");
+  const r = await fetch("/status", { cache: "no-store" });
   if (!r.ok) throw new Error("status " + r.status);
   return r.json();
 }
@@ -34,26 +34,24 @@ async function postJSON(path, body) {
 function render(s) {
   $("st-state").textContent = s.state;
   $("st-theme").textContent = s.theme;
-  const g = s.gost.enabled ? "enabled" : "off";
-  const run = s.gost.running ? "running" : "stopped";
-  $("st-gost").textContent = g + " / " + run;
-  const bits = [s.clis.installed, s.clis.preexisting].filter((x) => x && x.length);
-  $("st-clis").textContent = bits.join(" ") || "—";
+  const enabled = s.gost.enabled ? "enabled" : "off";
+  const running = s.gost.running ? "running" : "stopped";
+  $("st-gost").textContent = enabled + " / " + running;
   $("st-api").textContent = s.api.listen;
   const pill = $("pill");
   pill.textContent = s.state;
   pill.className = "pill " + (s.state === "applied" ? "on" : "off");
 }
 
-function showMsg(text) {
+function showMsg(text, kind = "error") {
   const el = $("msg");
   el.hidden = !text;
   el.textContent = text;
+  el.dataset.kind = kind;
 }
 
 async function refresh() {
-  const s = await getStatus();
-  render(s);
+  render(await getStatus());
 }
 
 function busy(on) {
@@ -75,9 +73,26 @@ async function act(fn) {
   }
 }
 
+async function revert() {
+  showMsg("");
+  busy(true);
+  try {
+    await postJSON("/revert", {});
+    $("st-state").textContent = "reverted";
+    $("st-gost").textContent = "off / stopped";
+    const pill = $("pill");
+    pill.textContent = "reverted";
+    pill.className = "pill off";
+    showMsg("Reverted. The local API is stopped; run maxq apply to start it again.", "ok");
+  } catch (e) {
+    showMsg(e instanceof Error ? e.message : String(e));
+    busy(false);
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   $("btn-apply").addEventListener("click", () => act(() => postJSON("/apply", {})));
-  $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
+  $("btn-revert").addEventListener("click", () => void revert());
   $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
   $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
   refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e)));
