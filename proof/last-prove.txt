@@ -1,16 +1,16 @@
 === MaxQ prove ===
-version=0.1.0
+version=0.2.0
 host=grokbot
 prefix=/home/box
 self=/home/box/constellation-MaxQ/bin/maxq
-started_utc=2026-09-02T09:39:39Z
+started_utc=2026-09-02T09:46:56Z
 initial_status=applied
 
 -- step 1: revert if applied --
 MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 
 -- step 2: apply --
-MaxQ applied. theme=mocha state=applied prefix=/home/box
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box
 -- assert applied --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -18,24 +18,63 @@ MaxQ applied. theme=mocha state=applied prefix=/home/box
 [PASS] maxq.toml exists
 [PASS] theme mocha
 [PASS] state=applied in toml
-[PASS] gost stub disabled
+[PASS] gost enabled=false default
+[PASS] gost intercept=false default
 [PASS] state file applied
 [PASS] state file says applied
 [PASS] managed marker exists
 [PASS] profile.sh snippet exists
 [PASS] maxq-reconcile executable
 [PASS] CLI present at $HOME/bin/maxq
+[PASS] gost binary at $HOME/bin/gost
 [PASS] .profile has MaxQ markers
 [PASS] .bashrc has MaxQ markers
 [PASS] status reports applied
+[PASS] CA pem exists
+[PASS] CA key exists
+[PASS] CA readme exists
+[PASS] no Chrome maxq-proxy.json
+[PASS] no /tmp/sand-egress-proxy
+[PASS] cxn-egress.json not recreated
+
+-- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --
+-- proxy on (gost process only, intercept=false, no Chrome policy) --
+proxy on listen=127.0.0.1:8080 intercept=false (no Chrome policy)
+[PASS] gost running after proxy on
+[PASS] toml enabled true
+[PASS] toml intercept still false
+[PASS] gost.yml written
+[PASS] gost.yml has no mitm while intercept=false
+[PASS] no Chrome maxq-proxy.json after proxy on
+[PASS] cxn-egress.json not written by proxy on
+[PASS] sand.json left in place
+[PASS] no /tmp/sand-egress-proxy after proxy on
+[PASS] gost listening on loopback
+-- proxy upstream/iface roundtrip then clear --
+proxy.upstream=http://127.0.0.1:9
+[PASS] upstream persisted
+proxy.iface=lo
+[PASS] iface persisted
+proxy.upstream=
+proxy.iface=
+[PASS] upstream cleared
+[PASS] iface cleared
+-- proxy off (leave gost enabled=false, no intercept) --
+proxy off (gost stopped; no Chrome policy written or removed)
+[PASS] gost not running after proxy off
+[PASS] toml enabled false after off
+[PASS] toml intercept false after off
+[PASS] no Chrome maxq-proxy.json after proxy off
+[PASS] cxn-egress.json still absent after proxy off
 
 -- step 3: revert --
 MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
--- assert reverted (markers gone, tombstone present) --
+-- assert reverted (markers gone, CA kept, tombstone present) --
 [PASS] maxq.toml gone
 [PASS] profile.sh snippet gone
 [PASS] managed marker gone
 [PASS] maxq-reconcile gone
+[PASS] gost.yml gone
 [PASS] tombstone last-revert.log exists
 [PASS] tombstone records revert
 [PASS] state file reverted
@@ -43,13 +82,19 @@ MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 [PASS] .profile MaxQ markers gone
 [PASS] .bashrc MaxQ markers gone
 [PASS] status reports reverted
+[PASS] CA pem kept across revert
+[PASS] CA key kept across revert
+[PASS] gost binary kept across revert
+[PASS] gost not running after revert
+[PASS] no Chrome maxq-proxy.json after revert
+[PASS] cxn-egress.json still absent
 [PASS] SSH directory preserved
 [PASS] github-0sm0s1z key preserved
 [PASS] Chrome profiles preserved
 [PASS] HOME still exists
 
--- step 4: apply again (leave APPLIED) --
-MaxQ applied. theme=mocha state=applied prefix=/home/box
+-- step 4: apply again (leave APPLIED, gost enabled=false) --
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box
 -- assert applied (final) --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -57,23 +102,37 @@ MaxQ applied. theme=mocha state=applied prefix=/home/box
 [PASS] maxq.toml exists
 [PASS] theme mocha
 [PASS] state=applied in toml
-[PASS] gost stub disabled
+[PASS] gost enabled=false default
+[PASS] gost intercept=false default
 [PASS] state file applied
 [PASS] state file says applied
 [PASS] managed marker exists
 [PASS] profile.sh snippet exists
 [PASS] maxq-reconcile executable
 [PASS] CLI present at $HOME/bin/maxq
+[PASS] gost binary at $HOME/bin/gost
 [PASS] .profile has MaxQ markers
 [PASS] .bashrc has MaxQ markers
 [PASS] status reports applied
+[PASS] CA pem exists
+[PASS] CA key exists
+[PASS] CA readme exists
+[PASS] no Chrome maxq-proxy.json
+[PASS] no /tmp/sand-egress-proxy
+[PASS] cxn-egress.json not recreated
+[PASS] final gost not running (enabled=false)
+[PASS] final intercept false
 
 === MaxQ proof report ===
 result=PASS
-passed=47
+passed=91
 failed=0
 final_status=applied
 final_theme=theme = "mocha"
 gost=enabled = false
-ended_utc=2026-09-02T09:39:39Z
+intercept=intercept = false
+gost_version=gost v3.2.6 (go1.25.4 linux/amd64)
+ca=/home/box/.config/maxq/ca/maxq-ca.pem
+chrome_proxy_policy=never
+ended_utc=2026-09-02T09:47:05Z
 left_state=APPLIED

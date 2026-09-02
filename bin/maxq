@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # constellation-MaxQ CLI
 # Persist-safe under $HOME. Do not put logic in /usr (optional ln -sfn only).
-# Commands: apply|configure  revert|unconfigure  status  prove
+# Commands: apply|configure  revert|unconfigure  status  prove  proxy
+# GOST is the local CONNECT proxy. MITM intercept defaults to false.
+# Never write Chrome managed ProxyMode/ProxyServer policies.
 set -euo pipefail
 
-MAXQ_VERSION="0.1.0"
+MAXQ_VERSION="0.2.0"
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 CONFIG="$PREFIX/.config/maxq"
@@ -19,6 +21,23 @@ BEGIN_MARK="# >>> maxq begin >>>"
 END_MARK="# <<< maxq end <<<"
 USR_LINK="/usr/local/bin/maxq"
 
+GOST_BIN="$BIN/gost"
+GOST_YML="$CONFIG/gost.yml"
+GOST_PID="$CONFIG/gost.pid"
+GOST_LOG="$CONFIG/gost.log"
+GOST_REL_VERSION="3.2.6"
+GOST_REL_URL="https://github.com/go-gost/gost/releases/download/v${GOST_REL_VERSION}/gost_${GOST_REL_VERSION}_linux_amd64.tar.gz"
+
+CA_DIR="$CONFIG/ca"
+CA_KEY="$CA_DIR/maxq-ca.key"
+CA_PEM="$CA_DIR/maxq-ca.pem"
+CA_DER="$CA_DIR/maxq-ca.der"
+CA_README="$CA_DIR/README.md"
+
+# Chrome CONNECT proxy policies — never write or restore these.
+CHROME_POLICY_DIR="/etc/opt/chrome/policies/managed"
+CHROME_CXN_EGRESS="$CHROME_POLICY_DIR/cxn-egress.json"
+
 usage() {
   cat <<EOF
 maxq ${MAXQ_VERSION} — take your Grok Bot to MaxQ.
@@ -29,11 +48,22 @@ Usage: maxq <command>
   revert, unconfigure  Remove MaxQ-owned files/markers only (not home/SSH/Chrome)
   status               Print applied or reverted
   prove                Revert/apply/assert cycle; leave APPLIED; exit 0 on pass
+  proxy                Show GOST proxy settings
+  proxy on|off         Enable/disable local GOST (process + toml; no Chrome policy)
+  proxy upstream <url> Set upstream hop (empty/none to clear)
+  proxy iface <name>   Set outbound interface/tunnel (empty/none to clear)
+  proxy intercept on|off
+                       TLS MITM flag (default off). Does not install Chrome trust.
   help                 This help
   version              Print version
 
 Environment:
   MAXQ_HOME    Prefix (default: \$HOME)
+
+Persist: \$HOME/bin, \$HOME/.config/maxq, \$HOME/.local
+GOST:    \$HOME/bin/gost  (go-gost ${GOST_REL_VERSION})
+CA:      \$HOME/.config/maxq/ca  (kept across revert)
+Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
 EOF
 }
 
@@ -76,19 +106,123 @@ remove_optional_usr_link() {
   fi
 }
 
+# --- toml -------------------------------------------------------------------
+
+toml_unquote() {
+  local v="$1"
+  v="${v#\"}"
+  v="${v%\"}"
+  printf '%s' "$v"
+}
+
+toml_top() {
+  local key="$1" def="$2" f="${3:-$TOML}"
+  if [ ! -f "$f" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  local line
+  line="$(awk -v k="$key" '
+    /^\[/ { exit }
+    $0 ~ "^" k "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$f")"
+  if [ -z "${line:-}" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  printf '%s\n' "$(toml_unquote "$line")"
+}
+
+toml_gost() {
+  local key="$1" def="$2" f="${3:-$TOML}"
+  if [ ! -f "$f" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  local line
+  line="$(awk -v k="$key" '
+    /^\[gost\]/ { ins=1; next }
+    /^\[/ { ins=0 }
+    ins && $0 ~ "^" k "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$f")"
+  if [ -z "${line:-}" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  printf '%s\n' "$(toml_unquote "$line")"
+}
+
+norm_bool() {
+  case "$1" in
+    true|TRUE|True|on|ON|yes|YES|1) echo true ;;
+    *) echo false ;;
+  esac
+}
+
+load_settings() {
+  THEME="$(toml_top theme mocha)"
+  IDENTITY="$(toml_top identity grokbot)"
+  [ -n "$THEME" ] || THEME="mocha"
+  [ -n "$IDENTITY" ] || IDENTITY="grokbot"
+  GOST_ENABLED="$(norm_bool "$(toml_gost enabled false)")"
+  GOST_LISTEN="$(toml_gost listen "127.0.0.1:8080")"
+  GOST_UPSTREAM="$(toml_gost upstream "")"
+  GOST_IFACE="$(toml_gost iface "")"
+  GOST_INTERCEPT="$(norm_bool "$(toml_gost intercept false)")"
+  [ -n "$GOST_LISTEN" ] || GOST_LISTEN="127.0.0.1:8080"
+  sanitize_listen
+}
+
+sanitize_listen() {
+  # Stay off 10.0.0.0/16. Local CONNECT proxy binds loopback only by default.
+  case "$GOST_LISTEN" in
+    10.0.*|\[::\]:*|0.0.0.0:*)
+      echo "maxq: refusing non-loopback listen '$GOST_LISTEN'; using 127.0.0.1:8080" >&2
+      GOST_LISTEN="127.0.0.1:8080"
+      ;;
+  esac
+}
+
+sanitize_ident() {
+  # iface: alnum _ . : -
+  local v="$1"
+  if [ -z "$v" ]; then
+    printf ''
+    return 0
+  fi
+  case "$v" in
+    *[!A-Za-z0-9_.:-]*)
+      die "invalid iface name: $v"
+      ;;
+  esac
+  printf '%s' "$v"
+}
+
 write_toml() {
+  sanitize_listen
   cat > "$TOML" <<EOF
 # constellation-MaxQ desired state (managed — do not edit by hand)
 # Catppuccin Mocha is the default theme.
+# Proxy is local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
 
-theme = "mocha"
+theme = "$THEME"
 state = "applied"
-identity = "grokbot"
+identity = "$IDENTITY"
 
 [gost]
-enabled = false
-# CONNECT + MITM local proxy — stub until operator enables
-listen = "127.0.0.1:8080"
+enabled = $GOST_ENABLED
+listen = "$GOST_LISTEN"
+upstream = "$GOST_UPSTREAM"
+iface = "$GOST_IFACE"
+intercept = $GOST_INTERCEPT
 EOF
 }
 
@@ -110,11 +244,12 @@ EOF
 write_reconcile() {
   cat > "$RECONCILE" <<'EOF'
 #!/usr/bin/env bash
-# MaxQ desired-state reconciler (post Update). Stub.
+# MaxQ desired-state reconciler (post Update).
 # Recreates persist layout and optional /usr/local/bin link. No /usr logic.
+# Does not write Chrome policies.
 set -euo pipefail
 PREFIX="${MAXQ_HOME:-$HOME}"
-mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca"
 if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
   ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq
 fi
@@ -142,14 +277,11 @@ has_profile_block() {
 install_profile_hook() {
   local f="$1"
   if [ ! -f "$f" ]; then
-    # do not create a brand-new shell rc with only our block if the user
-    # never had one — but .profile/.bashrc exist on this image; still safe.
     touch "$f"
   fi
   if has_profile_block "$f"; then
     return 0
   fi
-  # ensure trailing newline then append marked block
   if [ -s "$f" ] && [ "$(tail -c 1 "$f" | wc -l)" -eq 0 ]; then
     printf '\n' >> "$f"
   fi
@@ -170,7 +302,6 @@ strip_profile_hook() {
     $0 == e { skip=0; next }
     !skip { print }
   ' "$f" > "$tmp"
-  # drop extra trailing blank lines we may have introduced, keep one
   awk '
     { lines[NR]=$0 }
     END {
@@ -183,9 +314,266 @@ strip_profile_hook() {
   rm -f "$tmp"
 }
 
+# --- gost binary ------------------------------------------------------------
+
+install_gost_binary() {
+  mkdir -p "$BIN"
+  if [ -x "$GOST_BIN" ] && "$GOST_BIN" -V >/dev/null 2>&1; then
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-gost.XXXXXX")"
+  if [ -x /tmp/gost-dl/gost ]; then
+    cp -f /tmp/gost-dl/gost "$GOST_BIN"
+    chmod +x "$GOST_BIN"
+    rm -rf "$tmp"
+    return 0
+  fi
+  echo "maxq: installing go-gost ${GOST_REL_VERSION} -> $GOST_BIN"
+  if ! curl -fsSL -o "$tmp/gost.tgz" "$GOST_REL_URL"; then
+    rm -rf "$tmp"
+    die "failed to download GOST from $GOST_REL_URL"
+  fi
+  tar -xzf "$tmp/gost.tgz" -C "$tmp"
+  if [ ! -f "$tmp/gost" ]; then
+    rm -rf "$tmp"
+    die "GOST tarball missing gost binary"
+  fi
+  cp -f "$tmp/gost" "$GOST_BIN"
+  chmod +x "$GOST_BIN"
+  rm -rf "$tmp"
+  "$GOST_BIN" -V >/dev/null || die "gost binary not executable"
+}
+
+gost_version() {
+  if [ -x "$GOST_BIN" ]; then
+    "$GOST_BIN" -V 2>/dev/null || echo "gost (unreadable)"
+  else
+    echo "missing"
+  fi
+}
+
+# --- CA ---------------------------------------------------------------------
+
+ensure_ca() {
+  mkdir -p "$CA_DIR"
+  if [ ! -f "$CA_KEY" ] || [ ! -f "$CA_PEM" ]; then
+    openssl req -new -x509 -days 3650 -nodes \
+      -newkey rsa:2048 \
+      -keyout "$CA_KEY" \
+      -out "$CA_PEM" \
+      -subj "/CN=MaxQ Local CA/O=constellation-MaxQ/OU=grokbot" \
+      >/dev/null 2>&1
+    chmod 600 "$CA_KEY"
+    chmod 644 "$CA_PEM"
+  fi
+  if [ ! -f "$CA_DER" ] && [ -f "$CA_PEM" ]; then
+    openssl x509 -in "$CA_PEM" -outform DER -out "$CA_DER" >/dev/null 2>&1 || true
+  fi
+  write_ca_readme
+}
+
+write_ca_readme() {
+  cat > "$CA_README" <<EOF
+# MaxQ local CA
+
+Path (persist, kept across \`maxq revert\`):
+
+- PEM: $CA_PEM
+- KEY: $CA_KEY
+- DER: $CA_DER
+
+MITM is **off by default** (\`[gost] intercept = false\`). GOST is a CONNECT
+proxy only until you turn intercept on. MaxQ does **not** write Chrome
+managed policies (no ProxyMode, no ProxyServer, no maxq-proxy.json) and
+does **not** install this CA into /usr.
+
+## Trust install (manual)
+
+System trust (Debian/Ubuntu, needs sudo — MaxQ will not do this for you):
+
+    sudo cp $CA_PEM /usr/local/share/ca-certificates/maxq-ca.crt
+    sudo update-ca-certificates
+
+Chrome / Chromium: import the PEM as an authority that trusts websites,
+or set enterprise \`CACertificates\` yourself. MaxQ will not drop files
+into /etc/opt/chrome/policies/managed/.
+
+To enable TLS intercept after trusting the CA:
+
+    maxq proxy intercept on
+    maxq proxy on
+
+Leave intercept off to keep ChatGPT and other TLS sessions intact.
+EOF
+}
+
+# --- gost process (pidfile; herdr not required) -----------------------------
+
+gost_listen_host() {
+  local l="${GOST_LISTEN:-127.0.0.1:8080}"
+  case "$l" in
+    :*) echo "127.0.0.1" ;;
+    *) echo "${l%:*}" ;;
+  esac
+}
+
+gost_listen_port() {
+  local l="${GOST_LISTEN:-127.0.0.1:8080}"
+  echo "${l##*:}"
+}
+
+parse_upstream() {
+  # sets UP_TYPE UP_ADDR from GOST_UPSTREAM
+  UP_TYPE="http"
+  UP_ADDR=""
+  local u="${GOST_UPSTREAM:-}"
+  [ -n "$u" ] || return 0
+  case "$u" in
+    socks5://*|socks://*)
+      UP_TYPE="socks5"
+      u="${u#*://}"
+      ;;
+    socks5s://*|socks5+tls://*)
+      UP_TYPE="socks5"
+      u="${u#*://}"
+      ;;
+    https://*)
+      UP_TYPE="http"
+      u="${u#https://}"
+      ;;
+    http://*)
+      UP_TYPE="http"
+      u="${u#http://}"
+      ;;
+  esac
+  u="${u%%/*}"
+  UP_ADDR="$u"
+}
+
+write_gost_yml() {
+  sanitize_listen
+  local iface_line="" meta="" chain_ref=""
+  if [ -n "$GOST_IFACE" ] && [ -z "$GOST_UPSTREAM" ]; then
+    iface_line="  interface: ${GOST_IFACE}"
+  fi
+  if [ -n "$GOST_UPSTREAM" ]; then
+    chain_ref="    chain: maxq-up"
+  fi
+  if [ "$GOST_INTERCEPT" = "true" ]; then
+    meta="    metadata:
+      sniffing: true
+      mitm.certFile: ${CA_PEM}
+      mitm.keyFile: ${CA_KEY}"
+  fi
+  {
+    echo "# constellation-MaxQ gost config (managed — do not edit)"
+    echo "# CONNECT proxy. intercept=${GOST_INTERCEPT}. No Chrome policy."
+    echo "services:"
+    echo "- name: maxq-http"
+    echo "  addr: \"${GOST_LISTEN}\""
+    [ -n "$iface_line" ] && echo "$iface_line"
+    echo "  handler:"
+    echo "    type: http"
+    [ -n "$chain_ref" ] && echo "$chain_ref"
+    [ -n "$meta" ] && printf '%s\n' "$meta"
+    echo "  listener:"
+    echo "    type: tcp"
+    if [ -n "$GOST_UPSTREAM" ]; then
+      parse_upstream
+      echo "chains:"
+      echo "- name: maxq-up"
+      echo "  hops:"
+      echo "  - name: hop-0"
+      echo "    nodes:"
+      echo "    - name: node-0"
+      echo "      addr: \"${UP_ADDR}\""
+      if [ -n "$GOST_IFACE" ]; then
+        echo "      interface: ${GOST_IFACE}"
+      fi
+      echo "      connector:"
+      echo "        type: ${UP_TYPE}"
+      echo "      dialer:"
+      echo "        type: tcp"
+    fi
+  } > "$GOST_YML"
+}
+
+gost_is_running() {
+  local pid
+  [ -f "$GOST_PID" ] || return 1
+  pid="$(tr -d '[:space:]' < "$GOST_PID" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+gost_not_running() {
+  ! gost_is_running
+}
+
+stop_gost() {
+  local pid
+  if [ -f "$GOST_PID" ]; then
+    pid="$(tr -d '[:space:]' < "$GOST_PID" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      local i=0
+      while [ "$i" -lt 30 ] && kill -0 "$pid" 2>/dev/null; do
+        sleep 0.1
+        i=$((i + 1))
+      done
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+    rm -f "$GOST_PID"
+  fi
+}
+
+start_gost() {
+  install_gost_binary
+  ensure_ca
+  mkdir -p "$CONFIG"
+  write_gost_yml
+  stop_gost
+  nohup "$GOST_BIN" -C "$GOST_YML" >>"$GOST_LOG" 2>&1 &
+  echo $! > "$GOST_PID"
+  local i=0
+  local port host
+  port="$(gost_listen_port)"
+  host="$(gost_listen_host)"
+  while [ "$i" -lt 40 ]; do
+    if gost_is_running && python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if gost_is_running; then
+    return 0
+  fi
+  echo "maxq: gost failed to start; last log:" >&2
+  tail -n 20 "$GOST_LOG" 2>/dev/null >&2 || true
+  return 1
+}
+
+apply_proxy_runtime() {
+  # Never touch Chrome managed policies.
+  if [ "$GOST_ENABLED" = "true" ]; then
+    start_gost
+  else
+    stop_gost
+  fi
+}
+
+# --- apply / revert / status ------------------------------------------------
+
 cmd_apply() {
-  mkdir -p "$BIN" "$CONFIG" "$LOCAL"
+  mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR"
+  load_settings
   install_self
+  install_gost_binary
+  ensure_ca
   write_toml
   write_profile_snippet
   write_reconcile
@@ -194,11 +582,13 @@ cmd_apply() {
   install_profile_hook "$PREFIX/.profile"
   install_profile_hook "$PREFIX/.bashrc"
   optional_usr_link
-  echo "MaxQ applied. theme=mocha state=applied prefix=$PREFIX"
+  apply_proxy_runtime
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX"
 }
 
 cmd_revert() {
   mkdir -p "$CONFIG"
+  load_settings
   local ts host
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   host="$(hostname 2>/dev/null || echo unknown)"
@@ -211,6 +601,9 @@ cmd_revert() {
     echo "removed:"
   } > "$REVERT_LOG"
 
+  stop_gost
+  echo "  gost process (pidfile)" >> "$REVERT_LOG"
+
   strip_profile_hook "$PREFIX/.profile"
   strip_profile_hook "$PREFIX/.bashrc"
   echo "  profile hooks (.profile .bashrc)" >> "$REVERT_LOG"
@@ -219,8 +612,10 @@ cmd_revert() {
   echo "  optional usr link (if owned)" >> "$REVERT_LOG"
 
   # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
+  # Never delete Chrome policies (cxn-egress.json, sand.json, …).
+  # Never destroy the persist CA.
   local p
-  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE"; do
+  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE" "$GOST_YML" "$GOST_PID" "$GOST_LOG"; do
     if [ -e "$p" ] || [ -L "$p" ]; then
       rm -f "$p"
       echo "  $p" >> "$REVERT_LOG"
@@ -233,7 +628,10 @@ cmd_revert() {
     echo "  HOME=$PREFIX (not deleted)"
     echo "  SSH=$PREFIX/.ssh (untouched)"
     echo "  Chrome logins/profiles (untouched)"
-    echo "  CLI=$BIN/maxq (kept so apply can run again; install.sh can restore)"
+    echo "  Chrome policies under $CHROME_POLICY_DIR (untouched; MaxQ writes none)"
+    echo "  CA=$CA_DIR (kept)"
+    echo "  CLI=$BIN/maxq (kept so apply can run again)"
+    echo "  GOST=$GOST_BIN (kept)"
     echo "state=reverted"
   } >> "$REVERT_LOG"
 
@@ -248,7 +646,97 @@ cmd_status() {
   fi
 }
 
-# --- prove -----------------------------------------------------------------
+# --- proxy CLI --------------------------------------------------------------
+
+cmd_proxy_status() {
+  load_settings
+  local run="stopped"
+  gost_is_running && run="running"
+  echo "proxy.enabled=$GOST_ENABLED"
+  echo "proxy.listen=$GOST_LISTEN"
+  echo "proxy.upstream=${GOST_UPSTREAM}"
+  echo "proxy.iface=${GOST_IFACE}"
+  echo "proxy.intercept=$GOST_INTERCEPT"
+  echo "proxy.gost=$run"
+  echo "proxy.gost_bin=$GOST_BIN"
+  echo "proxy.gost_version=$(gost_version)"
+  echo "proxy.ca=$CA_PEM"
+  echo "proxy.chrome_policy=never (MaxQ does not write ProxyMode/ProxyServer)"
+}
+
+clear_token() {
+  case "$1" in
+    ""|none|-|off|clear) echo "" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+cmd_proxy() {
+  local sub="${1:-status}"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+  case "$sub" in
+    status|show|"")
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      cmd_proxy_status
+      ;;
+    on|enable)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_ENABLED=true
+      write_toml
+      apply_proxy_runtime
+      echo "proxy on listen=$GOST_LISTEN intercept=$GOST_INTERCEPT (no Chrome policy)"
+      ;;
+    off|disable)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_ENABLED=false
+      write_toml
+      apply_proxy_runtime
+      echo "proxy off (gost stopped; no Chrome policy written or removed)"
+      ;;
+    upstream)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_UPSTREAM="$(clear_token "${1:-}")"
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.upstream=${GOST_UPSTREAM}"
+      ;;
+    iface|interface|tunnel)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_IFACE="$(sanitize_ident "$(clear_token "${1:-}")")"
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.iface=${GOST_IFACE}"
+      ;;
+    intercept|mitm)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      case "${1:-}" in
+        on|true|1|enable) GOST_INTERCEPT=true ;;
+        off|false|0|disable|"") GOST_INTERCEPT=false ;;
+        *) die "usage: maxq proxy intercept on|off" ;;
+      esac
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.intercept=$GOST_INTERCEPT"
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "maxq: unknown proxy subcommand: $sub" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+# --- prove ------------------------------------------------------------------
 
 PROVE_PASS=0
 PROVE_FAIL=0
@@ -288,6 +776,19 @@ prove_nogrep() {
   fi
 }
 
+chrome_proxy_policy_absent() {
+  # MaxQ must never create these.
+  [ ! -e "$CHROME_POLICY_DIR/maxq-proxy.json" ] && \
+    [ ! -e /tmp/sand-egress-proxy ] && \
+    [ ! -e "$CHROME_CXN_EGRESS" ]
+}
+
+cxn_egress_untouched() {
+  # We do not recreate cxn-egress.json. If someone else did, still never
+  # rewrite it; this check asserts MaxQ left it absent on this computer.
+  [ ! -e "$CHROME_CXN_EGRESS" ]
+}
+
 assert_applied_tree() {
   prove_ok "persist \$HOME/bin exists" test -d "$BIN"
   prove_ok "persist \$HOME/.config/maxq exists" test -d "$CONFIG"
@@ -295,16 +796,24 @@ assert_applied_tree() {
   prove_ok "maxq.toml exists" test -f "$TOML"
   prove_grep "theme mocha" "$TOML" 'theme = "mocha"'
   prove_grep "state=applied in toml" "$TOML" 'state = "applied"'
-  prove_grep "gost stub disabled" "$TOML" 'enabled = false'
+  prove_grep "gost enabled=false default" "$TOML" '^enabled = false$'
+  prove_grep "gost intercept=false default" "$TOML" '^intercept = false$'
   prove_ok "state file applied" test -f "$STATE_FILE"
   prove_grep "state file says applied" "$STATE_FILE" '^applied$'
   prove_ok "managed marker exists" test -f "$MANAGED"
   prove_ok "profile.sh snippet exists" test -f "$PROFILE_SNIPPET"
   prove_ok "maxq-reconcile executable" test -x "$RECONCILE"
   prove_ok "CLI present at \$HOME/bin/maxq" test -x "$BIN/maxq"
+  prove_ok "gost binary at \$HOME/bin/gost" test -x "$GOST_BIN"
   prove_ok ".profile has MaxQ markers" has_profile_block "$PREFIX/.profile"
   prove_ok ".bashrc has MaxQ markers" has_profile_block "$PREFIX/.bashrc"
   prove_ok "status reports applied" test "$(cmd_status)" = "applied"
+  prove_ok "CA pem exists" test -s "$CA_PEM"
+  prove_ok "CA key exists" test -s "$CA_KEY"
+  prove_ok "CA readme exists" test -s "$CA_README"
+  prove_ok "no Chrome maxq-proxy.json" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "no /tmp/sand-egress-proxy" test ! -e /tmp/sand-egress-proxy
+  prove_ok "cxn-egress.json not recreated" cxn_egress_untouched
 }
 
 not_has_profile_block() {
@@ -316,6 +825,7 @@ assert_reverted_tree() {
   prove_ok "profile.sh snippet gone" test ! -e "$PROFILE_SNIPPET"
   prove_ok "managed marker gone" test ! -e "$MANAGED"
   prove_ok "maxq-reconcile gone" test ! -e "$RECONCILE"
+  prove_ok "gost.yml gone" test ! -e "$GOST_YML"
   prove_ok "tombstone last-revert.log exists" test -s "$REVERT_LOG"
   prove_grep "tombstone records revert" "$REVERT_LOG" 'maxq revert'
   prove_ok "state file reverted" test -f "$STATE_FILE"
@@ -323,6 +833,49 @@ assert_reverted_tree() {
   prove_ok ".profile MaxQ markers gone" not_has_profile_block "$PREFIX/.profile"
   prove_ok ".bashrc MaxQ markers gone" not_has_profile_block "$PREFIX/.bashrc"
   prove_ok "status reports reverted" test "$(cmd_status)" = "reverted"
+  prove_ok "CA pem kept across revert" test -s "$CA_PEM"
+  prove_ok "CA key kept across revert" test -s "$CA_KEY"
+  prove_ok "gost binary kept across revert" test -x "$GOST_BIN"
+  prove_ok "gost not running after revert" gost_not_running
+  prove_ok "no Chrome maxq-proxy.json after revert" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json still absent" cxn_egress_untouched
+}
+
+assert_proxy_toggle() {
+  echo "-- proxy on (gost process only, intercept=false, no Chrome policy) --"
+  cmd_proxy on
+  prove_ok "gost running after proxy on" gost_is_running
+  prove_grep "toml enabled true" "$TOML" '^enabled = true$'
+  prove_grep "toml intercept still false" "$TOML" '^intercept = false$'
+  prove_ok "gost.yml written" test -s "$GOST_YML"
+  prove_nogrep "gost.yml has no mitm while intercept=false" "$GOST_YML" 'mitm.certFile'
+  prove_ok "no Chrome maxq-proxy.json after proxy on" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json not written by proxy on" cxn_egress_untouched
+  prove_ok "sand.json left in place" test -f "$CHROME_POLICY_DIR/sand.json"
+  prove_ok "no /tmp/sand-egress-proxy after proxy on" test ! -e /tmp/sand-egress-proxy
+
+  local host port
+  host="$(gost_listen_host)"
+  port="$(gost_listen_port)"
+  prove_ok "gost listening on loopback" python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port"
+
+  echo "-- proxy upstream/iface roundtrip then clear --"
+  cmd_proxy upstream "http://127.0.0.1:9"
+  prove_grep "upstream persisted" "$TOML" 'upstream = "http://127.0.0.1:9"'
+  cmd_proxy iface lo
+  prove_grep "iface persisted" "$TOML" 'iface = "lo"'
+  cmd_proxy upstream none
+  cmd_proxy iface none
+  prove_grep "upstream cleared" "$TOML" 'upstream = ""'
+  prove_grep "iface cleared" "$TOML" 'iface = ""'
+
+  echo "-- proxy off (leave gost enabled=false, no intercept) --"
+  cmd_proxy off
+  prove_ok "gost not running after proxy off" gost_not_running
+  prove_grep "toml enabled false after off" "$TOML" '^enabled = false$'
+  prove_grep "toml intercept false after off" "$TOML" '^intercept = false$'
+  prove_ok "no Chrome maxq-proxy.json after proxy off" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json still absent after proxy off" cxn_egress_untouched
 }
 
 cmd_prove() {
@@ -360,9 +913,13 @@ cmd_prove() {
   assert_applied_tree
   echo
 
+  echo "-- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --"
+  assert_proxy_toggle
+  echo
+
   echo "-- step 3: revert --"
   cmd_revert
-  echo "-- assert reverted (markers gone, tombstone present) --"
+  echo "-- assert reverted (markers gone, CA kept, tombstone present) --"
   assert_reverted_tree
 
   if [ "$had_ssh" -eq 1 ]; then
@@ -377,10 +934,12 @@ cmd_prove() {
   prove_ok "HOME still exists" test -d "$PREFIX"
   echo
 
-  echo "-- step 4: apply again (leave APPLIED) --"
+  echo "-- step 4: apply again (leave APPLIED, gost enabled=false) --"
   cmd_apply
   echo "-- assert applied (final) --"
   assert_applied_tree
+  prove_ok "final gost not running (enabled=false)" gost_not_running
+  prove_grep "final intercept false" "$TOML" '^intercept = false$'
   echo
 
   local result="PASS"
@@ -393,7 +952,11 @@ cmd_prove() {
   echo "failed=$PROVE_FAIL"
   echo "final_status=$(cmd_status)"
   echo "final_theme=$(grep -E '^theme' "$TOML" 2>/dev/null || true)"
-  echo "gost=$(grep -E 'enabled' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "gost=$(grep -E '^enabled' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "intercept=$(grep -E '^intercept' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "gost_version=$(gost_version)"
+  echo "ca=$CA_PEM"
+  echo "chrome_proxy_policy=never"
   echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "left_state=APPLIED"
 
@@ -413,6 +976,7 @@ main() {
     revert|unconfigure) cmd_revert "$@" ;;
     status) cmd_status "$@" ;;
     prove) cmd_prove "$@" ;;
+    proxy) cmd_proxy "$@" ;;
     help|-h|--help) usage ;;
     version|-V|--version) echo "$MAXQ_VERSION" ;;
     *)

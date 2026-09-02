@@ -12,9 +12,9 @@ v0: 1-13, 18-19.
 - [ ] **8.** Chrome Mocha theme + managed policies
 - [ ] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale
 - [ ] **10.** herdr supervises MaxQ daemons
-- [ ] **11.** GOST local proxy (CONNECT + MITM)
-- [ ] **12.** MaxQ CA in system + Chrome trust
-- [ ] **13.** Proxy controls: enable/disable, upstream, outbound interface/tunnel
+- [x] **11.** GOST local proxy (CONNECT + MITM)
+- [x] **12.** MaxQ CA (persist under HOME; trust install documented, not auto)
+- [x] **13.** Proxy controls: enable/disable, upstream, outbound interface/tunnel
 - [ ] **14.** Tailscale/EVA Headscale operator hop
 - [ ] **15.** SSH server on operator net
 - [ ] **16.** VNC server on operator net
