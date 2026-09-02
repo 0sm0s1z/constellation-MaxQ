@@ -21,7 +21,7 @@ v0: 1-13, 18-19.
 - [ ] **17.** Firewall / listen-policy
 - [x] **18.** Go control API
 - [x] **19.** Thin TypeScript settings sheet
-- [ ] **20.** Settings pages: theme, proxy, firewall, vault, OAuth, skills
+- [ ] **20.** Settings pages: theme, proxy, firewall, vault, OAuth, skills, resources
 - [ ] **21.** Credential vault (shared bot accounts)
 - [ ] **22.** OAuth seating (Grok Build, etc.)
 - [ ] **23.** Account seating / session persist / computer-use reauth
@@ -32,3 +32,4 @@ v0: 1-13, 18-19.
 - [ ] **28.** Skill pack catalog in settings
 - [ ] **29.** GitHub SSH key seating
 - [ ] **30.** README / homepage copy
+- [ ] **31.** Resource monitor/manager in settings: host RAM/CPU (used vs available, no swap), per-display Chrome RSS, this-agent Chrome trim/restart only. Never signal other agents' Chrome. Isolation is DISPLAY + chrome-profile-N on a shared UNIX user.
