@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Public MaxQ shim: preserves the existing core and composes PLAN 7/36-40 desktop state.
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"; BIN="$PREFIX/bin"; CONFIG="$PREFIX/.config/maxq"; RUNTIME="$CONFIG/runtime"
+SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"; SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+CORE_SOURCE="$BIN/maxq-core"; DESKTOP="$BIN/maxq-desktop"; SAFE_CORE="$RUNTIME/maxq-core-safe"; PUBLIC="$BIN/maxq"
+repo_root=""
+if [ -x "$SELF_DIR/maxq" ] && [ -x "$SELF_DIR/maxq-desktop" ] && [ -f "$SELF_DIR/../cmd/maxq-api/main.go" ]; then repo_root="$(cd "$SELF_DIR/.." && pwd)"; fi
+install_runtime_parts(){
+  mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src"
+  if [ -n "$repo_root" ]; then
+    cp -f "$SELF_DIR/maxq" "$CORE_SOURCE"; cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"
+    for lib in ghostty launcher shortcuts; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
+    chmod +x "$CORE_SOURCE" "$DESKTOP"
+    if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then cp -f "$SELF" "$PUBLIC"; chmod +x "$PUBLIC"; fi
+    [ ! -d "$repo_root/cmd/maxq-api" ] || cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
+    [ ! -d "$repo_root/share/theme" ] || cp -a "$repo_root/share/theme/." "$CONFIG/theme/src/"
+  else
+    [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
+    [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
+    for lib in ghostty launcher shortcuts; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
+  fi
+}
+prepare_safe_core(){ python3 - "$CORE_SOURCE" "$SAFE_CORE" <<'PY'
+import os,sys
+src,dest=sys.argv[1:]; text=open(src,encoding='utf-8').read()
+replacements={
+ '  install_self\n':'  : # public wrapper owns $HOME/bin/maxq\n',
+ '  optional_usr_link\n':'  : # persist-safe: never write /usr\n',
+ '  remove_optional_usr_link\n':'  : # persist-safe: never write /usr\n',
+ 'if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then\n  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq\nfi\n':'# MaxQ desktop contract: HOME-only reconciler; never write /usr.\n',
+ 'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then\n':'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] || [ "$pid" = "${MAXQ_WRAPPER_PARENT_PID:-}" ]; }; then\n',
+ '  echo "ghostty_bin=skipped (no official linux amd64)"\n':'  echo "ghostty_bin=desktop-proof follows core proof"\n',
+}
+for old,new in replacements.items():
+ if old not in text: raise SystemExit(f'maxq: core patch anchor missing: {old!r}')
+ text=text.replace(old,new,1)
+os.makedirs(os.path.dirname(dest),exist_ok=True); open(dest,'w',encoding='utf-8').write(text); os.chmod(dest,0o755)
+PY
+}
+run_core(){ local rc; export MAXQ_WRAPPER_PARENT_PID="$PPID"; set +e; "$SAFE_CORE" "$@"; rc=$?; set -e; return "$rc"; }
+install_runtime_parts; prepare_safe_core
+cmd="${1:-status}"; [ "$#" -eq 0 ] || shift
+case "$cmd" in
+ apply|configure) run_core apply "$@"; "$DESKTOP" apply;;
+ revert|unconfigure) "$DESKTOP" revert; run_core revert "$@";;
+ prove) "$DESKTOP" revert; run_core prove "$@"; "$DESKTOP" prove;;
+ status) run_core status "$@";;
+ *) run_core "$cmd" "$@";;
+esac

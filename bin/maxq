@@ -1,115 +1,2193 @@
 #!/usr/bin/env bash
-# constellation-MaxQ command shim.
-# Composes the legacy core with PLAN 7/36-40 desktop state without changing
-# the core's proxy/theme/CLI semantics. The core is patched at runtime to
-# enforce the current no-/usr persistence contract.
+# constellation-MaxQ CLI
+# Persist-safe under $HOME. Do not put logic in /usr (optional ln -sfn only).
+# Commands: apply|configure  revert|unconfigure  status  prove  proxy
+# Control API: $HOME/bin/maxq-api on 127.0.0.1:7432 (loopback). Thin Mocha sheet at /.
+# GOST is the local CONNECT proxy. MITM intercept defaults to false.
+# Never write Chrome managed ProxyMode/ProxyServer policies.
 set -euo pipefail
 
+MAXQ_VERSION="0.5.0"
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 CONFIG="$PREFIX/.config/maxq"
-RUNTIME="$CONFIG/runtime"
-SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
-SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"
-CORE_SOURCE="$BIN/maxq-core"
-DESKTOP="$BIN/maxq-desktop"
-SAFE_CORE="$RUNTIME/maxq-core-safe"
-PUBLIC="$BIN/maxq"
+LOCAL="$PREFIX/.local"
+TOML="$CONFIG/maxq.toml"
+STATE_FILE="$CONFIG/state"
+PROFILE_SNIPPET="$CONFIG/profile.sh"
+MANAGED="$CONFIG/managed"
+RECONCILE="$BIN/maxq-reconcile"
+REVERT_LOG="$CONFIG/last-revert.log"
+BEGIN_MARK="# >>> maxq begin >>>"
+END_MARK="# <<< maxq end <<<"
+USR_LINK="/usr/local/bin/maxq"
 
-repo_root=""
-if [ -x "$SELF_DIR/maxq-core" ] && [ -x "$SELF_DIR/maxq-desktop" ] && [ -f "$SELF_DIR/../cmd/maxq-api/main.go" ]; then
-  repo_root="$(cd "$SELF_DIR/.." && pwd)"
-fi
+GOST_BIN="$BIN/gost"
+GOST_YML="$CONFIG/gost.yml"
+GOST_PID="$CONFIG/gost.pid"
+GOST_LOG="$CONFIG/gost.log"
+GOST_REL_VERSION="3.2.6"
+GOST_REL_URL="https://github.com/go-gost/gost/releases/download/v${GOST_REL_VERSION}/gost_${GOST_REL_VERSION}_linux_amd64.tar.gz"
 
-install_runtime_parts() {
-  mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src"
+API_BIN="$BIN/maxq-api"
+API_PID="$CONFIG/api.pid"
+API_LOG="$CONFIG/api.log"
+API_TOML="$CONFIG/api.toml"
+API_SRC="$CONFIG/api-src"
+API_LISTEN="127.0.0.1:7432"
 
-  if [ -n "$repo_root" ]; then
-    cp -f "$SELF_DIR/maxq-core" "$CORE_SOURCE"
-    cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"
-    for lib in ghostty launcher shortcuts; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
-    chmod +x "$CORE_SOURCE" "$DESKTOP"
-    if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then
-      cp -f "$SELF" "$PUBLIC"
-      chmod +x "$PUBLIC"
-    fi
-    if [ -d "$repo_root/cmd/maxq-api" ]; then
-      cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
-    fi
-    if [ -d "$repo_root/share/theme" ]; then
-      cp -a "$repo_root/share/theme/." "$CONFIG/theme/src/"
-    fi
-  else
-    [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
-    [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
-    for lib in ghostty launcher shortcuts; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
-    if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then
-      cp -f "$SELF" "$PUBLIC"
-      chmod +x "$PUBLIC"
+CA_DIR="$CONFIG/ca"
+CA_KEY="$CA_DIR/maxq-ca.key"
+CA_PEM="$CA_DIR/maxq-ca.pem"
+CA_DER="$CA_DIR/maxq-ca.der"
+CA_README="$CA_DIR/README.md"
+
+CLI_CACHE="$CONFIG/cli-cache"
+MANAGED_CLIS="$CONFIG/managed-clis"
+CLIS_TXT="$CONFIG/clis.txt"
+CLI_INSTALLED=""
+CLI_SKIPPED=""
+CLI_PREEXISTING=""
+
+# Chrome CONNECT proxy policies — never write or restore these.
+CHROME_POLICY_DIR="/etc/opt/chrome/policies/managed"
+CHROME_CXN_EGRESS="$CHROME_POLICY_DIR/cxn-egress.json"
+
+usage() {
+  cat <<EOF
+maxq ${MAXQ_VERSION} — take your Grok Bot to MaxQ.
+
+Usage: maxq <command>
+
+  apply, configure     Idempotent desired-state apply (persist under \$HOME)
+  revert, unconfigure  Remove MaxQ-owned files/markers only (not home/SSH/Chrome)
+  status               Print applied or reverted
+  prove                Revert/apply/assert cycle; leave APPLIED; exit 0 on pass
+  proxy                Show GOST proxy settings
+  proxy on|off         Enable/disable local GOST (process + toml; no Chrome policy)
+  proxy upstream <url> Set upstream hop (empty/none to clear)
+  proxy iface <name>   Set outbound interface/tunnel (empty/none to clear)
+  proxy intercept on|off
+                       TLS MITM flag (default off). Does not install Chrome trust.
+  help                 This help
+  version              Print version
+
+Control API (loopback): http://127.0.0.1:7432/  (thin Mocha sheet)
+
+Environment:
+  MAXQ_HOME    Prefix (default: \$HOME)
+
+Persist: \$HOME/bin, \$HOME/.config/maxq, \$HOME/.local
+Theme:   Catppuccin Mocha (latte is a future flag only)
+GOST:    \$HOME/bin/gost  (go-gost ${GOST_REL_VERSION})
+CA:      \$HOME/.config/maxq/ca  (kept across revert)
+CLIs:    herdr fx grok codex claude opencode tailscale into \$HOME/bin
+         (skip + document if no linux amd64 binary; never overwrite preexisting)
+Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
+Chrome:  theme files unpacked under \$HOME/.local/share/maxq; not live-applied.
+API:     \$HOME/bin/maxq-api on 127.0.0.1:7432 (or api.toml). apply starts; revert stops.
+EOF
+}
+
+die() { echo "maxq: $*" >&2; exit 1; }
+
+is_applied() {
+  if [ -f "$STATE_FILE" ]; then
+    [ "$(tr -d '[:space:]' < "$STATE_FILE" 2>/dev/null || true)" = "applied" ]
+    return $?
+  fi
+  [ -f "$TOML" ] && grep -q '^state = "applied"' "$TOML" 2>/dev/null
+}
+
+install_self() {
+  mkdir -p "$BIN"
+  local src dest
+  src="$(readlink -f "$0" 2>/dev/null || true)"
+  dest="$(readlink -f "$BIN/maxq" 2>/dev/null || true)"
+  if [ -n "$src" ] && [ -f "$src" ] && [ "$src" != "$dest" ]; then
+    cp -f "$src" "$BIN/maxq"
+  fi
+  if [ -f "$BIN/maxq" ]; then
+    chmod +x "$BIN/maxq"
+  fi
+}
+
+optional_usr_link() {
+  if [ -x "$BIN/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+    ln -sfn "$BIN/maxq" "$USR_LINK"
+  fi
+}
+
+remove_optional_usr_link() {
+  if [ -L "$USR_LINK" ] && [ -w /usr/local/bin ]; then
+    local target
+    target="$(readlink "$USR_LINK" 2>/dev/null || true)"
+    if [ "$target" = "$BIN/maxq" ]; then
+      rm -f "$USR_LINK"
     fi
   fi
 }
 
-prepare_safe_core() {
-  python3 - "$CORE_SOURCE" "$SAFE_CORE" <<'PY'
-import os, sys
-src, dest = sys.argv[1], sys.argv[2]
-text = open(src, encoding="utf-8").read()
-replacements = {
-    "  install_self\n": "  : # wrapper owns $HOME/bin/maxq\n",
-    "  optional_usr_link\n": "  : # persist-safe: never write /usr\n",
-    "  remove_optional_usr_link\n": "  : # persist-safe: never write /usr\n",
-    'if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then\n  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq\nfi\n': '# MaxQ wrapper contract: reconciler is HOME-only; never write /usr.\n',
-    'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then\n': 'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] || [ "$pid" = "${MAXQ_WRAPPER_PARENT_PID:-}" ]; }; then\n',
-    '  echo "ghostty_bin=skipped (no official linux amd64)"\n': '  echo "ghostty_bin=desktop-proof follows core proof"\n',
+# --- toml -------------------------------------------------------------------
+
+toml_unquote() {
+  local v="$1"
+  v="${v#\"}"
+  v="${v%\"}"
+  printf '%s' "$v"
 }
-for old, new in replacements.items():
-    if old not in text:
-        raise SystemExit(f"maxq: core patch anchor missing: {old!r}")
-    text = text.replace(old, new, 1)
-os.makedirs(os.path.dirname(dest), exist_ok=True)
-with open(dest, "w", encoding="utf-8") as f:
-    f.write(text)
-os.chmod(dest, 0o755)
+
+toml_top() {
+  local key="$1" def="$2" f="${3:-$TOML}"
+  if [ ! -f "$f" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  local line
+  line="$(awk -v k="$key" '
+    /^\[/ { exit }
+    $0 ~ "^" k "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$f")"
+  if [ -z "${line:-}" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  printf '%s\n' "$(toml_unquote "$line")"
+}
+
+toml_gost() {
+  local key="$1" def="$2" f="${3:-$TOML}"
+  if [ ! -f "$f" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  local line
+  line="$(awk -v k="$key" '
+    /^\[gost\]/ { ins=1; next }
+    /^\[/ { ins=0 }
+    ins && $0 ~ "^" k "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$f")"
+  if [ -z "${line:-}" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  printf '%s\n' "$(toml_unquote "$line")"
+}
+
+toml_clis() {
+  local key="$1" def="$2" f="${3:-$TOML}"
+  if [ ! -f "$f" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  local line
+  line="$(awk -v k="$key" '
+    /^\[clis\]/ { ins=1; next }
+    /^\[/ { ins=0 }
+    ins && $0 ~ "^" k "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$f")"
+  if [ -z "${line:-}" ]; then
+    printf '%s\n' "$def"
+    return 0
+  fi
+  printf '%s\n' "$(toml_unquote "$line")"
+}
+
+norm_bool() {
+  case "$1" in
+    true|TRUE|True|on|ON|yes|YES|1) echo true ;;
+    *) echo false ;;
+  esac
+}
+
+load_settings() {
+  THEME="$(toml_top theme mocha)"
+  IDENTITY="$(toml_top identity grokbot)"
+  [ -n "$THEME" ] || THEME="mocha"
+  [ -n "$IDENTITY" ] || IDENTITY="grokbot"
+  GOST_ENABLED="$(norm_bool "$(toml_gost enabled false)")"
+  GOST_LISTEN="$(toml_gost listen "127.0.0.1:8080")"
+  GOST_UPSTREAM="$(toml_gost upstream "")"
+  GOST_IFACE="$(toml_gost iface "")"
+  GOST_INTERCEPT="$(norm_bool "$(toml_gost intercept false)")"
+  [ -n "$GOST_LISTEN" ] || GOST_LISTEN="127.0.0.1:8080"
+  CLI_INSTALLED="$(toml_clis installed "")"
+  CLI_SKIPPED="$(toml_clis skipped "")"
+  CLI_PREEXISTING="$(toml_clis preexisting "")"
+  sanitize_listen
+}
+
+sanitize_listen() {
+  # Stay off 10.0.0.0/16. Local CONNECT proxy binds loopback only by default.
+  case "$GOST_LISTEN" in
+    10.0.*|\[::\]:*|0.0.0.0:*)
+      echo "maxq: refusing non-loopback listen '$GOST_LISTEN'; using 127.0.0.1:8080" >&2
+      GOST_LISTEN="127.0.0.1:8080"
+      ;;
+  esac
+}
+
+sanitize_ident() {
+  # iface: alnum _ . : -
+  local v="$1"
+  if [ -z "$v" ]; then
+    printf ''
+    return 0
+  fi
+  case "$v" in
+    *[!A-Za-z0-9_.:-]*)
+      die "invalid iface name: $v"
+      ;;
+  esac
+  printf '%s' "$v"
+}
+
+write_toml() {
+  sanitize_listen
+  cat > "$TOML" <<EOF
+# constellation-MaxQ desired state (managed — do not edit by hand)
+# Catppuccin Mocha is the default theme. latte is a future flag only.
+# Proxy is local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
+
+theme = "$THEME"
+state = "applied"
+identity = "$IDENTITY"
+
+[gost]
+enabled = $GOST_ENABLED
+listen = "$GOST_LISTEN"
+upstream = "$GOST_UPSTREAM"
+iface = "$GOST_IFACE"
+intercept = $GOST_INTERCEPT
+
+[clis]
+installed = "$CLI_INSTALLED"
+skipped = "$CLI_SKIPPED"
+preexisting = "$CLI_PREEXISTING"
+EOF
+}
+
+write_profile_snippet() {
+  cat > "$PROFILE_SNIPPET" <<'EOF'
+# MaxQ managed profile snippet. Do not edit.
+# Prepend persist bin. Kickoff of maxq-reconcile is left to post-Update / herdr.
+
+if [ -d "$HOME/bin" ]; then
+  case ":$PATH:" in
+    *":$HOME/bin:"*) ;;
+    *) PATH="$HOME/bin:$PATH" ;;
+  esac
+fi
+export PATH
+export GTK_THEME="MaxQ-Catppuccin-Mocha"
+export XCURSOR_THEME="MaxQ-Catppuccin-Mocha"
+EOF
+}
+
+write_reconcile() {
+  cat > "$RECONCILE" <<'EOF'
+#!/usr/bin/env bash
+# MaxQ desired-state reconciler (post Update).
+# Recreates persist layout and optional /usr/local/bin link. No /usr logic.
+# Does not write Chrome policies.
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca" "$PREFIX/.config/maxq/theme" "$PREFIX/.config/maxq/cli-cache" "$PREFIX/.config/maxq/api-src" "$PREFIX/.local/share/themes" "$PREFIX/.local/share/icons" "$PREFIX/.local/share/backgrounds" "$PREFIX/.local/share/maxq"
+if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq
+fi
+exit 0
+EOF
+  chmod +x "$RECONCILE"
+}
+
+profile_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — PATH + kickoff. Do not edit this block.
+if [ -r "\$HOME/.config/maxq/profile.sh" ]; then
+  . "\$HOME/.config/maxq/profile.sh"
+fi
+$END_MARK
+EOF
+}
+
+has_profile_block() {
+  local f="$1"
+  [ -f "$f" ] && grep -qF "$BEGIN_MARK" "$f"
+}
+
+install_profile_hook() {
+  local f="$1"
+  if [ ! -f "$f" ]; then
+    touch "$f"
+  fi
+  if has_profile_block "$f"; then
+    return 0
+  fi
+  if [ -s "$f" ] && [ "$(tail -c 1 "$f" | wc -l)" -eq 0 ]; then
+    printf '\n' >> "$f"
+  fi
+  printf '\n' >> "$f"
+  profile_block >> "$f"
+}
+
+strip_profile_hook() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  if ! has_profile_block "$f"; then
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp "${f}.maxq.XXXXXX")"
+  awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+    $0 == b { skip=1; next }
+    $0 == e { skip=0; next }
+    !skip { print }
+  ' "$f" > "$tmp"
+  awk '
+    { lines[NR]=$0 }
+    END {
+      end=NR
+      while (end>0 && lines[end] ~ /^$/) end--
+      for (i=1;i<=end;i++) print lines[i]
+      if (end>0) print ""
+    }
+  ' "$tmp" > "$f"
+  rm -f "$tmp"
+}
+
+# --- gost binary ------------------------------------------------------------
+
+install_gost_binary() {
+  mkdir -p "$BIN"
+  if [ -x "$GOST_BIN" ] && "$GOST_BIN" -V >/dev/null 2>&1; then
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-gost.XXXXXX")"
+  if [ -x /tmp/gost-dl/gost ]; then
+    cp -f /tmp/gost-dl/gost "$GOST_BIN"
+    chmod +x "$GOST_BIN"
+    rm -rf "$tmp"
+    return 0
+  fi
+  echo "maxq: installing go-gost ${GOST_REL_VERSION} -> $GOST_BIN"
+  if ! curl -fsSL -o "$tmp/gost.tgz" "$GOST_REL_URL"; then
+    rm -rf "$tmp"
+    die "failed to download GOST from $GOST_REL_URL"
+  fi
+  tar -xzf "$tmp/gost.tgz" -C "$tmp"
+  if [ ! -f "$tmp/gost" ]; then
+    rm -rf "$tmp"
+    die "GOST tarball missing gost binary"
+  fi
+  cp -f "$tmp/gost" "$GOST_BIN"
+  chmod +x "$GOST_BIN"
+  rm -rf "$tmp"
+  "$GOST_BIN" -V >/dev/null || die "gost binary not executable"
+}
+
+gost_version() {
+  if [ -x "$GOST_BIN" ]; then
+    "$GOST_BIN" -V 2>/dev/null || echo "gost (unreadable)"
+  else
+    echo "missing"
+  fi
+}
+
+# --- CA ---------------------------------------------------------------------
+
+ensure_ca() {
+  mkdir -p "$CA_DIR"
+  if [ ! -f "$CA_KEY" ] || [ ! -f "$CA_PEM" ]; then
+    openssl req -new -x509 -days 3650 -nodes \
+      -newkey rsa:2048 \
+      -keyout "$CA_KEY" \
+      -out "$CA_PEM" \
+      -subj "/CN=MaxQ Local CA/O=constellation-MaxQ/OU=grokbot" \
+      >/dev/null 2>&1
+    chmod 600 "$CA_KEY"
+    chmod 644 "$CA_PEM"
+  fi
+  if [ ! -f "$CA_DER" ] && [ -f "$CA_PEM" ]; then
+    openssl x509 -in "$CA_PEM" -outform DER -out "$CA_DER" >/dev/null 2>&1 || true
+  fi
+  write_ca_readme
+}
+
+write_ca_readme() {
+  cat > "$CA_README" <<EOF
+# MaxQ local CA
+
+Path (persist, kept across \`maxq revert\`):
+
+- PEM: $CA_PEM
+- KEY: $CA_KEY
+- DER: $CA_DER
+
+MITM is **off by default** (\`[gost] intercept = false\`). GOST is a CONNECT
+proxy only until you turn intercept on. MaxQ does **not** write Chrome
+managed policies (no ProxyMode, no ProxyServer, no maxq-proxy.json) and
+does **not** install this CA into /usr.
+
+## Trust install (manual)
+
+System trust (Debian/Ubuntu, needs sudo — MaxQ will not do this for you):
+
+    sudo cp $CA_PEM /usr/local/share/ca-certificates/maxq-ca.crt
+    sudo update-ca-certificates
+
+Chrome / Chromium: import the PEM as an authority that trusts websites,
+or set enterprise \`CACertificates\` yourself. MaxQ will not drop files
+into /etc/opt/chrome/policies/managed/.
+
+To enable TLS intercept after trusting the CA:
+
+    maxq proxy intercept on
+    maxq proxy on
+
+Leave intercept off to keep ChatGPT and other TLS sessions intact.
+EOF
+}
+
+# --- gost process (pidfile; herdr not required) -----------------------------
+
+gost_listen_host() {
+  local l="${GOST_LISTEN:-127.0.0.1:8080}"
+  case "$l" in
+    :*) echo "127.0.0.1" ;;
+    *) echo "${l%:*}" ;;
+  esac
+}
+
+gost_listen_port() {
+  local l="${GOST_LISTEN:-127.0.0.1:8080}"
+  echo "${l##*:}"
+}
+
+parse_upstream() {
+  # sets UP_TYPE UP_ADDR from GOST_UPSTREAM
+  UP_TYPE="http"
+  UP_ADDR=""
+  local u="${GOST_UPSTREAM:-}"
+  [ -n "$u" ] || return 0
+  case "$u" in
+    socks5://*|socks://*)
+      UP_TYPE="socks5"
+      u="${u#*://}"
+      ;;
+    socks5s://*|socks5+tls://*)
+      UP_TYPE="socks5"
+      u="${u#*://}"
+      ;;
+    https://*)
+      UP_TYPE="http"
+      u="${u#https://}"
+      ;;
+    http://*)
+      UP_TYPE="http"
+      u="${u#http://}"
+      ;;
+  esac
+  u="${u%%/*}"
+  UP_ADDR="$u"
+}
+
+write_gost_yml() {
+  sanitize_listen
+  local iface_line="" meta="" chain_ref=""
+  if [ -n "$GOST_IFACE" ] && [ -z "$GOST_UPSTREAM" ]; then
+    iface_line="  interface: ${GOST_IFACE}"
+  fi
+  if [ -n "$GOST_UPSTREAM" ]; then
+    chain_ref="    chain: maxq-up"
+  fi
+  if [ "$GOST_INTERCEPT" = "true" ]; then
+    meta="    metadata:
+      sniffing: true
+      mitm.certFile: ${CA_PEM}
+      mitm.keyFile: ${CA_KEY}"
+  fi
+  {
+    echo "# constellation-MaxQ gost config (managed — do not edit)"
+    echo "# CONNECT proxy. intercept=${GOST_INTERCEPT}. No Chrome policy."
+    echo "services:"
+    echo "- name: maxq-http"
+    echo "  addr: \"${GOST_LISTEN}\""
+    [ -n "$iface_line" ] && echo "$iface_line"
+    echo "  handler:"
+    echo "    type: http"
+    [ -n "$chain_ref" ] && echo "$chain_ref"
+    [ -n "$meta" ] && printf '%s\n' "$meta"
+    echo "  listener:"
+    echo "    type: tcp"
+    if [ -n "$GOST_UPSTREAM" ]; then
+      parse_upstream
+      echo "chains:"
+      echo "- name: maxq-up"
+      echo "  hops:"
+      echo "  - name: hop-0"
+      echo "    nodes:"
+      echo "    - name: node-0"
+      echo "      addr: \"${UP_ADDR}\""
+      if [ -n "$GOST_IFACE" ]; then
+        echo "      interface: ${GOST_IFACE}"
+      fi
+      echo "      connector:"
+      echo "        type: ${UP_TYPE}"
+      echo "      dialer:"
+      echo "        type: tcp"
+    fi
+  } > "$GOST_YML"
+}
+
+gost_is_running() {
+  local pid
+  [ -f "$GOST_PID" ] || return 1
+  pid="$(tr -d '[:space:]' < "$GOST_PID" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+gost_not_running() {
+  ! gost_is_running
+}
+
+stop_gost() {
+  local pid
+  if [ -f "$GOST_PID" ]; then
+    pid="$(tr -d '[:space:]' < "$GOST_PID" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      local i=0
+      while [ "$i" -lt 30 ] && kill -0 "$pid" 2>/dev/null; do
+        sleep 0.1
+        i=$((i + 1))
+      done
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+    rm -f "$GOST_PID"
+  fi
+}
+
+start_gost() {
+  install_gost_binary
+  ensure_ca
+  mkdir -p "$CONFIG"
+  write_gost_yml
+  stop_gost
+  nohup "$GOST_BIN" -C "$GOST_YML" >>"$GOST_LOG" 2>&1 &
+  echo $! > "$GOST_PID"
+  local i=0
+  local port host
+  port="$(gost_listen_port)"
+  host="$(gost_listen_host)"
+  while [ "$i" -lt 40 ]; do
+    if gost_is_running && python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if gost_is_running; then
+    return 0
+  fi
+  echo "maxq: gost failed to start; last log:" >&2
+  tail -n 20 "$GOST_LOG" 2>/dev/null >&2 || true
+  return 1
+}
+
+apply_proxy_runtime() {
+  # Never touch Chrome managed policies.
+  if [ "$GOST_ENABLED" = "true" ]; then
+    start_gost
+  else
+    stop_gost
+  fi
+}
+
+# --- control API (PLAN 18-19; loopback only, thin sheet) --------------------
+
+api_src_candidates() {
+  local here src
+  src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  here="$(cd "$(dirname "$src")" && pwd)"
+  printf '%s\n' "$here/../cmd/maxq-api"
+  printf '%s\n' "$here/cmd/maxq-api"
+  printf '%s\n' "$here/../constellation-MaxQ/cmd/maxq-api"
+  printf '%s\n' "$API_SRC"
+}
+
+seed_api_src() {
+  mkdir -p "$API_SRC"
+  local cand
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    [ -f "$cand/main.go" ] || continue
+    if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then
+      continue
+    fi
+    cp -a "$cand"/. "$API_SRC"/
+    return 0
+  done < <(api_src_candidates)
+}
+
+load_api_listen() {
+  API_LISTEN="$(toml_top listen "127.0.0.1:7432" "$API_TOML")"
+  [ -n "$API_LISTEN" ] || API_LISTEN="127.0.0.1:7432"
+  sanitize_api_listen
+}
+
+sanitize_api_listen() {
+  case "$API_LISTEN" in
+    10.0.*|\[::\]:*|0.0.0.0:*|\[::0\]:*)
+      echo "maxq: refusing non-loopback api listen '$API_LISTEN'; using 127.0.0.1:7432" >&2
+      API_LISTEN="127.0.0.1:7432"
+      ;;
+    127.0.0.1:*|localhost:*)
+      ;;
+    *)
+      echo "maxq: refusing non-loopback api listen '$API_LISTEN'; using 127.0.0.1:7432" >&2
+      API_LISTEN="127.0.0.1:7432"
+      ;;
+  esac
+}
+
+write_api_toml() {
+  sanitize_api_listen
+  cat > "$API_TOML" <<EOF
+# constellation-MaxQ control API (managed — do not edit by hand)
+# Loopback only. Never bind 0.0.0.0 or 10.0.0.0/16.
+# Thin Mocha sheet at /. MaxQ never writes Chrome ProxyMode/ProxyServer.
+
+listen = "$API_LISTEN"
+EOF
+}
+
+install_api_binary() {
+  mkdir -p "$BIN"
+  seed_api_src
+  if command -v go >/dev/null 2>&1 && [ -f "$API_SRC/main.go" ]; then
+    if [ -x "$API_BIN" ] && [ "$API_BIN" -nt "$API_SRC/main.go" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/sheet.js" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/index.html" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/mocha.css" ]; then
+      return 0
+    fi
+    echo "maxq: building maxq-api -> $API_BIN"
+    if ! (
+      cd "$API_SRC"
+      CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$API_BIN" .
+    ); then
+      die "failed to build maxq-api"
+    fi
+    chmod +x "$API_BIN"
+    return 0
+  fi
+  if [ -x "$API_BIN" ]; then
+    return 0
+  fi
+  die "maxq-api missing (need go + cmd/maxq-api source, or a prior binary)"
+}
+
+api_listen_host() {
+  local l="${API_LISTEN:-127.0.0.1:7432}"
+  case "$l" in
+    :*) echo "127.0.0.1" ;;
+    *) echo "${l%:*}" ;;
+  esac
+}
+
+api_listen_port() {
+  local l="${API_LISTEN:-127.0.0.1:7432}"
+  echo "${l##*:}"
+}
+
+api_is_running() {
+  local pid
+  [ -f "$API_PID" ] || return 1
+  pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+api_not_running() {
+  ! api_is_running
+}
+
+api_port_down() {
+  local host port
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  ! python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.3); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null
+}
+
+api_status_200() {
+  local host port code
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 "http://${host}:${port}/status" || true)"
+  [ "$code" = "200" ]
+}
+
+api_status_applied() {
+  local host port body
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  body="$(curl -sf --max-time 2 "http://${host}:${port}/status" || true)"
+  printf '%s' "$body" | grep -q '"state":"applied"'
+}
+
+api_ui_ok() {
+  local host port body
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  body="$(curl -sf --max-time 2 "http://${host}:${port}/" || true)"
+  printf '%s' "$body" | grep -q 'MaxQ'
+}
+
+stop_api() {
+  local pid
+  if [ -f "$API_PID" ]; then
+    pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      local i=0
+      while [ "$i" -lt 30 ] && kill -0 "$pid" 2>/dev/null; do
+        sleep 0.1
+        i=$((i + 1))
+      done
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+    rm -f "$API_PID"
+  fi
+}
+
+start_api() {
+  load_api_listen
+  install_api_binary
+  write_api_toml
+  if api_is_running; then
+    local pid
+    pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+    # If apply was invoked by the API itself, do not restart (would drop the HTTP call).
+    if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then
+      return 0
+    fi
+    stop_api
+  fi
+  : > "$API_LOG"
+  nohup env MAXQ_HOME="$PREFIX" "$API_BIN" >>"$API_LOG" 2>&1 &
+  echo $! > "$API_PID"
+  local i=0 host port
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  while [ "$i" -lt 50 ]; do
+    if api_is_running && python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null; then
+      if api_status_200; then
+        return 0
+      fi
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if api_is_running; then
+    return 0
+  fi
+  echo "maxq: maxq-api failed to start; last log:" >&2
+  tail -n 20 "$API_LOG" 2>/dev/null >&2 || true
+  return 1
+}
+
+# --- theme (PLAN 6-8, Catppuccin Mocha) -------------------------------------
+
+THEME_SRC="$CONFIG/theme/src"
+THEME_ROOT="$CONFIG/theme"
+GTK_THEME_NAME="MaxQ-Catppuccin-Mocha"
+CURSOR_THEME_NAME="MaxQ-Catppuccin-Mocha"
+GTK_THEME_DIR="$LOCAL/share/themes/$GTK_THEME_NAME"
+CURSOR_DIR="$LOCAL/share/icons/$CURSOR_THEME_NAME"
+WALLPAPER_DIR="$LOCAL/share/backgrounds/maxq"
+WALLPAPER="$WALLPAPER_DIR/mocha.png"
+CHROME_THEME_DIR="$LOCAL/share/maxq/chrome-theme-mocha"
+CHROME_STORE_ID="bkkmolkhemgaeaeggcmfbghljjjoofoh"
+GHOSTTY_DIR="$PREFIX/.config/ghostty"
+GHOSTTY_CONFIG="$GHOSTTY_DIR/config"
+GHOSTTY_THEME_FILE="$GHOSTTY_DIR/themes/catppuccin-mocha.conf"
+GHOSTTY_BIN="$BIN/ghostty"
+GTK3_INI="$PREFIX/.config/gtk-3.0/settings.ini"
+GTK4_INI="$PREFIX/.config/gtk-4.0/settings.ini"
+GTK_VENDOR_ZIP="catppuccin-mocha-mauve-gtk.zip"
+CURSOR_VENDOR_ZIP="catppuccin-mocha-mauve-cursors.zip"
+GTK_VENDOR_URL="https://github.com/catppuccin/gtk/releases/download/v1.0.3/catppuccin-mocha-mauve-standard+default.zip"
+CURSOR_VENDOR_URL="https://github.com/catppuccin/cursors/releases/download/v2.0.0/catppuccin-mocha-mauve-cursors.zip"
+CHROME_VENDOR_URL="https://github.com/catppuccin/chrome/releases/download/v5.0.0/catppuccin-chrome-mocha-google-store.zip"
+
+mark_owned() {
+  mkdir -p "$1"
+  printf 'constellation-MaxQ\n' > "$1/.maxq-owned"
+}
+
+theme_pack_candidates() {
+  local here src
+  src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  here="$(cd "$(dirname "$src")" && pwd)"
+  printf '%s\n' "$here/../share/theme"
+  printf '%s\n' "$here/share/theme"
+  printf '%s\n' "$THEME_SRC"
+}
+
+seed_theme_src() {
+  mkdir -p "$THEME_SRC"
+  local cand
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    [ -d "$cand" ] || continue
+    # Do not copy THEME_SRC onto itself.
+    if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$THEME_SRC" 2>/dev/null || true)" ]; then
+      continue
+    fi
+    cp -a "$cand"/. "$THEME_SRC"/
+  done < <(theme_pack_candidates)
+}
+
+download_if_missing() {
+  local dest="$1" url="$2"
+  [ -s "$dest" ] && return 0
+  mkdir -p "$(dirname "$dest")"
+  curl -fsSL -o "$dest" "$url" || rm -f "$dest"
+  [ -s "$dest" ]
+}
+
+generate_wallpaper() {
+  local dest="$1"
+  python3 - "$dest" <<'PY'
+import sys
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+dest = sys.argv[1]
+w, h = 1920, 1080
+crust, mantle, base = (17, 17, 27), (24, 24, 37), (30, 30, 46)
+text, sub, mauve = (205, 214, 244), (166, 173, 200), (203, 166, 247)
+blue, lavender, peach = (137, 180, 250), (180, 190, 254), (250, 179, 135)
+teal, green, sky = (148, 226, 213), (166, 227, 161), (137, 220, 235)
+red, yellow, pink = (243, 139, 168), (249, 226, 175), (245, 194, 231)
+img = Image.new("RGB", (w, h), crust)
+px = img.load()
+for y in range(h):
+    t = y / (h - 1)
+    if t < 0.45:
+        u = t / 0.45
+        r = int(crust[0] + (base[0] - crust[0]) * u)
+        g = int(crust[1] + (base[1] - crust[1]) * u)
+        b = int(crust[2] + (base[2] - crust[2]) * u)
+    else:
+        u = (t - 0.45) / 0.55
+        r = int(base[0] + (mantle[0] - base[0]) * u)
+        g = int(base[1] + (mantle[1] - base[1]) * u)
+        b = int(base[2] + (mantle[2] - base[2]) * u)
+    for x in range(w):
+        px[x, y] = (min(255, r + int(6 * x / (w - 1))), g, b)
+img = img.convert("RGBA")
+acc = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+
+def orb(cx, cy, rad, color, alpha):
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(layer).ellipse((cx-rad, cy-rad, cx+rad, cy+rad), fill=color+(alpha,))
+    return layer.filter(ImageFilter.GaussianBlur(radius=rad*0.35))
+
+for args in ((420,280,340,mauve,55),(1500,220,280,blue,50),(1620,820,360,teal,40),(280,860,260,peach,35),(980,520,220,lavender,30)):
+    acc = Image.alpha_composite(acc, orb(*args))
+img = Image.alpha_composite(img, acc)
+d = ImageDraw.Draw(img, "RGBA")
+bars = [red, peach, yellow, green, teal, sky, blue, lavender, mauve, pink]
+x0, y0, bw, bh, gap = 120, 860, 70, 28, 10
+for i, c in enumerate(bars):
+    x = x0 + i*(bw+gap)
+    d.rounded_rectangle((x, y0, x+bw, y0+bh), radius=8, fill=c+(230,))
+d.rectangle((0, 0, w, 6), fill=mauve+(255,))
+try:
+    font_lg = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+    font_sm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+    font_xs = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+except Exception:
+    font_lg = font_sm = font_xs = ImageFont.load_default()
+d.text((120, 280), "MaxQ", font=font_lg, fill=text+(255,))
+d.text((128, 420), "Catppuccin Mocha", font=font_sm, fill=mauve+(255,))
+d.text((128, 480), "Take your Grok Bot to MaxQ.", font=font_xs, fill=sub+(255,))
+q = img.convert("RGB").quantize(colors=64, method=Image.Quantize.MEDIANCUT)
+q.save(dest, format="PNG", optimize=True)
 PY
 }
 
-run_core() {
-  local rc
-  export MAXQ_WRAPPER_PARENT_PID="$PPID"
-  set +e
-  "$SAFE_CORE" "$@"
-  rc=$?
-  set -e
-  return "$rc"
+write_compact_gtk_theme() {
+  local dest="$1"
+  mkdir -p "$dest/gtk-3.0" "$dest/gtk-4.0"
+  cat > "$dest/index.theme" <<EOF
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=${GTK_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha (compact fallback)
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=${GTK_THEME_NAME}
+MetacityTheme=${GTK_THEME_NAME}
+CursorTheme=${CURSOR_THEME_NAME}
+ButtonLayout=close,minimize,maximize:menu
+EOF
+  cat > "$dest/gtk-3.0/gtk.css" <<'EOF'
+/* MaxQ Catppuccin Mocha compact GTK CSS (fallback if official zip missing). */
+@define-color theme_bg_color #1e1e2e;
+@define-color theme_fg_color #cdd6f4;
+@define-color theme_selected_bg_color #cba6f7;
+@define-color theme_selected_fg_color #1e1e2e;
+@define-color insensitive_bg_color #181825;
+@define-color insensitive_fg_color #6c7086;
+@define-color borders #313244;
+window, .background { background-color: #1e1e2e; color: #cdd6f4; }
+headerbar, .titlebar { background-color: #181825; color: #cdd6f4; border-bottom: 1px solid #313244; }
+button { background-color: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; }
+button:hover { background-color: #45475a; }
+button:checked, button:active { background-color: #cba6f7; color: #1e1e2e; }
+entry, spinbutton, combobox { background-color: #11111b; color: #cdd6f4; border: 1px solid #45475a; }
+selection, *:selected { background-color: #cba6f7; color: #1e1e2e; }
+tooltip { background-color: #181825; color: #cdd6f4; }
+scrollbar slider { background-color: #585b70; border-radius: 8px; }
+notebook tab { background-color: #181825; color: #a6adc8; }
+notebook tab:checked { background-color: #1e1e2e; color: #cdd6f4; }
+EOF
+  cp -f "$dest/gtk-3.0/gtk.css" "$dest/gtk-4.0/gtk.css"
+  mark_owned "$dest"
 }
 
-install_runtime_parts
-prepare_safe_core
+write_fallback_cursor() {
+  local dest="$1"
+  mkdir -p "$dest/cursors"
+  cat > "$dest/index.theme" <<EOF
+[Icon Theme]
+Name=${CURSOR_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha cursors (Adwaita inherit fallback)
+Inherits=Adwaita
+EOF
+  mark_owned "$dest"
+}
 
-cmd="${1:-status}"
-if [ "$#" -gt 0 ]; then
+write_chrome_fallback() {
+  local dest="$1"
+  mkdir -p "$dest/images"
+  cat > "$dest/manifest.json" <<'EOF'
+{
+  "manifest_version": 3,
+  "name": "Catppuccin Chrome Theme - Mocha",
+  "description": "Soothing pastel theme for Google Chrome - Catppuccin Mocha",
+  "version": "5.0.0",
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "theme": {
+    "colors": {
+      "frame": [17, 17, 27],
+      "frame_inactive": [17, 17, 27],
+      "frame_incognito": [69, 71, 90],
+      "frame_incognito_inactive": [147, 153, 178],
+      "bookmark_text": [205, 214, 244],
+      "tab_background_text": [186, 194, 222],
+      "tab_background_text_inactive": [166, 173, 200],
+      "tab_background_text_incognito": [186, 194, 222],
+      "tab_background_text_incognito_inactive": [166, 173, 200],
+      "tab_text": [205, 214, 244],
+      "toolbar": [30, 30, 46],
+      "toolbar_button_icon": [205, 214, 244],
+      "omnibox_text": [205, 214, 244],
+      "omnibox_background": [17, 17, 27],
+      "ntp_background": [30, 30, 46],
+      "ntp_link": [205, 214, 244],
+      "ntp_text": [205, 214, 244],
+      "button_background": [17, 17, 27]
+    }
+  }
+}
+EOF
+  python3 - "$dest/images" <<'PY'
+import os, sys
+from PIL import Image, ImageDraw
+d = sys.argv[1]
+os.makedirs(d, exist_ok=True)
+mauve, base, text = (203, 166, 247), (30, 30, 46), (205, 214, 244)
+for size in (16, 48, 128):
+    im = Image.new("RGBA", (size, size), base + (255,))
+    dr = ImageDraw.Draw(im)
+    m = max(1, size // 8)
+    dr.rounded_rectangle((m, m, size-m-1, size-m-1), radius=max(2, size//6), fill=mauve+(255,))
+    im.save(os.path.join(d, f"icon{size}.png"))
+PY
+}
+
+write_chrome_note() {
+  local dest="$1"
+  cat > "$dest/MAXQ.txt" <<EOF
+Official Catppuccin Mocha Chrome theme.
+Web Store ID: ${CHROME_STORE_ID}
+https://chrome.google.com/webstore/detail/catppuccin-chrome-theme-m/${CHROME_STORE_ID}
+
+MaxQ ships this unpacked under:
+  ${CHROME_THEME_DIR}
+
+Chrome will not live-apply a theme without chrome://extensions developer
+mode ("Load unpacked") or enterprise flags MaxQ will not set. Prove checks
+these files on disk and does not fail if Chrome is not showing the theme.
+
+MaxQ never writes Chrome ProxyMode/ProxyServer or any file under
+/etc/opt/chrome/policies/managed/.
+EOF
+}
+
+write_ghostty_theme_file() {
+  local dest="$1"
+  mkdir -p "$(dirname "$dest")"
+  if [ -f "$THEME_SRC/ghostty/catppuccin-mocha.conf" ]; then
+    cp -f "$THEME_SRC/ghostty/catppuccin-mocha.conf" "$dest"
+    return 0
+  fi
+  cat > "$dest" <<'EOF'
+# Catppuccin Mocha for Ghostty (official palette).
+palette = 0=#45475a
+palette = 1=#f38ba8
+palette = 2=#a6e3a1
+palette = 3=#f9e2af
+palette = 4=#89b4fa
+palette = 5=#f5c2e7
+palette = 6=#94e2d5
+palette = 7=#a6adc8
+palette = 8=#585b70
+palette = 9=#f38ba8
+palette = 10=#a6e3a1
+palette = 11=#f9e2af
+palette = 12=#89b4fa
+palette = 13=#f5c2e7
+palette = 14=#94e2d5
+palette = 15=#bac2de
+background = 1e1e2e
+foreground = cdd6f4
+cursor-color = f5e0dc
+cursor-text = 11111b
+selection-background = 353749
+selection-foreground = cdd6f4
+split-divider-color = 313244
+EOF
+}
+
+ghostty_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — Catppuccin Mocha. Do not edit this block.
+# Binary: not installed by MaxQ (no official linux amd64 build; see docs/THEME.md).
+theme = catppuccin-mocha.conf
+background = #1e1e2e
+foreground = #cdd6f4
+cursor-color = #f5e0dc
+window-theme = dark
+$END_MARK
+EOF
+}
+
+gtk_settings_block() {
+  cat <<EOF
+$BEGIN_MARK
+# MaxQ (managed) — Catppuccin Mocha. Do not edit this block.
+[Settings]
+gtk-theme-name=${GTK_THEME_NAME}
+gtk-cursor-theme-name=${CURSOR_THEME_NAME}
+gtk-application-prefer-dark-theme=1
+gtk-cursor-theme-size=24
+$END_MARK
+EOF
+}
+
+install_marked_block() {
+  local f="$1"
+  mkdir -p "$(dirname "$f")"
+  if [ ! -f "$f" ]; then
+    touch "$f"
+  fi
+  if has_profile_block "$f"; then
+    return 0
+  fi
+  if [ -s "$f" ] && [ "$(tail -c 1 "$f" | wc -l)" -eq 0 ]; then
+    printf '\n' >> "$f"
+  fi
+  printf '\n' >> "$f"
+  cat >> "$f"
+}
+
+extract_zip_dir() {
+  # extract_zip_dir zip dest [preferred-top-dir-glob]
+  local zip="$1" dest="$2" prefer="${3:-}"
+  local tmp pick
+  [ -s "$zip" ] || return 1
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-theme.XXXXXX")"
+  if ! unzip -q "$zip" -d "$tmp"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  pick=""
+  if [ -n "$prefer" ] && [ -d "$tmp/$prefer" ]; then
+    pick="$tmp/$prefer"
+  else
+    pick="$(python3 - "$tmp" <<'PY'
+import os, sys
+root = sys.argv[1]
+cands = []
+for name in sorted(os.listdir(root)):
+    p = os.path.join(root, name)
+    if os.path.isdir(p) and ("hdpi" not in name.lower()):
+        if os.path.isfile(os.path.join(p, "index.theme")) or os.path.isfile(os.path.join(p, "manifest.json")):
+            cands.append(p)
+if not cands:
+    for dirpath, dirnames, filenames in os.walk(root):
+        if "index.theme" in filenames or "manifest.json" in filenames:
+            cands.append(dirpath)
+            break
+print(cands[0] if cands else "")
+PY
+)"
+  fi
+  if [ -z "$pick" ] || [ ! -d "$pick" ]; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$dest"
+  mkdir -p "$(dirname "$dest")"
+  cp -a "$pick" "$dest"
+  rm -rf "$tmp"
+  return 0
+}
+
+rewrite_gtk_index() {
+  local dest="$1"
+  local idx="$dest/index.theme"
+  [ -f "$idx" ] || return 0
+  python3 - "$idx" "$GTK_THEME_NAME" "$CURSOR_THEME_NAME" <<'PY'
+import sys
+path, name, cursor = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path).read()
+repl = {
+    "Name=": f"Name={name}",
+    "GtkTheme=": f"GtkTheme={name}",
+    "MetacityTheme=": f"MetacityTheme={name}",
+    "CursorTheme=": f"CursorTheme={cursor}",
+}
+out = []
+for line in text.splitlines(True):
+    stripped = line.lstrip()
+    done = False
+    for k, v in repl.items():
+        if stripped.startswith(k):
+            nl = "\n" if line.endswith("\n") else ""
+            out.append(v + nl)
+            done = True
+            break
+    if not done:
+        out.append(line)
+open(path, "w").writelines(out)
+PY
+}
+
+rewrite_cursor_index() {
+  local dest="$1"
+  local idx="$dest/index.theme"
+  mkdir -p "$dest"
+  if [ -f "$idx" ]; then
+    python3 - "$idx" "$CURSOR_THEME_NAME" <<'PY'
+import sys
+path, name = sys.argv[1], sys.argv[2]
+lines = []
+for line in open(path):
+    if line.startswith("Name="):
+        lines.append(f"Name={name}\n")
+    else:
+        lines.append(line)
+open(path, "w").writelines(lines)
+PY
+  else
+    cat > "$idx" <<EOF
+[Icon Theme]
+Name=${CURSOR_THEME_NAME}
+Comment=MaxQ Catppuccin Mocha cursors
+Inherits=Adwaita
+EOF
+  fi
+}
+
+install_wallpaper() {
+  mkdir -p "$WALLPAPER_DIR"
+  if [ -s "$THEME_SRC/wallpaper/mocha.png" ]; then
+    cp -f "$THEME_SRC/wallpaper/mocha.png" "$WALLPAPER"
+  else
+    generate_wallpaper "$WALLPAPER"
+  fi
+  mark_owned "$WALLPAPER_DIR"
+}
+
+install_gtk_theme() {
+  mkdir -p "$LOCAL/share/themes"
+  local zip="$THEME_SRC/vendor/$GTK_VENDOR_ZIP"
+  download_if_missing "$zip" "$GTK_VENDOR_URL" || true
+  if extract_zip_dir "$zip" "$GTK_THEME_DIR" "catppuccin-mocha-mauve-standard+default"; then
+    rewrite_gtk_index "$GTK_THEME_DIR"
+    mark_owned "$GTK_THEME_DIR"
+  else
+    write_compact_gtk_theme "$GTK_THEME_DIR"
+  fi
+}
+
+install_cursor_theme() {
+  mkdir -p "$LOCAL/share/icons"
+  local zip="$THEME_SRC/vendor/$CURSOR_VENDOR_ZIP"
+  download_if_missing "$zip" "$CURSOR_VENDOR_URL" || true
+  if extract_zip_dir "$zip" "$CURSOR_DIR" "catppuccin-mocha-mauve-cursors"; then
+    rewrite_cursor_index "$CURSOR_DIR"
+    mark_owned "$CURSOR_DIR"
+  else
+    write_fallback_cursor "$CURSOR_DIR"
+  fi
+}
+
+install_chrome_theme() {
+  mkdir -p "$LOCAL/share/maxq"
+  if [ -f "$THEME_SRC/chrome-mocha/manifest.json" ]; then
+    rm -rf "$CHROME_THEME_DIR"
+    cp -a "$THEME_SRC/chrome-mocha" "$CHROME_THEME_DIR"
+  else
+    local zip="$THEME_SRC/vendor/catppuccin-chrome-mocha-google-store.zip"
+    download_if_missing "$zip" "$CHROME_VENDOR_URL" || true
+    if ! extract_zip_dir "$zip" "$CHROME_THEME_DIR" ""; then
+      rm -rf "$CHROME_THEME_DIR"
+      write_chrome_fallback "$CHROME_THEME_DIR"
+    fi
+  fi
+  write_chrome_note "$CHROME_THEME_DIR"
+  mark_owned "$CHROME_THEME_DIR"
+  mark_owned "$LOCAL/share/maxq"
+}
+
+install_ghostty_theme() {
+  mkdir -p "$GHOSTTY_DIR/themes"
+  write_ghostty_theme_file "$GHOSTTY_THEME_FILE"
+  if ! has_profile_block "$GHOSTTY_CONFIG"; then
+    ghostty_block | install_marked_block "$GHOSTTY_CONFIG"
+  fi
+  # No official linux amd64 Ghostty binary. Config-only; do not install AppImage.
+  if [ -e "$GHOSTTY_BIN" ]; then
+    :
+  fi
+}
+
+install_gtk_settings() {
+  mkdir -p "$PREFIX/.config/gtk-3.0" "$PREFIX/.config/gtk-4.0"
+  if ! has_profile_block "$GTK3_INI"; then
+    gtk_settings_block | install_marked_block "$GTK3_INI"
+  fi
+  if ! has_profile_block "$GTK4_INI"; then
+    gtk_settings_block | install_marked_block "$GTK4_INI"
+  fi
+}
+
+write_theme_readme() {
+  mkdir -p "$THEME_ROOT"
+  cat > "$THEME_ROOT/README.md" <<EOF
+# MaxQ theme (Catppuccin Mocha)
+
+theme = mocha (latte is a future flag only).
+
+Installed (MaxQ-owned; revert removes these dest files):
+
+- wallpaper: $WALLPAPER
+- GTK: $GTK_THEME_DIR
+- cursor: $CURSOR_DIR
+- Ghostty config block: $GHOSTTY_CONFIG
+- Ghostty Mocha theme: $GHOSTTY_THEME_FILE
+- Chrome unpacked: $CHROME_THEME_DIR
+- Chrome Web Store ID: $CHROME_STORE_ID
+
+Ghostty binary: skipped (no official linux amd64 build). Config-only.
+Chrome theme: files shipped; not live-applied (no flags, no managed policies).
+Vendor cache kept at $THEME_SRC across revert (like the CA).
+EOF
+}
+
+apply_theme() {
+  # Always Mocha for v0. Latte is a flag only.
+  THEME="mocha"
+  seed_theme_src
+  install_wallpaper
+  install_gtk_theme
+  install_cursor_theme
+  install_ghostty_theme
+  install_chrome_theme
+  install_gtk_settings
+  write_theme_readme
+}
+
+revert_theme() {
+  strip_profile_hook "$GHOSTTY_CONFIG"
+  strip_profile_hook "$GTK3_INI"
+  strip_profile_hook "$GTK4_INI"
+  local p
+  for p in "$WALLPAPER" "$GHOSTTY_THEME_FILE"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -f "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+  for p in "$WALLPAPER_DIR" "$GTK_THEME_DIR" "$CURSOR_DIR" "$CHROME_THEME_DIR"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -rf "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+  # Drop empty parents we created, never $HOME/.local/share itself.
+  rmdir "$LOCAL/share/maxq" 2>/dev/null || true
+  rmdir "$GHOSTTY_DIR/themes" 2>/dev/null || true
+  if [ -f "$GHOSTTY_CONFIG" ] && [ ! -s "$GHOSTTY_CONFIG" ]; then
+    rm -f "$GHOSTTY_CONFIG"
+    rmdir "$GHOSTTY_DIR" 2>/dev/null || true
+  fi
+  if [ -f "$GTK3_INI" ] && [ ! -s "$GTK3_INI" ]; then
+    rm -f "$GTK3_INI"
+  fi
+  if [ -f "$GTK4_INI" ] && [ ! -s "$GTK4_INI" ]; then
+    rm -f "$GTK4_INI"
+  fi
+  # Keep $THEME_SRC (vendor cache) like the persist CA.
+}
+
+
+# --- operator CLIs (PLAN 9) -------------------------------------------------
+
+cli_latest_text() {
+  curl -fsSL "$1" 2>/dev/null | tr -d '\r' | head -n1 | tr -d '[:space:]' || true
+}
+
+is_elf_or_script() {
+  local f="$1"
+  [ -s "$f" ] || return 1
+  local mag
+  mag="$(head -c 4 "$f" 2>/dev/null || true)"
+  if [ "$mag" = $'\x7fELF' ]; then
+    return 0
+  fi
+  mag="$(head -c 2 "$f" 2>/dev/null || true)"
+  [ "$mag" = '#!' ]
+}
+
+cli_owned() {
+  [ -f "$MANAGED_CLIS/$1" ]
+}
+
+cli_claim() {
+  mkdir -p "$MANAGED_CLIS"
+  printf 'constellation-MaxQ\n' > "$MANAGED_CLIS/$1"
+}
+
+cli_record() {
+  local name="$1" status="$2" extra="${3:-}"
+  case "$status" in
+    installed)
+      CLI_INSTALLED="${CLI_INSTALLED:+$CLI_INSTALLED }$name"
+      ;;
+    preexisting)
+      CLI_PREEXISTING="${CLI_PREEXISTING:+$CLI_PREEXISTING }$name"
+      ;;
+    skipped)
+      CLI_SKIPPED="${CLI_SKIPPED:+$CLI_SKIPPED }$name"
+      ;;
+  esac
+  printf '%-12s %-12s %s\n' "$name" "$status" "$extra" >> "$CLIS_TXT"
+}
+
+cli_fetch() {
+  local url="$1" dest="$2"
+  if [ -s "$dest" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
+  local tmp="${dest}.part"
+  if curl -fL --retry 3 --retry-delay 1 -o "$tmp" "$url" && [ -s "$tmp" ]; then
+    mv -f "$tmp" "$dest"
+    return 0
+  fi
+  rm -f "$tmp"
+  return 1
+}
+
+cli_maybe_keep() {
+  local name="$1"
+  if [ -e "$BIN/$name" ] && ! cli_owned "$name"; then
+    cli_record "$name" preexisting "$BIN/$name keep"
+    return 0
+  fi
+  return 1
+}
+
+cli_place() {
+  local name="$1" src="$2"
+  local dest="$BIN/$name"
+  mkdir -p "$BIN"
+  if ! is_elf_or_script "$src"; then
+    return 1
+  fi
+  chmod +x "$src" 2>/dev/null || true
+  if [ -e "$dest" ] && ! cli_owned "$name"; then
+    cli_record "$name" preexisting "$dest keep"
+    return 0
+  fi
+  cp -f "$src" "$dest"
+  chmod +x "$dest"
+  if ! is_elf_or_script "$dest"; then
+    rm -f "$dest"
+    return 1
+  fi
+  cli_claim "$name"
+  cli_record "$name" installed "$dest owned"
+  return 0
+}
+
+cli_pick_extracted() {
+  local root="$1" name="$2"
+  python3 - "$root" "$name" <<'PY'
+import os, sys
+root, name = sys.argv[1], sys.argv[2]
+cands = []
+for dirpath, _, filenames in os.walk(root):
+    for fn in filenames:
+        p = os.path.join(dirpath, fn)
+        if not os.path.isfile(p):
+            continue
+        if fn == name or fn.startswith(name + "-"):
+            cands.append(p)
+if not cands:
+    for dirpath, _, filenames in os.walk(root):
+        for fn in filenames:
+            p = os.path.join(dirpath, fn)
+            if os.path.isfile(p) and os.access(p, os.X_OK):
+                cands.append(p)
+                break
+print(cands[0] if cands else "")
+PY
+}
+
+cli_try_raw() {
+  local name="$1" url="$2"
+  if cli_maybe_keep "$name"; then
+    return 0
+  fi
+  echo "maxq: operator CLI $name <- $url"
+  if ! cli_fetch "$url" "$CLI_CACHE/${name}.bin"; then
+    cli_record "$name" skipped "download failed (no linux amd64 binary?)"
+    return 0
+  fi
+  if ! cli_place "$name" "$CLI_CACHE/${name}.bin"; then
+    cli_record "$name" skipped "not a linux amd64 binary/script"
+  fi
+  return 0
+}
+
+cli_try_targz() {
+  local name="$1" url="$2"
+  if cli_maybe_keep "$name"; then
+    return 0
+  fi
+  echo "maxq: operator CLI $name <- $url"
+  local tgz="$CLI_CACHE/${name}.tar.gz"
+  local extract="$CLI_CACHE/${name}.extract"
+  local bin="$CLI_CACHE/${name}.bin"
+  if [ -s "$bin" ] && is_elf_or_script "$bin"; then
+    if ! cli_place "$name" "$bin"; then
+      cli_record "$name" skipped "not a linux amd64 binary/script"
+    fi
+    return 0
+  fi
+  if ! cli_fetch "$url" "$tgz"; then
+    cli_record "$name" skipped "download failed (no linux amd64 archive?)"
+    return 0
+  fi
+  rm -rf "$extract"
+  mkdir -p "$extract"
+  if ! tar -xzf "$tgz" -C "$extract" 2>/dev/null; then
+    cli_record "$name" skipped "archive extract failed"
+    return 0
+  fi
+  local pick
+  pick="$(cli_pick_extracted "$extract" "$name")"
+  if [ -z "$pick" ] || [ ! -f "$pick" ]; then
+    cli_record "$name" skipped "archive missing linux amd64 binary"
+    return 0
+  fi
+  cp -f "$pick" "$bin"
+  if ! cli_place "$name" "$bin"; then
+    cli_record "$name" skipped "not a linux amd64 binary/script"
+  fi
+  return 0
+}
+
+cli_try_gz() {
+  local name="$1" url="$2"
+  if cli_maybe_keep "$name"; then
+    return 0
+  fi
+  echo "maxq: operator CLI $name <- $url"
+  local gz="$CLI_CACHE/${name}.gz"
+  local bin="$CLI_CACHE/${name}.bin"
+  if ! cli_fetch "$url" "$gz"; then
+    cli_record "$name" skipped "download failed (no linux amd64 binary?)"
+    return 0
+  fi
+  if [ ! -s "$bin" ]; then
+    if gzip -dc "$gz" > "$bin" 2>/dev/null && is_elf_or_script "$bin"; then
+      :
+    elif is_elf_or_script "$gz"; then
+      cp -f "$gz" "$bin"
+    else
+      rm -f "$bin"
+      cli_record "$name" skipped "decompress failed"
+      return 0
+    fi
+  fi
+  if ! cli_place "$name" "$bin"; then
+    cli_record "$name" skipped "not a linux amd64 binary/script"
+  fi
+  return 0
+}
+
+apply_operator_clis() {
+  mkdir -p "$BIN" "$CLI_CACHE" "$MANAGED_CLIS"
+  CLI_INSTALLED=""
+  CLI_SKIPPED=""
+  CLI_PREEXISTING=""
+  cat > "$CLIS_TXT" <<EOF
+# MaxQ operator CLIs (linux amd64). Managed — rewritten on apply.
+# status: installed | preexisting | skipped
+# Revert deletes MaxQ-owned binaries only (markers in $MANAGED_CLIS).
+# Never overwrite preexisting opencode/tailscale. Never delete ~/.ssh or Chrome.
+EOF
+
+  # herdr — official linux x86_64 release binary
+  cli_try_raw herdr "https://github.com/herdrdev/herdr/releases/latest/download/herdr-linux-x86_64"
+
+  # Vercel fx — official linux x86_64 tarball
+  local fxver
+  fxver="$(cli_latest_text https://releases.fx.sh/latest.txt)"
+  [ -n "$fxver" ] || fxver="v0.0.7"
+  case "$fxver" in
+    v*) ;;
+    *) fxver="v${fxver}" ;;
+  esac
+  cli_try_targz fx "https://github.com/vercel-labs/fx/releases/download/${fxver}/fx-linux-x86_64.tar.gz"
+
+  # Grok Build CLI — official linux x86_64 gzip binary
+  local gver
+  gver="$(cli_latest_text https://x.ai/cli/stable)"
+  [ -n "$gver" ] || gver="1.0.13"
+  cli_try_gz grok "https://x.ai/cli/grok-${gver}-linux-x86_64.gz"
+
+  # OpenAI Codex CLI — official musl linux amd64 tarball
+  cli_try_targz codex "https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz"
+
+  # Claude Code — official native linux-x64 binary
+  local cver
+  cver="$(cli_latest_text https://downloads.claude.ai/claude-code-releases/latest)"
+  if [ -n "$cver" ]; then
+    cli_try_raw claude "https://downloads.claude.ai/claude-code-releases/${cver}/linux-x64/claude"
+  else
+    cli_record claude skipped "no linux amd64 release pointer"
+  fi
+
+  # OpenCode — never overwrite a preexisting copy; PATH via profile.sh
+  if [ -x "$BIN/opencode" ] && ! cli_owned opencode; then
+    cli_record opencode preexisting "$BIN/opencode keep"
+  elif cli_owned opencode && [ -x "$BIN/opencode" ]; then
+    cli_record opencode installed "$BIN/opencode owned"
+  else
+    cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"
+  fi
+
+  # Tailscale — never overwrite persist EVA Headscale hop binaries
+  if [ -x "$BIN/tailscale" ] && ! cli_owned tailscale; then
+    cli_record tailscale preexisting "$BIN/tailscale keep"
+  elif cli_owned tailscale && [ -x "$BIN/tailscale" ]; then
+    cli_record tailscale installed "$BIN/tailscale owned"
+  else
+    cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"
+  fi
+  if [ -x "$BIN/tailscaled" ] && ! cli_owned tailscaled; then
+    cli_record tailscaled preexisting "$BIN/tailscaled keep"
+  elif cli_owned tailscale && [ ! -e "$BIN/tailscaled" ]; then
+    local tsd
+    tsd="$(cli_pick_extracted "$CLI_CACHE/tailscale.extract" tailscaled 2>/dev/null || true)"
+    if [ -n "${tsd:-}" ] && [ -f "$tsd" ]; then
+      cli_place tailscaled "$tsd" || true
+    fi
+  fi
+}
+
+revert_operator_clis() {
+  local name dest
+  if [ -d "$MANAGED_CLIS" ]; then
+    for name in $(ls "$MANAGED_CLIS" 2>/dev/null || true); do
+      dest="$BIN/$name"
+      if [ -e "$dest" ] || [ -L "$dest" ]; then
+        rm -f "$dest"
+        echo "  $dest (MaxQ-owned CLI)" >> "$REVERT_LOG"
+      fi
+      rm -f "$MANAGED_CLIS/$name"
+    done
+    rmdir "$MANAGED_CLIS" 2>/dev/null || true
+  fi
+  if [ -e "$CLIS_TXT" ]; then
+    rm -f "$CLIS_TXT"
+    echo "  $CLIS_TXT" >> "$REVERT_LOG"
+  fi
+  # Keep $CLI_CACHE (like CA / theme vendor). Never delete opencode/tailscale
+  # unless they were listed in managed-clis (MaxQ-owned). Never ~/.ssh or Chrome.
+}
+
+
+# --- apply / revert / status ------------------------------------------------
+
+cmd_apply() {
+  mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR" \
+    "$LOCAL/share/themes" "$LOCAL/share/icons" "$LOCAL/share/backgrounds" \
+    "$CONFIG/theme" "$CLI_CACHE" "$API_SRC"
+  load_settings
+  THEME="mocha"
+  install_self
+  install_gost_binary
+  ensure_ca
+  apply_theme
+  apply_operator_clis
+  write_toml
+  write_profile_snippet
+  write_reconcile
+  printf 'applied\n' > "$STATE_FILE"
+  printf 'constellation-MaxQ\n' > "$MANAGED"
+  install_profile_hook "$PREFIX/.profile"
+  install_profile_hook "$PREFIX/.bashrc"
+  optional_usr_link
+  apply_proxy_runtime
+  start_api
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED clis.preexisting=$CLI_PREEXISTING"
+}
+
+cmd_revert() {
+  mkdir -p "$CONFIG"
+  load_settings
+  local ts host
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  host="$(hostname 2>/dev/null || echo unknown)"
+
+  {
+    echo "maxq revert $ts"
+    echo "host=$host"
+    echo "prefix=$PREFIX"
+    echo "user=${USER:-$(id -un 2>/dev/null || echo unknown)}"
+    echo "removed:"
+  } > "$REVERT_LOG"
+
+  stop_gost
+  echo "  gost process (pidfile)" >> "$REVERT_LOG"
+  stop_api
+  echo "  maxq-api process (pidfile)" >> "$REVERT_LOG"
+
+  strip_profile_hook "$PREFIX/.profile"
+  strip_profile_hook "$PREFIX/.bashrc"
+  echo "  profile hooks (.profile .bashrc)" >> "$REVERT_LOG"
+
+  remove_optional_usr_link
+  echo "  optional usr link (if owned)" >> "$REVERT_LOG"
+
+  revert_theme
+  echo "  MaxQ-owned theme dest files" >> "$REVERT_LOG"
+
+  revert_operator_clis
+  echo "  MaxQ-owned operator CLIs (preexisting opencode/tailscale kept)" >> "$REVERT_LOG"
+
+  # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
+  # Never delete Chrome policies (cxn-egress.json, sand.json, …).
+  # Never destroy the persist CA.
+  local p
+  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE" "$GOST_YML" "$GOST_PID" "$GOST_LOG" "$API_TOML" "$API_PID" "$API_LOG"; do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      rm -f "$p"
+      echo "  $p" >> "$REVERT_LOG"
+    fi
+  done
+
+  printf 'reverted\n' > "$STATE_FILE"
+  {
+    echo "preserved:"
+    echo "  HOME=$PREFIX (not deleted)"
+    echo "  SSH=$PREFIX/.ssh (untouched)"
+    echo "  Chrome logins/profiles (untouched)"
+    echo "  Chrome policies under $CHROME_POLICY_DIR (untouched; MaxQ writes none)"
+    echo "  CA=$CA_DIR (kept)"
+    echo "  CLI=$BIN/maxq (kept so apply can run again)"
+    echo "  GOST=$GOST_BIN (kept)"
+    echo "  API=$API_BIN (kept; process stopped)"
+    echo "  api-src=$API_SRC (kept, like CA)"
+    echo "  theme src cache=$THEME_SRC (kept, like CA)"
+    echo "  cli-cache=$CLI_CACHE (kept, like CA)"
+    echo "  opencode/tailscale kept unless MaxQ-owned (managed-clis)"
+    echo "state=reverted"
+  } >> "$REVERT_LOG"
+
+  echo "MaxQ reverted. tombstone=$REVERT_LOG"
+}
+
+cmd_status() {
+  if is_applied; then
+    echo "applied"
+  else
+    echo "reverted"
+  fi
+}
+
+# --- proxy CLI --------------------------------------------------------------
+
+cmd_proxy_status() {
+  load_settings
+  local run="stopped"
+  gost_is_running && run="running"
+  echo "proxy.enabled=$GOST_ENABLED"
+  echo "proxy.listen=$GOST_LISTEN"
+  echo "proxy.upstream=${GOST_UPSTREAM}"
+  echo "proxy.iface=${GOST_IFACE}"
+  echo "proxy.intercept=$GOST_INTERCEPT"
+  echo "proxy.gost=$run"
+  echo "proxy.gost_bin=$GOST_BIN"
+  echo "proxy.gost_version=$(gost_version)"
+  echo "proxy.ca=$CA_PEM"
+  echo "proxy.chrome_policy=never (MaxQ does not write ProxyMode/ProxyServer)"
+}
+
+clear_token() {
+  case "$1" in
+    ""|none|-|off|clear) echo "" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+cmd_proxy() {
+  local sub="${1:-status}"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+  case "$sub" in
+    status|show|"")
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      cmd_proxy_status
+      ;;
+    on|enable)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_ENABLED=true
+      write_toml
+      apply_proxy_runtime
+      echo "proxy on listen=$GOST_LISTEN intercept=$GOST_INTERCEPT (no Chrome policy)"
+      ;;
+    off|disable)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_ENABLED=false
+      write_toml
+      apply_proxy_runtime
+      echo "proxy off (gost stopped; no Chrome policy written or removed)"
+      ;;
+    upstream)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_UPSTREAM="$(clear_token "${1:-}")"
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.upstream=${GOST_UPSTREAM}"
+      ;;
+    iface|interface|tunnel)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      GOST_IFACE="$(sanitize_ident "$(clear_token "${1:-}")")"
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.iface=${GOST_IFACE}"
+      ;;
+    intercept|mitm)
+      [ -f "$TOML" ] || die "not applied; run maxq apply first"
+      load_settings
+      case "${1:-}" in
+        on|true|1|enable) GOST_INTERCEPT=true ;;
+        off|false|0|disable|"") GOST_INTERCEPT=false ;;
+        *) die "usage: maxq proxy intercept on|off" ;;
+      esac
+      write_toml
+      apply_proxy_runtime
+      echo "proxy.intercept=$GOST_INTERCEPT"
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "maxq: unknown proxy subcommand: $sub" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+# --- prove ------------------------------------------------------------------
+
+PROVE_PASS=0
+PROVE_FAIL=0
+
+prove_ok() {
+  local name="$1"
   shift
-fi
+  if "$@"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+    return 0
+  fi
+  echo "[FAIL] $name"
+  PROVE_FAIL=$((PROVE_FAIL + 1))
+  return 0
+}
 
-case "$cmd" in
-  apply|configure)
-    run_core apply "$@"
-    "$DESKTOP" apply
-    ;;
-  revert|unconfigure)
-    "$DESKTOP" revert
-    run_core revert "$@"
-    ;;
-  prove)
-    "$DESKTOP" revert
-    run_core prove "$@"
-    "$DESKTOP" prove
-    ;;
-  status)
-    run_core status "$@"
-    ;;
-  *)
-    run_core "$cmd" "$@"
-    ;;
-esac
+prove_grep() {
+  local name="$1" file="$2" pat="$3"
+  if [ -f "$file" ] && grep -qE "$pat" "$file"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+  else
+    echo "[FAIL] $name"
+    PROVE_FAIL=$((PROVE_FAIL + 1))
+  fi
+}
+
+prove_nogrep() {
+  local name="$1" file="$2" pat="$3"
+  if [ ! -f "$file" ] || ! grep -qE "$pat" "$file"; then
+    echo "[PASS] $name"
+    PROVE_PASS=$((PROVE_PASS + 1))
+  else
+    echo "[FAIL] $name"
+    PROVE_FAIL=$((PROVE_FAIL + 1))
+  fi
+}
+
+chrome_proxy_policy_absent() {
+  # MaxQ must never create these.
+  [ ! -e "$CHROME_POLICY_DIR/maxq-proxy.json" ] && \
+    [ ! -e /tmp/sand-egress-proxy ] && \
+    [ ! -e "$CHROME_CXN_EGRESS" ]
+}
+
+cxn_egress_untouched() {
+  # We do not recreate cxn-egress.json. If someone else did, still never
+  # rewrite it; this check asserts MaxQ left it absent on this computer.
+  [ ! -e "$CHROME_CXN_EGRESS" ]
+}
+
+assert_applied_tree() {
+  prove_ok "persist \$HOME/bin exists" test -d "$BIN"
+  prove_ok "persist \$HOME/.config/maxq exists" test -d "$CONFIG"
+  prove_ok "persist \$HOME/.local exists" test -d "$LOCAL"
+  prove_ok "maxq.toml exists" test -f "$TOML"
+  prove_grep "theme mocha" "$TOML" 'theme = "mocha"'
+  prove_grep "state=applied in toml" "$TOML" 'state = "applied"'
+  prove_grep "gost enabled=false default" "$TOML" '^enabled = false$'
+  prove_grep "gost intercept=false default" "$TOML" '^intercept = false$'
+  prove_ok "state file applied" test -f "$STATE_FILE"
+  prove_grep "state file says applied" "$STATE_FILE" '^applied$'
+  prove_ok "managed marker exists" test -f "$MANAGED"
+  prove_ok "profile.sh snippet exists" test -f "$PROFILE_SNIPPET"
+  prove_ok "maxq-reconcile executable" test -x "$RECONCILE"
+  prove_ok "CLI present at \$HOME/bin/maxq" test -x "$BIN/maxq"
+  prove_ok "gost binary at \$HOME/bin/gost" test -x "$GOST_BIN"
+  prove_ok ".profile has MaxQ markers" has_profile_block "$PREFIX/.profile"
+  prove_ok ".bashrc has MaxQ markers" has_profile_block "$PREFIX/.bashrc"
+  prove_ok "status reports applied" test "$(cmd_status)" = "applied"
+  prove_ok "CA pem exists" test -s "$CA_PEM"
+  prove_ok "CA key exists" test -s "$CA_KEY"
+  prove_ok "CA readme exists" test -s "$CA_README"
+  prove_ok "no Chrome maxq-proxy.json" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "no /tmp/sand-egress-proxy" test ! -e /tmp/sand-egress-proxy
+  prove_ok "cxn-egress.json not recreated" cxn_egress_untouched
+  prove_ok "wallpaper mocha.png present" test -s "$WALLPAPER"
+  prove_ok "GTK theme gtk.css present" test -s "$GTK_THEME_DIR/gtk-3.0/gtk.css"
+  prove_ok "GTK theme index.theme present" test -s "$GTK_THEME_DIR/index.theme"
+  prove_ok "cursor theme index.theme present" test -s "$CURSOR_DIR/index.theme"
+  prove_ok "gtk-3.0 settings.ini MaxQ block" has_profile_block "$GTK3_INI"
+  prove_ok "Ghostty Mocha theme file present" test -s "$GHOSTTY_THEME_FILE"
+  prove_ok "Ghostty config MaxQ block" has_profile_block "$GHOSTTY_CONFIG"
+  prove_ok "Chrome unpacked manifest present" test -s "$CHROME_THEME_DIR/manifest.json"
+  prove_grep "Chrome theme note documents store id" "$CHROME_THEME_DIR/MAXQ.txt" "$CHROME_STORE_ID"
+  prove_ok "clis.txt present on apply" test -s "$CLIS_TXT"
+  prove_ok "managed-clis dir present on apply" test -d "$MANAGED_CLIS"
+  prove_ok "opencode present on apply" test -x "$BIN/opencode"
+  prove_ok "tailscale present on apply" test -x "$BIN/tailscale"
+  prove_ok "maxq-api binary at \$HOME/bin/maxq-api" test -x "$API_BIN"
+  prove_ok "api.toml exists" test -f "$API_TOML"
+  prove_grep "api listen loopback" "$API_TOML" 'listen = "127.0.0.1:7432"'
+  prove_ok "api running after apply" api_is_running
+  prove_ok "GET /status is 200 after apply" api_status_200
+  prove_ok "GET /status json state applied" api_status_applied
+  prove_ok "GET / serves settings sheet" api_ui_ok
+  prove_grep "profile prepends HOME/bin" "$PROFILE_SNIPPET" 'PATH="\$HOME/bin:\$PATH"'
+  local _n
+  if [ -d "$MANAGED_CLIS" ]; then
+    for _n in $(ls "$MANAGED_CLIS" 2>/dev/null || true); do
+      prove_ok "owned CLI $_n present on apply" test -x "$BIN/$_n"
+    done
+  fi
+}
+
+not_has_profile_block() {
+  ! has_profile_block "$1"
+}
+
+assert_reverted_tree() {
+  prove_ok "maxq.toml gone" test ! -e "$TOML"
+  prove_ok "profile.sh snippet gone" test ! -e "$PROFILE_SNIPPET"
+  prove_ok "managed marker gone" test ! -e "$MANAGED"
+  prove_ok "maxq-reconcile gone" test ! -e "$RECONCILE"
+  prove_ok "gost.yml gone" test ! -e "$GOST_YML"
+  prove_ok "tombstone last-revert.log exists" test -s "$REVERT_LOG"
+  prove_grep "tombstone records revert" "$REVERT_LOG" 'maxq revert'
+  prove_ok "state file reverted" test -f "$STATE_FILE"
+  prove_grep "state file says reverted" "$STATE_FILE" '^reverted$'
+  prove_ok ".profile MaxQ markers gone" not_has_profile_block "$PREFIX/.profile"
+  prove_ok ".bashrc MaxQ markers gone" not_has_profile_block "$PREFIX/.bashrc"
+  prove_ok "status reports reverted" test "$(cmd_status)" = "reverted"
+  prove_ok "CA pem kept across revert" test -s "$CA_PEM"
+  prove_ok "CA key kept across revert" test -s "$CA_KEY"
+  prove_ok "gost binary kept across revert" test -x "$GOST_BIN"
+  prove_ok "gost not running after revert" gost_not_running
+  prove_ok "api not running after revert" api_not_running
+  prove_ok "api port down after revert" api_port_down
+  prove_ok "api.toml gone on revert" test ! -e "$API_TOML"
+  prove_ok "maxq-api binary kept across revert" test -x "$API_BIN"
+  prove_ok "no Chrome maxq-proxy.json after revert" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json still absent" cxn_egress_untouched
+  prove_ok "wallpaper gone on revert" test ! -e "$WALLPAPER"
+  prove_ok "GTK theme dir gone on revert" test ! -e "$GTK_THEME_DIR"
+  prove_ok "cursor theme dir gone on revert" test ! -e "$CURSOR_DIR"
+  prove_ok "Chrome unpacked theme gone on revert" test ! -e "$CHROME_THEME_DIR"
+  prove_ok "Ghostty Mocha theme file gone on revert" test ! -e "$GHOSTTY_THEME_FILE"
+  prove_ok "Ghostty MaxQ block gone on revert" not_has_profile_block "$GHOSTTY_CONFIG"
+  prove_ok "gtk-3.0 MaxQ block gone on revert" not_has_profile_block "$GTK3_INI"
+  prove_ok "managed-clis gone on revert" test ! -e "$MANAGED_CLIS"
+  prove_ok "clis.txt gone on revert" test ! -e "$CLIS_TXT"
+  prove_ok "cli-cache kept across revert" test -d "$CLI_CACHE"
+}
+
+assert_proxy_toggle() {
+  echo "-- proxy on (gost process only, intercept=false, no Chrome policy) --"
+  cmd_proxy on
+  prove_ok "gost running after proxy on" gost_is_running
+  prove_grep "toml enabled true" "$TOML" '^enabled = true$'
+  prove_grep "toml intercept still false" "$TOML" '^intercept = false$'
+  prove_ok "gost.yml written" test -s "$GOST_YML"
+  prove_nogrep "gost.yml has no mitm while intercept=false" "$GOST_YML" 'mitm.certFile'
+  prove_ok "no Chrome maxq-proxy.json after proxy on" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json not written by proxy on" cxn_egress_untouched
+  prove_ok "sand.json left in place" test -f "$CHROME_POLICY_DIR/sand.json"
+  prove_ok "no /tmp/sand-egress-proxy after proxy on" test ! -e /tmp/sand-egress-proxy
+
+  local host port
+  host="$(gost_listen_host)"
+  port="$(gost_listen_port)"
+  prove_ok "gost listening on loopback" python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port"
+
+  echo "-- proxy upstream/iface roundtrip then clear --"
+  cmd_proxy upstream "http://127.0.0.1:9"
+  prove_grep "upstream persisted" "$TOML" 'upstream = "http://127.0.0.1:9"'
+  cmd_proxy iface lo
+  prove_grep "iface persisted" "$TOML" 'iface = "lo"'
+  cmd_proxy upstream none
+  cmd_proxy iface none
+  prove_grep "upstream cleared" "$TOML" 'upstream = ""'
+  prove_grep "iface cleared" "$TOML" 'iface = ""'
+
+  echo "-- proxy off (leave gost enabled=false, no intercept) --"
+  cmd_proxy off
+  prove_ok "gost not running after proxy off" gost_not_running
+  prove_grep "toml enabled false after off" "$TOML" '^enabled = false$'
+  prove_grep "toml intercept false after off" "$TOML" '^intercept = false$'
+  prove_ok "no Chrome maxq-proxy.json after proxy off" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+  prove_ok "cxn-egress.json still absent after proxy off" cxn_egress_untouched
+}
+
+cmd_prove() {
+  set +e
+  local start_utc host self
+  start_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  host="$(hostname 2>/dev/null || echo unknown)"
+  self="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+
+  local had_ssh=0 had_chrome=0 had_github_key=0 had_opencode=0 had_tailscale=0
+  local owned_snapshot=""
+  [ -d "$PREFIX/.ssh" ] && had_ssh=1
+  [ -e "$PREFIX/.ssh/github-0sm0s1z" ] && had_github_key=1
+  ls -d "$PREFIX"/chrome-profile* >/dev/null 2>&1 && had_chrome=1
+  [ -x "$BIN/opencode" ] && had_opencode=1
+  [ -x "$BIN/tailscale" ] && had_tailscale=1
+
+  echo "=== MaxQ prove ==="
+  echo "version=$MAXQ_VERSION"
+  echo "host=$host"
+  echo "prefix=$PREFIX"
+  echo "self=$self"
+  echo "started_utc=$start_utc"
+  echo "initial_status=$(cmd_status)"
+  echo
+
+  echo "-- step 1: revert if applied --"
+  if is_applied; then
+    cmd_revert
+  else
+    echo "already reverted; skipping initial revert"
+  fi
+  echo
+
+  echo "-- step 2: apply --"
+  cmd_apply
+  owned_snapshot="$(ls "$MANAGED_CLIS" 2>/dev/null | tr '\n' ' ')"
+  echo "owned_clis=${owned_snapshot}"
+  echo "-- assert applied --"
+  assert_applied_tree
+  echo
+
+  echo "-- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --"
+  assert_proxy_toggle
+  echo
+
+  echo "-- step 3: revert --"
+  cmd_revert
+  echo "-- assert reverted (markers gone, CA kept, tombstone present) --"
+  assert_reverted_tree
+
+  if [ "$had_ssh" -eq 1 ]; then
+    prove_ok "SSH directory preserved" test -d "$PREFIX/.ssh"
+  fi
+  if [ "$had_github_key" -eq 1 ]; then
+    prove_ok "github-0sm0s1z key preserved" test -e "$PREFIX/.ssh/github-0sm0s1z"
+  fi
+  if [ "$had_chrome" -eq 1 ]; then
+    prove_ok "Chrome profiles preserved" sh -c "ls -d \"$PREFIX\"/chrome-profile* >/dev/null 2>&1"
+  fi
+  prove_ok "HOME still exists" test -d "$PREFIX"
+  if [ "$had_opencode" -eq 1 ]; then
+    prove_ok "opencode kept across revert (preexisting)" test -x "$BIN/opencode"
+  fi
+  if [ "$had_tailscale" -eq 1 ]; then
+    prove_ok "tailscale kept across revert (preexisting)" test -x "$BIN/tailscale"
+  fi
+  local _n
+  for _n in $owned_snapshot; do
+    case "$_n" in
+      opencode|tailscale|tailscaled) continue ;;
+    esac
+    prove_ok "owned CLI $_n gone on revert" test ! -e "$BIN/$_n"
+  done
+  echo
+
+  echo "-- step 4: apply again (leave APPLIED, gost enabled=false) --"
+  cmd_apply
+  echo "-- assert applied (final) --"
+  assert_applied_tree
+  prove_ok "final gost not running (enabled=false)" gost_not_running
+  prove_ok "final API up" api_is_running
+  prove_ok "final GET /status is 200" api_status_200
+  prove_grep "final intercept false" "$TOML" '^intercept = false$'
+  for _n in $owned_snapshot; do
+    prove_ok "owned CLI $_n restored on final apply" test -x "$BIN/$_n"
+  done
+  if [ "$had_opencode" -eq 1 ]; then
+    prove_ok "opencode still present after final apply" test -x "$BIN/opencode"
+  fi
+  if [ "$had_tailscale" -eq 1 ]; then
+    prove_ok "tailscale still present after final apply" test -x "$BIN/tailscale"
+  fi
+  echo
+
+  local result="PASS"
+  if [ "$PROVE_FAIL" -ne 0 ]; then
+    result="FAIL"
+  fi
+  echo "=== MaxQ proof report ==="
+  echo "result=$result"
+  echo "passed=$PROVE_PASS"
+  echo "failed=$PROVE_FAIL"
+  echo "final_status=$(cmd_status)"
+  echo "final_theme=$(grep -E '^theme' "$TOML" 2>/dev/null || true)"
+  echo "gost=$(grep -E '^enabled' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "intercept=$(grep -E '^intercept' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "api_listen=${API_LISTEN:-127.0.0.1:7432}"
+  echo "api_url=http://127.0.0.1:7432/"
+  echo "gost_version=$(gost_version)"
+  echo "ca=$CA_PEM"
+  echo "chrome_proxy_policy=never"
+  echo "chrome_theme_store_id=$CHROME_STORE_ID"
+  echo "chrome_theme_live=skipped (unpacked files only)"
+  echo "ghostty_bin=skipped (no official linux amd64)"
+  echo "clis_installed=$(toml_clis installed "")"
+  echo "clis_skipped=$(toml_clis skipped "")"
+  echo "clis_preexisting=$(toml_clis preexisting "")"
+  echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  echo "left_state=APPLIED"
+
+  if [ "$result" = "PASS" ]; then
+    exit 0
+  fi
+  exit 1
+}
+
+main() {
+  local cmd="${1:-status}"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+  case "$cmd" in
+    apply|configure) cmd_apply "$@" ;;
+    revert|unconfigure) cmd_revert "$@" ;;
+    status) cmd_status "$@" ;;
+    prove) cmd_prove "$@" ;;
+    proxy) cmd_proxy "$@" ;;
+    help|-h|--help) usage ;;
+    version|-V|--version) echo "$MAXQ_VERSION" ;;
+    *)
+      echo "maxq: unknown command: $cmd" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"
