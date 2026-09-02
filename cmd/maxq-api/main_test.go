@@ -1,8 +1,10 @@
 package main
 
 import (
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -47,4 +49,25 @@ func TestCurrentAgent(t *testing.T) {
 	display, profile := currentAgent("/home/bot")
 	if display != ":7.0" { t.Fatalf("display=%q", display) }
 	if profile != "/home/bot/chrome-profile-7" { t.Fatalf("profile=%q", profile) }
+}
+
+func TestSplitProcCmdlineZygoteStyle(t *testing.T) {
+	raw := []byte("/opt/google/chrome/chrome --type=renderer --user-data-dir=/home/box/chrome-profile-5 --flag=value\x00")
+	parts := splitProcCmdline(raw)
+	want := []string{"/opt/google/chrome/chrome", "--type=renderer", "--user-data-dir=/home/box/chrome-profile-5", "--flag=value"}
+	if len(parts) != len(want) { t.Fatalf("parts=%q", parts) }
+	for i := range want { if parts[i] != want[i] { t.Fatalf("parts[%d]=%q want %q", i, parts[i], want[i]) } }
+	m := profileRE.FindStringSubmatch(string(raw))
+	if len(m) < 2 || m[1] != "5" { t.Fatalf("profile match=%q", m) }
+}
+
+func TestTriggerTestDisabledWebhookIsBadRequest(t *testing.T) {
+	dir := t.TempDir()
+	s := &server{prefix:dir, config:filepath.Join(dir,".config","maxq")}
+	if err := os.MkdirAll(s.config, 0o700); err != nil { t.Fatal(err) }
+	s.ensureHookFiles()
+	req := httptest.NewRequest("POST", "/triggers/test", strings.NewReader(`{"id":"resource.mem"}`))
+	w := httptest.NewRecorder()
+	s.handleTestTrigger(w, req)
+	if w.Code != 400 { t.Fatalf("status=%d body=%s", w.Code, w.Body.String()) }
 }

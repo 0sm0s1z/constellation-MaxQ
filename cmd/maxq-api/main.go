@@ -378,10 +378,16 @@ func readCPU() cpuInfo {
 	return cpuInfo{UsedPercent:pct,Cores:cores,Load1:load}
 }
 
-var profileRE=regexp.MustCompile(`(?:^|/)chrome-profile-([0-9]+)(?:/|$)`)
+var profileRE=regexp.MustCompile(`(?:^|/)chrome-profile-([0-9]+)(?:/|[[:space:]]|$)`)
 func currentAgent(prefix string)(string,string){
 	d:=strings.TrimSpace(os.Getenv("DISPLAY")); n:=""; if strings.HasPrefix(d,":"){n=strings.Split(strings.TrimPrefix(d,":"),".")[0]}
 	if n==""{return d,""}; return d,filepath.Join(prefix,"chrome-profile-"+n)
+}
+
+func splitProcCmdline(raw []byte) []string {
+	return strings.FieldsFunc(strings.TrimSpace(string(raw)), func(r rune) bool {
+		return r == '\x00' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
+	})
 }
 
 func chromeProcesses(prefix string) []processInfo {
@@ -389,7 +395,7 @@ func chromeProcesses(prefix string) []processInfo {
 	for _,e:=range entries{
 		pid,err:=strconv.Atoi(e.Name()); if err!=nil{continue}
 		cmdRaw,err:=os.ReadFile(filepath.Join("/proc",e.Name(),"cmdline")); if err!=nil||len(cmdRaw)==0{continue}
-		parts:=strings.Split(strings.TrimRight(string(cmdRaw),"\x00"),"\x00"); if len(parts)==0{continue}; base:=strings.ToLower(filepath.Base(parts[0])); if !strings.Contains(base,"chrome")&&!strings.Contains(base,"chromium"){continue}
+		parts:=splitProcCmdline(cmdRaw); if len(parts)==0{continue}; base:=strings.ToLower(filepath.Base(parts[0])); if !strings.Contains(base,"chrome")&&!strings.Contains(base,"chromium"){continue}
 		p:=processInfo{PID:pid,Cmd:parts}; for _,a:=range parts{if strings.HasPrefix(a,"--user-data-dir="){p.Profile=strings.TrimPrefix(a,"--user-data-dir=")};if strings.HasPrefix(a,"--type="){p.Type=strings.TrimPrefix(a,"--type=")}}
 		if p.Profile==""{for _,a:=range parts{if m:=profileRE.FindStringSubmatch(a);len(m)>1{p.Profile=filepath.Join(prefix,"chrome-profile-"+m[1]);break}}}
 		envRaw,_:=os.ReadFile(filepath.Join("/proc",e.Name(),"environ")); for _,kv:=range strings.Split(string(envRaw),"\x00"){if strings.HasPrefix(kv,"DISPLAY="){p.Display=strings.TrimPrefix(kv,"DISPLAY=");break}}
@@ -449,7 +455,7 @@ func (s *server) handleAddTrigger(w http.ResponseWriter,r *http.Request){
 	var t trigger;if decodeJSON(r,&t)!=nil{writeJSON(w,400,map[string]any{"ok":false,"error":"invalid json"});return};t.ID=strings.TrimSpace(t.ID);t.Kind=strings.TrimSpace(t.Kind);t.Spec=strings.TrimSpace(t.Spec);if !triggerIDRE.MatchString(t.ID)||t.ID=="resource.mem"{writeJSON(w,400,map[string]any{"ok":false,"error":"invalid or reserved trigger id"});return};if t.Kind!="schedule"&&t.Kind!="probe"{writeJSON(w,400,map[string]any{"ok":false,"error":"kind must be schedule or probe"});return};if t.Spec==""{writeJSON(w,400,map[string]any{"ok":false,"error":"spec required"});return};if t.Kind=="schedule"{if _,err:=parseCron(t.Spec);err!=nil{writeJSON(w,400,map[string]any{"ok":false,"error":err.Error()});return}};if t.Hook==""{t.Hook="webhook"};if t.Level==""{t.Level="info"};if t.CooldownSec<=0{t.CooldownSec=60};t.LastFire="";s.mu.Lock();defer s.mu.Unlock();tf:=s.loadTriggers();for _,x:=range tf.Triggers{if x.ID==t.ID{writeJSON(w,409,map[string]any{"ok":false,"error":"trigger id exists"});return}};tf.Triggers=append(tf.Triggers,t);if err:=s.saveTriggers(tf);err!=nil{writeErr(w,err);return};writeJSON(w,201,map[string]any{"ok":true,"trigger":t})
 }
 func (s *server) handleEnableTrigger(w http.ResponseWriter,r *http.Request){var req struct{ID string `json:"id"`;Enabled bool `json:"enabled"`};if decodeJSON(r,&req)!=nil{writeJSON(w,400,map[string]any{"ok":false,"error":"invalid json"});return};s.mu.Lock();defer s.mu.Unlock();tf:=s.loadTriggers();found:=false;for i:=range tf.Triggers{if tf.Triggers[i].ID==req.ID{tf.Triggers[i].Enabled=req.Enabled;found=true;break}};if !found{writeJSON(w,404,map[string]any{"ok":false,"error":"trigger not found"});return};if err:=s.saveTriggers(tf);err!=nil{writeErr(w,err);return};writeJSON(w,200,map[string]any{"ok":true})}
-func (s *server) handleTestTrigger(w http.ResponseWriter,r *http.Request){var req struct{ID string `json:"id"`};if decodeJSON(r,&req)!=nil{writeJSON(w,400,map[string]any{"ok":false,"error":"invalid json"});return};s.mu.Lock();defer s.mu.Unlock();tf:=s.loadTriggers();for i:=range tf.Triggers{if tf.Triggers[i].ID==req.ID{facts:=map[string]any{"test":true};msg:=tf.Triggers[i].Message;if msg==""{msg="MaxQ trigger test"};err:=s.fireTrigger(&tf.Triggers[i],msg,facts,true);if err!=nil{writeErr(w,err);return};_ = s.saveTriggers(tf);writeJSON(w,200,map[string]any{"ok":true});return}};writeJSON(w,404,map[string]any{"ok":false,"error":"trigger not found"})}
+func (s *server) handleTestTrigger(w http.ResponseWriter,r *http.Request){var req struct{ID string `json:"id"`};if decodeJSON(r,&req)!=nil{writeJSON(w,400,map[string]any{"ok":false,"error":"invalid json"});return};s.mu.Lock();defer s.mu.Unlock();if s.webhookURL()==""{writeJSON(w,400,map[string]any{"ok":false,"error":"hooks disabled"});return};tf:=s.loadTriggers();for i:=range tf.Triggers{if tf.Triggers[i].ID==req.ID{facts:=map[string]any{"test":true};msg:=tf.Triggers[i].Message;if msg==""{msg="MaxQ trigger test"};err:=s.fireTrigger(&tf.Triggers[i],msg,facts,true);if err!=nil{writeErr(w,err);return};_ = s.saveTriggers(tf);writeJSON(w,200,map[string]any{"ok":true});return}};writeJSON(w,404,map[string]any{"ok":false,"error":"trigger not found"})}
 
 func (s *server) triggerLoop(){ticker:=time.NewTicker(30*time.Second);defer ticker.Stop();time.Sleep(2*time.Second);s.evaluateTriggers();for range ticker.C{s.evaluateTriggers()}}
 func (s *server) evaluateTriggers(){s.mu.Lock();defer s.mu.Unlock();tf:=s.loadTriggers();changed:=false;for i:=range tf.Triggers{t:=&tf.Triggers[i];if !t.Enabled{continue};fire,msg,facts:=s.triggerDue(*t);if !fire{continue};if err:=s.fireTrigger(t,msg,facts,false);err==nil{changed=true}};if changed{_ = s.saveTriggers(tf)}}
