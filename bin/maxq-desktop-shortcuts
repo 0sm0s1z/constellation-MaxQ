@@ -1,0 +1,45 @@
+# sourced by maxq-desktop
+icon(){ local n="$1" t="$2" c="$3"; cat > "$I/$n.svg" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#1e1e2e"/><circle cx="64" cy="64" r="39" fill="#181825" stroke="$c" stroke-width="5"/><ellipse cx="64" cy="64" rx="54" ry="22" fill="none" stroke="$c" stroke-width="3" transform="rotate(-28 64 64)"/><circle cx="107" cy="42" r="5" fill="#f9e2af"/><text x="64" y="72" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="#cdd6f4">$t</text></svg>
+EOF
+}
+install_icons(){ icon ai AI '#cba6f7'; icon chatgpt GPT '#94e2d5'; icon grok G '#89b4fa'; icon claude C '#fab387'; icon discord D '#b4befe'; icon slack S '#f5c2e7'; icon settings MQ '#a6e3a1'; icon ghostty '>' '#cba6f7'; echo constellation-MaxQ > "$I/.maxq-owned"; }
+install_site_opener(){ cat > "$OS" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+P="${MAXQ_HOME:-$HOME}"; D="$P/.config/maxq/defaults.toml"; target="${1:-ai}"
+if [ "$target" = settings ]; then url=http://127.0.0.1:7432/; else
+ url="$(python3 - "$D" "$target" <<'PY'
+import sys,tomllib
+d=tomllib.load(open(sys.argv[1],'rb')); t=sys.argv[2]; t=d.get('default_ai_chat','chatgpt') if t=='ai' else t; print(d.get('sites',{}).get(t,''))
+PY
+)"
+fi
+[ -n "$url" ] && [ -n "${DISPLAY:-}" ] || exit 3
+if [ -x "$P/bin/box-chrome" ]; then chrome="$P/bin/box-chrome"; elif command -v box-chrome >/dev/null 2>&1; then chrome="$(command -v box-chrome)"; else echo 'box-chrome missing; refusing generic Chrome/profile fallback' >&2; exit 4; fi
+exec env DISPLAY="$DISPLAY" "$chrome" "$url"
+EOF
+chmod +x "$OS"; }
+app(){ local id="$1" name="$2" ic="$3" target="$4"; cat > "$A/$id.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec=$OS $target
+Icon=$I/$ic.svg
+Terminal=false
+Categories=Network;Chat;
+X-MaxQ-Managed=true
+EOF
+}
+install_apps(){
+  app maxq-ai 'MaxQ AI Chat' ai ai; app maxq-chatgpt ChatGPT chatgpt chatgpt; app maxq-grok Grok grok grok; app maxq-claude Claude claude claude; app maxq-discord Discord discord discord; app maxq-slack Slack slack slack; app maxq-settings 'MaxQ Settings' settings settings
+  cp -f "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"; cp -f "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"; cp -f "$A/maxq-grok.desktop" "$E/Grok.desktop"; cp -f "$A/maxq-claude.desktop" "$E/Claude.desktop"; cp -f "$A/maxq-discord.desktop" "$E/Discord.desktop"; cp -f "$A/maxq-slack.desktop" "$E/Slack.desktop"; cp -f "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
+  chmod +x "$E/Ghostty.desktop" "$E/MaxQ-AI-Chat.desktop" "$E/ChatGPT.desktop" "$E/Grok.desktop" "$E/Claude.desktop" "$E/Discord.desktop" "$E/Slack.desktop" "$E/MaxQ-Settings.desktop"
+}
+dock(){ printf '[PlankDockItemPreferences]\nLauncher=file://%s\n' "$2" > "$K/$1.dockitem"; }
+install_docks(){ dock maxq-00-ai "$A/maxq-ai.desktop"; dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"; dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"; dock maxq-40-ghostty "$GD"; }
+remove_shortcuts(){
+  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings}.desktop
+  rm -f "$E"/{Ghostty,MaxQ-AI-Chat,ChatGPT,Grok,Claude,Discord,Slack,MaxQ-Settings}.desktop "$K"/maxq-*.dockitem
+  rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty}.svg "$I/.maxq-owned"
+}

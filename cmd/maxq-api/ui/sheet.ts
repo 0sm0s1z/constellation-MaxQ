@@ -1,100 +1,15 @@
-// MaxQ thin settings sheet (TypeScript, no framework).
-type Gost = {
-  enabled: boolean;
-  running: boolean;
-  listen: string;
-  upstream: string;
-  iface: string;
-  intercept: boolean;
-};
-type Clis = { installed: string; skipped: string; preexisting: string };
-type Status = {
-  state: string;
-  theme: string;
-  gost: Gost;
-  clis: Clis;
-  api: { listen: string };
-};
-
-const $ = (id: string): HTMLElement => {
-  const el = document.getElementById(id);
-  if (!el) throw new Error("missing #" + id);
-  return el;
-};
-
-async function getStatus(): Promise<Status> {
-  const r = await fetch("/status");
-  if (!r.ok) throw new Error("status " + r.status);
-  return r.json() as Promise<Status>;
-}
-
-async function postJSON(path: string, body: unknown): Promise<void> {
-  const r = await fetch(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!r.ok) {
-    let extra = "";
-    try {
-      const j = (await r.json()) as { error?: string };
-      extra = j.error ? ": " + j.error : "";
-    } catch {
-      extra = "";
-    }
-    throw new Error(path + " " + r.status + extra);
-  }
-}
-
-function render(s: Status): void {
-  $("st-state").textContent = s.state;
-  $("st-theme").textContent = s.theme;
-  const g = s.gost.enabled ? "enabled" : "off";
-  const run = s.gost.running ? "running" : "stopped";
-  $("st-gost").textContent = g + " / " + run;
-  const bits = [s.clis.installed, s.clis.preexisting].filter((x) => x && x.length);
-  $("st-clis").textContent = bits.join(" ") || "—";
-  $("st-api").textContent = s.api.listen;
-  const pill = $("pill");
-  pill.textContent = s.state;
-  pill.className = "pill " + (s.state === "applied" ? "on" : "off");
-}
-
-function showMsg(text: string): void {
-  const el = $("msg");
-  el.hidden = !text;
-  el.textContent = text;
-}
-
-async function refresh(): Promise<void> {
-  const s = await getStatus();
-  render(s);
-}
-
-function busy(on: boolean): void {
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off"].forEach((id) => {
-    const b = $(id) as HTMLButtonElement;
-    b.disabled = on;
-  });
-}
-
-async function act(fn: () => Promise<void>): Promise<void> {
-  showMsg("");
-  busy(true);
-  try {
-    await fn();
-    await refresh();
-  } catch (e) {
-    showMsg(e instanceof Error ? e.message : String(e));
-  } finally {
-    busy(false);
-  }
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  $("btn-apply").addEventListener("click", () => act(() => postJSON("/apply", {})));
-  $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
-  $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
-  $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
-  refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e)));
-});
+type SiteKey="chatgpt"|"grok"|"claude"|"discord"|"slack";
+type Defaults={default_ai_chat:"chatgpt"|"grok"|"claude";sites:Record<SiteKey,string>};
+type Status={state:string;theme:string;gost:{enabled:boolean;running:boolean};clis:{installed:string;preexisting:string};api:{listen:string};ghostty:{installed:boolean;default:boolean;version:string};launcher:{name:string;keybind:string}};
+const SITE_KEYS:SiteKey[]=["chatgpt","grok","claude","discord","slack"];
+function $<T extends HTMLElement=HTMLElement>(id:string):T{const el=document.getElementById(id);if(!el)throw new Error("missing #"+id);return el as T}
+async function getJSON<T>(path:string):Promise<T>{const r=await fetch(path);if(!r.ok)throw new Error(path+" "+r.status);return r.json() as Promise<T>}
+async function postJSON(path:string,body:unknown):Promise<unknown>{const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body??{})});if(!r.ok){let extra="";try{const j=await r.json() as {error?:string};extra=j.error?": "+j.error:""}catch{}throw new Error(path+" "+r.status+extra)}return r.json()}
+function renderStatus(s:Status):void{$("st-state").textContent=s.state;$("st-theme").textContent=s.theme;const gs=s.ghostty.installed?(s.ghostty.default?"default":"installed / not default"):"missing";$("st-ghostty").textContent=[gs,s.ghostty.version].filter(Boolean).join(" · ");$("st-launcher").textContent=s.launcher.name+" · "+s.launcher.keybind;$("st-gost").textContent=(s.gost.enabled?"enabled":"off")+" / "+(s.gost.running?"running":"stopped");$("st-clis").textContent=[s.clis.installed,s.clis.preexisting].filter(Boolean).join(" ")||"—";$("st-api").textContent=s.api.listen;const p=$("pill");p.textContent=s.state;p.className="pill "+(s.state==="applied"?"on":"off")}
+function renderDefaults(d:Defaults):void{($("default-ai") as HTMLSelectElement).value=d.default_ai_chat;SITE_KEYS.forEach(k=>(($("site-"+k) as HTMLInputElement).value=d.sites[k]||""));const list=$("shortcuts");list.textContent="";const entries:Array<[string,string]>=[["Super+Space","launcher"],["MaxQ AI Chat",d.sites[d.default_ai_chat]||d.default_ai_chat],["ChatGPT",d.sites.chatgpt],["Grok",d.sites.grok],["Claude",d.sites.claude],["Discord",d.sites.discord],["Slack",d.sites.slack],["Ghostty","$HOME/bin/ghostty"],["MaxQ Settings","127.0.0.1:7432"]];for(const [name,target] of entries){const li=document.createElement("li"),r=document.createElement("span");r.textContent=target||"—";li.append(document.createTextNode(name),r);list.appendChild(li)}}
+function readDefaults():Defaults{const sites={} as Record<SiteKey,string>;SITE_KEYS.forEach(k=>sites[k]=($("site-"+k) as HTMLInputElement).value.trim());return{default_ai_chat:($("default-ai") as HTMLSelectElement).value as Defaults["default_ai_chat"],sites}}
+function msg(text:string,ok=false):void{const e=$("msg");e.hidden=!text;e.textContent=text;e.style.color=ok?"var(--green)":"var(--red)"}
+async function refresh():Promise<void>{const [s,d]=await Promise.all([getJSON<Status>("/status"),getJSON<Defaults>("/defaults")]);renderStatus(s);renderDefaults(d)}
+function busy(on:boolean):void{["btn-apply","btn-revert","btn-proxy-on","btn-proxy-off","btn-save-defaults"].forEach(id=>(($(id) as HTMLButtonElement).disabled=on))}
+async function act(fn:()=>Promise<unknown>,success=""):Promise<void>{msg("");busy(true);try{await fn();await refresh();if(success)msg(success,true)}catch(e){msg(e instanceof Error?e.message:String(e))}finally{busy(false)}}
+window.addEventListener("DOMContentLoaded",()=>{$("btn-apply").addEventListener("click",()=>{void act(()=>postJSON("/apply",{}))});$("btn-revert").addEventListener("click",()=>{void act(()=>postJSON("/revert",{}))});$("btn-proxy-on").addEventListener("click",()=>{void act(()=>postJSON("/proxy",{enabled:true}))});$("btn-proxy-off").addEventListener("click",()=>{void act(()=>postJSON("/proxy",{enabled:false}))});$("defaults-form").addEventListener("submit",e=>{e.preventDefault();void act(()=>postJSON("/defaults",readDefaults()),"defaults saved")});void refresh().catch(e=>msg(e instanceof Error?e.message:String(e)))})

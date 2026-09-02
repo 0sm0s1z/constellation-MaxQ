@@ -1,0 +1,84 @@
+# sourced by maxq-desktop
+asset(){ curl -fsSL "https://api.github.com/repos/$1/releases/latest" | python3 -c 'import json,sys; d=json.load(sys.stdin); n=sys.argv[1]; print(next((a["browser_download_url"] for a in d.get("assets",[]) if n in a.get("name","")),""))' "$2"; }
+ghostty_ok(){ [ -x "$G" ] && "$G" --version >/dev/null 2>&1; }
+install_ghostty(){
+  if ghostty_ok; then [ -f "$S/ghostty-owned" ] || : > "$S/ghostty-preexisting"; return; fi
+  local u t q; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-ghostty.XXXXXX")"
+  u="$(asset mkasberg/ghostty-ubuntu _amd64_trixie.deb || true)"
+  if [ -n "$u" ] && command -v dpkg-deb >/dev/null 2>&1 && curl -fL --retry 3 --retry-delay 1 -o "$t/ghostty.deb" "$u"; then
+    mkdir -p "$t/root"
+    if dpkg-deb -x "$t/ghostty.deb" "$t/root"; then
+      q="$(find "$t/root" -type f -path '*/usr/bin/ghostty' -print -quit 2>/dev/null || true)"
+      if [ -n "$q" ]; then
+        rm -rf "$L/opt/ghostty"; mkdir -p "$L/opt/ghostty"; cp -a "$t/root/." "$L/opt/ghostty/"
+        cp -f "$q" "$G"; chmod +x "$G"
+      fi
+    fi
+  fi
+  if ! ghostty_ok; then
+    rm -f "$G"; u="$(asset pkgforge-dev/ghostty-appimage x86_64.AppImage || true)"; [ -n "$u" ] || { rm -rf "$t"; fail 'no Ghostty amd64 asset'; }
+    curl -fL --retry 3 --retry-delay 1 -o "$t/ghostty.AppImage" "$u"; chmod +x "$t/ghostty.AppImage"; cp -f "$t/ghostty.AppImage" "$G"; chmod +x "$G"
+    if ! ghostty_ok; then
+      rm -f "$G"; (cd "$t" && ./ghostty.AppImage --appimage-extract >/dev/null 2>&1) || { rm -rf "$t"; fail 'Ghostty AppImage extract failed'; }
+      rm -rf "$L/opt/ghostty-appimage"; mv "$t/squashfs-root" "$L/opt/ghostty-appimage"
+      cat > "$G" <<EOF
+#!/usr/bin/env bash
+exec "$L/opt/ghostty-appimage/AppRun" "\$@"
+EOF
+      chmod +x "$G"
+    fi
+  fi
+  rm -rf "$t"; ghostty_ok || fail 'Ghostty --version failed'; echo constellation-MaxQ > "$S/ghostty-owned"
+}
+install_ghostty_desktop(){
+  cat > "$GD" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Ghostty
+Comment=MaxQ default terminal
+Exec=$G
+Icon=$I/ghostty.svg
+Terminal=false
+Categories=System;TerminalEmulator;
+X-MaxQ-Managed=true
+EOF
+  cat > "$H/ghostty.desktop" <<EOF
+[Xfce Helper]
+Name=Ghostty
+Category=TerminalEmulator
+Command=$G
+Parameter=%s
+StartupNotify=true
+EOF
+  cp -f "$GD" "$E/Ghostty.desktop"; chmod +x "$E/Ghostty.desktop"
+}
+set_default_terminal(){
+  [ -f "$S/helper-saved" ] || { grep '^TerminalEmulator=' "$X" 2>/dev/null | tail -1 > "$S/helper-prev" || true; : > "$S/helper-saved"; }
+  mkdir -p "$(dirname "$X")"; touch "$X"
+  python3 - "$X" "$BEGIN" "$END" <<'PY'
+import sys
+p,b,e=sys.argv[1:]; out=[]; skip=False
+for line in open(p,encoding='utf-8').read().splitlines():
+ if line==b: skip=True; continue
+ if line==e: skip=False; continue
+ if not skip and not line.startswith('TerminalEmulator='): out.append(line)
+while out and not out[-1].strip(): out.pop()
+if out: out.append('')
+out += [b,'TerminalEmulator=ghostty',e]
+open(p,'w',encoding='utf-8').write('\n'.join(out)+'\n')
+PY
+}
+restore_default_terminal(){
+  [ -f "$X" ] || return 0; local prev=""; [ -f "$S/helper-prev" ] && prev="$(cat "$S/helper-prev")"
+  python3 - "$X" "$BEGIN" "$END" "$prev" <<'PY'
+import sys
+p,b,e,prev=sys.argv[1:]; out=[]; skip=False
+for line in open(p,encoding='utf-8').read().splitlines():
+ if line==b: skip=True; continue
+ if line==e: skip=False; continue
+ if not skip and not line.startswith('TerminalEmulator='): out.append(line)
+while out and not out[-1].strip(): out.pop()
+if prev: out += ([''] if out else [])+[prev]
+open(p,'w',encoding='utf-8').write('\n'.join(out)+('\n' if out else ''))
+PY
+}

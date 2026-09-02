@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+P="${MAXQ_HOME:-$HOME}"; B="$P/bin"; C="$P/.config/maxq"; L="$P/.local"; S="$C/desktop"
+D="$C/defaults.toml"; I="$L/share/icons/maxq"; A="$L/share/applications"; X="$P/.config/xfce4/helpers.rc"
+H="$L/share/xfce4/helpers"; E="$P/Desktop"; K="$P/.config/plank/dock1/launchers"; R="$C/launcher"
+G="$B/ghostty"; GD="$A/ghostty.desktop"; LA="$B/maxq-launcher"; OS="$B/maxq-open-site"
+KEY='/commands/custom/<Super>space'; BEGIN='# >>> maxq desktop begin >>>'; END='# <<< maxq desktop end <<<'
+export PATH="$B:$PATH"
+for lib in ghostty launcher shortcuts; do
+  f="$(dirname "$(readlink -f "$0")")/maxq-desktop-$lib"
+  [ -r "$f" ] || { echo "maxq-desktop: missing $f" >&2; exit 1; }
+  . "$f"
+done
+fail(){ echo "maxq-desktop: $*" >&2; exit 1; }
+dirs(){ mkdir -p "$B" "$C" "$L" "$S" "$I" "$A" "$H" "$E" "$K" "$R" "$L/opt"; }
+defaults(){
+  [ -e "$D" ] || cat > "$D" <<'TOML'
+default_ai_chat = "chatgpt"
+[sites]
+chatgpt = "https://chatgpt.com"
+grok = "https://grok.com"
+claude = "https://claude.ai"
+discord = "https://discord.com/app"
+slack = "https://app.slack.com/client"
+TOML
+}
+valid_defaults(){ python3 - "$D" <<'PY'
+import sys,tomllib,urllib.parse
+try:d=tomllib.load(open(sys.argv[1],'rb'))
+except Exception:raise SystemExit(1)
+if d.get('default_ai_chat') not in {'chatgpt','grok','claude'}:raise SystemExit(1)
+for k in ('chatgpt','grok','claude','discord','slack'):
+ u=urllib.parse.urlparse(str(d.get('sites',{}).get(k,'')))
+ if u.scheme not in {'http','https'} or not u.netloc:raise SystemExit(1)
+PY
+}
+apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; echo applied > "$S/state"; }
+revert_desktop(){
+  mkdir -p "$C"; restore_keybind; restore_default_terminal; remove_shortcuts
+  rm -f "$LA" "$OS" "$R/mocha.rasi"
+  if [ -f "$S/rofi-owned" ]; then rm -f "$B/rofi"; rm -rf "$L/opt/rofi"; fi
+  if [ -f "$S/ghostty-owned" ]; then rm -f "$G"; rm -rf "$L/opt/ghostty" "$L/opt/ghostty-appimage"; fi
+  rm -rf "$S"
+}
+FAIL=0
+ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
+check_desktop(){
+  ok 'Ghostty at HOME/bin' test -x "$G"; ok 'command -v ghostty is HOME/bin' test "$(command -v ghostty 2>/dev/null || true)" = "$G"; ok 'Ghostty --version' "$G" --version
+  ok 'Ghostty default helper' grep -qx 'TerminalEmulator=ghostty' "$X"; ok 'Ghostty desktop' test -s "$GD"; ok 'Ghostty plank item' test -s "$K/maxq-40-ghostty.dockitem"
+  ok 'defaults.toml valid' valid_defaults; ok 'launcher choice rofi' grep -qx rofi "$S/launcher"; ok 'rofi works' rofi -version; ok 'Mocha launcher theme' test -s "$R/mocha.rasi"; ok 'launcher executable' test -x "$LA"
+  ok 'Super+Space launcher binding' test "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA"
+  ok 'box-chrome current-display opener' sh -c "grep -q box-chrome '$OS' && ! grep -Eq -- '--user-data-dir|chrome-profile-[0-9]' '$OS'"
+  local n; for n in ai chatgpt grok claude discord slack settings ghostty; do ok "icon $n" test -s "$I/$n.svg"; done
+  for n in ai chatgpt grok claude discord slack settings; do ok "shortcut $n" test -s "$A/maxq-$n.desktop"; done
+  for n in maxq-00-ai maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings maxq-40-ghostty; do ok "plank $n" test -s "$K/$n.dockitem"; done
+  [ ! -f "$B/maxq-reconcile" ] || ok 'reconciler has no /usr/local/bin' sh -c "! grep -q /usr/local/bin '$B/maxq-reconcile'"
+}
+prove_desktop(){
+  FAIL=0; local h=""; [ -f "$D" ] && h="$(sha256sum "$D" | cut -d' ' -f1)"
+  apply_desktop; check_desktop; revert_desktop; ok 'defaults.toml survives revert' test -s "$D"; [ -z "$h" ] || ok 'operator defaults unchanged' test "$(sha256sum "$D" | cut -d' ' -f1)" = "$h"
+  apply_desktop; check_desktop; [ "$FAIL" -eq 0 ]
+}
+case "${1:-status}" in
+ apply|configure) apply_desktop;; revert|unconfigure) revert_desktop;; prove) prove_desktop;; status) [ -f "$S/state" ] && cat "$S/state" || echo reverted;; *) fail 'usage: maxq-desktop apply|revert|prove|status';;
+esac

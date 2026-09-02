@@ -1,0 +1,45 @@
+# sourced by maxq-desktop
+install_rofi(){
+  if command -v rofi >/dev/null 2>&1 && rofi -version >/dev/null 2>&1; then echo rofi > "$S/launcher"; return; fi
+  command -v apt-get >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1 || fail 'rofi missing; cannot install persist-safe fallback'
+  local t deb real; t="$(mktemp -d "${TMPDIR:-/tmp}/maxq-rofi.XXXXXX")"
+  (cd "$t" && apt-get download rofi >/dev/null 2>&1) || { rm -rf "$t"; fail 'rofi package download failed'; }
+  deb="$(find "$t" -maxdepth 1 -type f -name 'rofi*.deb' -print -quit)"; [ -n "$deb" ] || { rm -rf "$t"; fail 'rofi package missing'; }
+  rm -rf "$L/opt/rofi"; mkdir -p "$L/opt/rofi"; dpkg-deb -x "$deb" "$L/opt/rofi"
+  real="$(find "$L/opt/rofi" -type f -path '*/usr/bin/rofi' -print -quit)"; [ -x "$real" ] || { rm -rf "$t"; fail 'rofi binary missing'; }
+  cat > "$B/rofi" <<EOF
+#!/usr/bin/env bash
+export XDG_DATA_DIRS="$L/opt/rofi/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "$real" "\$@"
+EOF
+  chmod +x "$B/rofi"; rm -rf "$t"; rofi -version >/dev/null 2>&1 || fail 'persist rofi does not run'; : > "$S/rofi-owned"; echo rofi > "$S/launcher"
+}
+install_launcher(){
+  cat > "$R/mocha.rasi" <<'RASI'
+* { bg: #1e1e2eff; bg2: #181825ff; fg: #cdd6f4ff; sub: #a6adc8ff; accent: #cba6f7ff; surface: #313244ff; background-color: transparent; text-color: @fg; }
+window { width: 42%; border: 2px; border-color: @accent; border-radius: 14px; background-color: @bg; padding: 10px; }
+inputbar { background-color: @bg2; border-radius: 10px; padding: 10px 12px; }
+entry { placeholder: "Launch app or MaxQ shortcut..."; placeholder-color: @sub; }
+listview { lines: 9; columns: 1; spacing: 4px; }
+element { padding: 9px 10px; border-radius: 9px; }
+element selected { background-color: @surface; }
+element-icon { size: 28px; }
+RASI
+  cat > "$LA" <<EOF
+#!/usr/bin/env bash
+export PATH="$B:\$PATH"
+exec rofi -show drun -modi drun,run -show-icons -matching fuzzy -theme "$R/mocha.rasi"
+EOF
+  chmod +x "$LA"
+}
+install_keybind(){
+  command -v xfconf-query >/dev/null 2>&1 || fail 'xfconf-query missing; cannot bind Super+Space'
+  [ -f "$S/key-saved" ] || { xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" > "$S/key-prev" 2>/dev/null || true; : > "$S/key-saved"; }
+  if xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" >/dev/null 2>&1; then xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -s "$LA"; else xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -n -t string -s "$LA"; fi
+}
+restore_keybind(){
+  command -v xfconf-query >/dev/null 2>&1 || return 0
+  [ "$(xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" 2>/dev/null || true)" = "$LA" ] || return 0
+  local prev=""; [ -f "$S/key-prev" ] && prev="$(cat "$S/key-prev")"
+  if [ -n "$prev" ]; then xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -s "$prev"; else xfconf-query -c xfce4-keyboard-shortcuts -p "$KEY" -r >/dev/null 2>&1 || true; fi
+}

@@ -8,7 +8,7 @@ v0: 1-13, 18-19.
 - [x] **4.** Shell profile (PATH, kickoff)
 - [ ] **5.** Identity: hostname grokbot
 - [x] **6.** Catppuccin Mocha system theme (wallpaper + GTK/cursor; latte flag later)
-- [ ] **7.** Ghostty as default terminal: persist-safe binary in `$HOME/bin` + Mocha config + XFCE/xdg (not xfce4-terminal)
+- [x] **7.** Ghostty as default terminal: persist-safe binary in `$HOME/bin` + Mocha config + XFCE/xdg (not xfce4-terminal)
 - [x] **8.** Chrome Mocha theme files + store id (no managed proxy policies)
 - [x] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale
 - [ ] **10.** herdr supervises MaxQ daemons
@@ -37,9 +37,8 @@ v0: 1-13, 18-19.
 - [ ] **33.** Dynamic webhook dest: `$HOME/.config/maxq/hooks.toml` (never in git). First-run setup + settings. Empty disables hooks
 - [ ] **34.** Settings Triggers page: list, enable, last-fire, set webhook URL, add cron or shell probe
 - [ ] **35.** Builtin resource probe: MemAvailable/used%; webhook `warning resource limits exhausted: OOM` with cooldown
-- [ ] **36.** Ghostty linux amd64: installer downloads a community linux amd64 (mkasberg `.deb` extract for Debian Trixie, or AppImage) into `$HOME/bin/ghostty`. Official project has no linux amd64. Persist-safe. Re-apply after Update. No `/usr`.
-- [ ] **37.** Default terminal: `$HOME/.local/share/applications/ghostty.desktop`, xfce `helpers.rc` TerminalEmulator, mime, plank. Do not use `update-alternatives` (root, dies on Update).
-- [ ] **38.** App launcher: persist-safe riced fuzzy launcher with icons. Super+Space. Walker if it runs on this X11 box; else rofi Catppuccin Mocha. Not Omarchy 4 Quickshell (Hyprland-only).
-- [ ] **39.** Configurable default site shortcuts: `$HOME/.config/maxq/defaults.toml` — `default_ai_chat` (chatgpt.com | grok.com | claude.ai), chat links (discord, slack). Settings page. Revert does not delete operator overrides.
-- [ ] **40.** Desktop + dock icons: real PNG/SVG in `$HOME/.local/share/icons/maxq/`, `.desktop` files on Desktop and plank. Goal: computer-use starts the target in one click.
-
+- [x] **36.** Ghostty linux amd64: installer downloads a community linux amd64 (mkasberg `.deb` extract for Debian Trixie, or AppImage) into `$HOME/bin/ghostty`. Official project has no linux amd64. Persist-safe. Re-apply after Update. No `/usr`.
+- [x] **37.** Default terminal: `$HOME/.local/share/applications/ghostty.desktop`, xfce `helpers.rc` TerminalEmulator, mime, plank. Do not use `update-alternatives` (root, dies on Update).
+- [x] **38.** App launcher: persist-safe riced fuzzy launcher with icons. Super+Space. Walker if it runs on this X11 box; else rofi Catppuccin Mocha. Not Omarchy 4 Quickshell (Hyprland-only).
+- [x] **39.** Configurable default site shortcuts: `$HOME/.config/maxq/defaults.toml` — `default_ai_chat` (chatgpt.com | grok.com | claude.ai), chat links (discord, slack). Settings page. Revert does not delete operator overrides.
+- [x] **40.** Desktop + dock icons: real PNG/SVG in `$HOME/.local/share/icons/maxq/`, `.desktop` files on Desktop and plank. Goal: computer-use starts the target in one click.
