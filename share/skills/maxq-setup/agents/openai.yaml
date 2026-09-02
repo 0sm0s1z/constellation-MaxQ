@@ -1,0 +1,3 @@
+interface:
+  display_name: "MaxQ Setup"
+  short_description: "Configure MaxQ first-run settings and dynamic webhook routing."
