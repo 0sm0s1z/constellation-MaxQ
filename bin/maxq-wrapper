@@ -35,6 +35,11 @@ replacements={
  'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then\n':'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] || [ "$pid" = "${MAXQ_WRAPPER_PARENT_PID:-}" ]; }; then\n',
  '  echo "ghostty_bin=skipped (no official linux amd64)"\n':'  echo "ghostty_bin=desktop-proof follows core proof"\n',
  '  echo "chrome_theme_live=skipped (unpacked files only)"\n':'  echo "chrome_theme_live=desktop-proof follows core proof"\n',
+ '# Binary: not installed by MaxQ (no official linux amd64 build; see docs/THEME.md).\n':'# Binary is installed by the MaxQ desktop composition wrapper.\n',
+ '  # No official linux amd64 Ghostty binary. Config-only; do not install AppImage.\n':'  # Ghostty binary is installed by the MaxQ desktop composition wrapper.\n',
+ 'Ghostty binary: skipped (no official linux amd64 build). Config-only.\n':'Ghostty binary: installed by MaxQ desktop composition under $HOME/bin.\n',
+ 'Chrome theme: files shipped; not live-applied (no flags, no managed policies).\n':'Chrome theme: live-seeded to all chrome-profile* via External Extensions; no managed policies.\n',
+ 'Chrome:  theme files unpacked under \\$HOME/.local/share/maxq; not live-applied.\n':'Chrome:  Mocha is live-seeded to every \\$HOME/chrome-profile* without managed policies.\n',
 }
 for old,new in replacements.items():
  if old not in text: raise SystemExit(f'maxq: core patch anchor missing: {old!r}')
