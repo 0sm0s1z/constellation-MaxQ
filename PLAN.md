@@ -9,7 +9,7 @@ v0: 1-13, 18-19.
 - [ ] **5.** Identity: hostname grokbot
 - [x] **6.** Catppuccin Mocha system theme (wallpaper + GTK/cursor; latte flag later)
 - [x] **7.** Ghostty as default terminal: persist-safe binary in `$HOME/bin` + Mocha config + XFCE/xdg (not xfce4-terminal)
-- [x] **8.** Chrome Mocha theme files + store id (no managed proxy policies)
+- [x] **8.** Chrome Mocha live-apply to every `$HOME/chrome-profile*` via per-user-data-dir External Extensions store seed; skeleton + HOME-only reconciler for future agent profiles. No managed Chrome policies, no `--load-extension`, no Chrome restart/signal.
 - [x] **9.** Operator CLIs: herdr, fx, grok, codex, claude, opencode, tailscale
 - [ ] **10.** herdr supervises MaxQ daemons
 - [x] **11.** GOST local proxy (CONNECT + MITM)
@@ -37,8 +37,15 @@ v0: 1-13, 18-19.
 - [ ] **33.** Dynamic webhook dest: `$HOME/.config/maxq/hooks.toml` (never in git). First-run setup + settings. Empty disables hooks
 - [ ] **34.** Settings Triggers page: list, enable, last-fire, set webhook URL, add cron or shell probe
 - [ ] **35.** Builtin resource probe: MemAvailable/used%; webhook `warning resource limits exhausted: OOM` with cooldown
-- [x] **36.** Ghostty linux amd64: installer downloads a community linux amd64 (mkasberg `.deb` extract for Debian Trixie, or AppImage) into `$HOME/bin/ghostty`. Official project has no linux amd64. Persist-safe. Re-apply after Update. No `/usr`.
+- [x] **36.** Ghostty linux amd64: installer downloads a community linux amd64 AppImage into the HOME cache and exposes a Mesa 4.5 wrapper at `$HOME/bin/ghostty`. Persist-safe. Re-apply after Update. No `/usr`.
 - [x] **37.** Default terminal: `$HOME/.local/share/applications/ghostty.desktop`, xfce `helpers.rc` TerminalEmulator, mime, plank. Do not use `update-alternatives` (root, dies on Update).
 - [x] **38.** App launcher: persist-safe riced fuzzy launcher with icons. Super+Space. Walker if it runs on this X11 box; else rofi Catppuccin Mocha. Not Omarchy 4 Quickshell (Hyprland-only).
 - [x] **39.** Configurable default site shortcuts: `$HOME/.config/maxq/defaults.toml` — `default_ai_chat` (chatgpt.com | grok.com | claude.ai), chat links (discord, slack). Settings page. Revert does not delete operator overrides.
 - [x] **40.** Desktop + dock icons: real PNG/SVG in `$HOME/.local/share/icons/maxq/`, `.desktop` files on Desktop and plank. Goal: computer-use starts the target in one click.
+- [x] **41.** Persist-safe netadmin in `$HOME/bin`: traceroute, dig, nslookup, host plus `pingpp`/`ping` wrapper. Debian packages are cached/downloaded and extracted under HOME only; no `dpkg -i`. Grok Bot ping is TCP-only and requires `-no-icmp`; never target `10.0.0.0/16`.
+- [x] **42.** Persist-safe Go: pinned official linux-amd64 tarball into `$HOME/.local/go`, `$HOME/bin/go`/`gofmt`, existing HOME/bin PATH snippet.
+- [x] **43.** Bun + Node LTS + TypeScript under HOME; Python 3 is preexisting and only inventoried/proven, never overwritten.
+- [x] **44.** Docker CLI persist-safe in `$HOME/bin` from official static binary. No root/systemd requirement; SBOM records Docker daemon as preexisting when present or `missing` otherwise.
+- [x] **45.** Apply writes `$HOME/.config/maxq/sbom.json` as `{name, version, path, source}` records (`source=maxq|preexisting`). Reconciler refreshes via full desired-state apply. Revert restores/preseves preexisting paths.
+- [x] **46.** Thin Mocha Settings Packages inventory + `GET /sbom`. Inventory only, not apt/yum package mutation.
+- [x] **47.** `curl | bash`, `install.sh`, and `maxq apply` install PLAN 41–46 by default together with desktop/Ghostty/rofi and all-profile Chrome Mocha desired state.
