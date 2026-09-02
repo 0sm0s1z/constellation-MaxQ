@@ -2,3 +2,4 @@
 *.toml.bak
 *.tmp
 *.maxq.*
+cmd/maxq-api/maxq-api

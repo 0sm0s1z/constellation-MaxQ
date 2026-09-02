@@ -2,11 +2,12 @@
 # constellation-MaxQ CLI
 # Persist-safe under $HOME. Do not put logic in /usr (optional ln -sfn only).
 # Commands: apply|configure  revert|unconfigure  status  prove  proxy
+# Control API: $HOME/bin/maxq-api on 127.0.0.1:7432 (loopback). Thin Mocha sheet at /.
 # GOST is the local CONNECT proxy. MITM intercept defaults to false.
 # Never write Chrome managed ProxyMode/ProxyServer policies.
 set -euo pipefail
 
-MAXQ_VERSION="0.4.0"
+MAXQ_VERSION="0.5.0"
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 CONFIG="$PREFIX/.config/maxq"
@@ -27,6 +28,13 @@ GOST_PID="$CONFIG/gost.pid"
 GOST_LOG="$CONFIG/gost.log"
 GOST_REL_VERSION="3.2.6"
 GOST_REL_URL="https://github.com/go-gost/gost/releases/download/v${GOST_REL_VERSION}/gost_${GOST_REL_VERSION}_linux_amd64.tar.gz"
+
+API_BIN="$BIN/maxq-api"
+API_PID="$CONFIG/api.pid"
+API_LOG="$CONFIG/api.log"
+API_TOML="$CONFIG/api.toml"
+API_SRC="$CONFIG/api-src"
+API_LISTEN="127.0.0.1:7432"
 
 CA_DIR="$CONFIG/ca"
 CA_KEY="$CA_DIR/maxq-ca.key"
@@ -64,6 +72,8 @@ Usage: maxq <command>
   help                 This help
   version              Print version
 
+Control API (loopback): http://127.0.0.1:7432/  (thin Mocha sheet)
+
 Environment:
   MAXQ_HOME    Prefix (default: \$HOME)
 
@@ -75,6 +85,7 @@ CLIs:    herdr fx grok codex claude opencode tailscale into \$HOME/bin
          (skip + document if no linux amd64 binary; never overwrite preexisting)
 Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
 Chrome:  theme files unpacked under \$HOME/.local/share/maxq; not live-applied.
+API:     \$HOME/bin/maxq-api on 127.0.0.1:7432 (or api.toml). apply starts; revert stops.
 EOF
 }
 
@@ -293,7 +304,7 @@ write_reconcile() {
 # Does not write Chrome policies.
 set -euo pipefail
 PREFIX="${MAXQ_HOME:-$HOME}"
-mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca" "$PREFIX/.config/maxq/theme" "$PREFIX/.config/maxq/cli-cache" "$PREFIX/.local/share/themes" "$PREFIX/.local/share/icons" "$PREFIX/.local/share/backgrounds" "$PREFIX/.local/share/maxq"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" "$PREFIX/.config/maxq/ca" "$PREFIX/.config/maxq/theme" "$PREFIX/.config/maxq/cli-cache" "$PREFIX/.config/maxq/api-src" "$PREFIX/.local/share/themes" "$PREFIX/.local/share/icons" "$PREFIX/.local/share/backgrounds" "$PREFIX/.local/share/maxq"
 if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
   ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq
 fi
@@ -608,6 +619,201 @@ apply_proxy_runtime() {
   else
     stop_gost
   fi
+}
+
+# --- control API (PLAN 18-19; loopback only, thin sheet) --------------------
+
+api_src_candidates() {
+  local here src
+  src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  here="$(cd "$(dirname "$src")" && pwd)"
+  printf '%s\n' "$here/../cmd/maxq-api"
+  printf '%s\n' "$here/cmd/maxq-api"
+  printf '%s\n' "$here/../constellation-MaxQ/cmd/maxq-api"
+  printf '%s\n' "$API_SRC"
+}
+
+seed_api_src() {
+  mkdir -p "$API_SRC"
+  local cand
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    [ -f "$cand/main.go" ] || continue
+    if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then
+      continue
+    fi
+    cp -a "$cand"/. "$API_SRC"/
+    return 0
+  done < <(api_src_candidates)
+}
+
+load_api_listen() {
+  API_LISTEN="$(toml_top listen "127.0.0.1:7432" "$API_TOML")"
+  [ -n "$API_LISTEN" ] || API_LISTEN="127.0.0.1:7432"
+  sanitize_api_listen
+}
+
+sanitize_api_listen() {
+  case "$API_LISTEN" in
+    10.0.*|\[::\]:*|0.0.0.0:*|\[::0\]:*)
+      echo "maxq: refusing non-loopback api listen '$API_LISTEN'; using 127.0.0.1:7432" >&2
+      API_LISTEN="127.0.0.1:7432"
+      ;;
+    127.0.0.1:*|localhost:*)
+      ;;
+    *)
+      echo "maxq: refusing non-loopback api listen '$API_LISTEN'; using 127.0.0.1:7432" >&2
+      API_LISTEN="127.0.0.1:7432"
+      ;;
+  esac
+}
+
+write_api_toml() {
+  sanitize_api_listen
+  cat > "$API_TOML" <<EOF
+# constellation-MaxQ control API (managed — do not edit by hand)
+# Loopback only. Never bind 0.0.0.0 or 10.0.0.0/16.
+# Thin Mocha sheet at /. MaxQ never writes Chrome ProxyMode/ProxyServer.
+
+listen = "$API_LISTEN"
+EOF
+}
+
+install_api_binary() {
+  mkdir -p "$BIN"
+  seed_api_src
+  if command -v go >/dev/null 2>&1 && [ -f "$API_SRC/main.go" ]; then
+    if [ -x "$API_BIN" ] && [ "$API_BIN" -nt "$API_SRC/main.go" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/sheet.js" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/index.html" ] \
+      && [ "$API_BIN" -nt "$API_SRC/ui/mocha.css" ]; then
+      return 0
+    fi
+    echo "maxq: building maxq-api -> $API_BIN"
+    if ! (
+      cd "$API_SRC"
+      CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$API_BIN" .
+    ); then
+      die "failed to build maxq-api"
+    fi
+    chmod +x "$API_BIN"
+    return 0
+  fi
+  if [ -x "$API_BIN" ]; then
+    return 0
+  fi
+  die "maxq-api missing (need go + cmd/maxq-api source, or a prior binary)"
+}
+
+api_listen_host() {
+  local l="${API_LISTEN:-127.0.0.1:7432}"
+  case "$l" in
+    :*) echo "127.0.0.1" ;;
+    *) echo "${l%:*}" ;;
+  esac
+}
+
+api_listen_port() {
+  local l="${API_LISTEN:-127.0.0.1:7432}"
+  echo "${l##*:}"
+}
+
+api_is_running() {
+  local pid
+  [ -f "$API_PID" ] || return 1
+  pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+api_not_running() {
+  ! api_is_running
+}
+
+api_port_down() {
+  local host port
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  ! python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.3); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null
+}
+
+api_status_200() {
+  local host port code
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 "http://${host}:${port}/status" || true)"
+  [ "$code" = "200" ]
+}
+
+api_status_applied() {
+  local host port body
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  body="$(curl -sf --max-time 2 "http://${host}:${port}/status" || true)"
+  printf '%s' "$body" | grep -q '"state":"applied"'
+}
+
+api_ui_ok() {
+  local host port body
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  body="$(curl -sf --max-time 2 "http://${host}:${port}/" || true)"
+  printf '%s' "$body" | grep -q 'MaxQ'
+}
+
+stop_api() {
+  local pid
+  if [ -f "$API_PID" ]; then
+    pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      local i=0
+      while [ "$i" -lt 30 ] && kill -0 "$pid" 2>/dev/null; do
+        sleep 0.1
+        i=$((i + 1))
+      done
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+    rm -f "$API_PID"
+  fi
+}
+
+start_api() {
+  load_api_listen
+  install_api_binary
+  write_api_toml
+  if api_is_running; then
+    local pid
+    pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
+    # If apply was invoked by the API itself, do not restart (would drop the HTTP call).
+    if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then
+      return 0
+    fi
+    stop_api
+  fi
+  : > "$API_LOG"
+  nohup env MAXQ_HOME="$PREFIX" "$API_BIN" >>"$API_LOG" 2>&1 &
+  echo $! > "$API_PID"
+  local i=0 host port
+  host="$(api_listen_host)"
+  port="$(api_listen_port)"
+  while [ "$i" -lt 50 ]; do
+    if api_is_running && python3 -c "import socket,sys; s=socket.socket(); s.settimeout(0.2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port" 2>/dev/null; then
+      if api_status_200; then
+        return 0
+      fi
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if api_is_running; then
+    return 0
+  fi
+  echo "maxq: maxq-api failed to start; last log:" >&2
+  tail -n 20 "$API_LOG" 2>/dev/null >&2 || true
+  return 1
 }
 
 # --- theme (PLAN 6-8, Catppuccin Mocha) -------------------------------------
@@ -1471,7 +1677,7 @@ revert_operator_clis() {
 cmd_apply() {
   mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR" \
     "$LOCAL/share/themes" "$LOCAL/share/icons" "$LOCAL/share/backgrounds" \
-    "$CONFIG/theme" "$CLI_CACHE"
+    "$CONFIG/theme" "$CLI_CACHE" "$API_SRC"
   load_settings
   THEME="mocha"
   install_self
@@ -1488,7 +1694,8 @@ cmd_apply() {
   install_profile_hook "$PREFIX/.bashrc"
   optional_usr_link
   apply_proxy_runtime
-  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED clis.preexisting=$CLI_PREEXISTING"
+  start_api
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED clis.preexisting=$CLI_PREEXISTING"
 }
 
 cmd_revert() {
@@ -1508,6 +1715,8 @@ cmd_revert() {
 
   stop_gost
   echo "  gost process (pidfile)" >> "$REVERT_LOG"
+  stop_api
+  echo "  maxq-api process (pidfile)" >> "$REVERT_LOG"
 
   strip_profile_hook "$PREFIX/.profile"
   strip_profile_hook "$PREFIX/.bashrc"
@@ -1526,7 +1735,7 @@ cmd_revert() {
   # Never delete Chrome policies (cxn-egress.json, sand.json, …).
   # Never destroy the persist CA.
   local p
-  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE" "$GOST_YML" "$GOST_PID" "$GOST_LOG"; do
+  for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE" "$GOST_YML" "$GOST_PID" "$GOST_LOG" "$API_TOML" "$API_PID" "$API_LOG"; do
     if [ -e "$p" ] || [ -L "$p" ]; then
       rm -f "$p"
       echo "  $p" >> "$REVERT_LOG"
@@ -1543,6 +1752,8 @@ cmd_revert() {
     echo "  CA=$CA_DIR (kept)"
     echo "  CLI=$BIN/maxq (kept so apply can run again)"
     echo "  GOST=$GOST_BIN (kept)"
+    echo "  API=$API_BIN (kept; process stopped)"
+    echo "  api-src=$API_SRC (kept, like CA)"
     echo "  theme src cache=$THEME_SRC (kept, like CA)"
     echo "  cli-cache=$CLI_CACHE (kept, like CA)"
     echo "  opencode/tailscale kept unless MaxQ-owned (managed-clis)"
@@ -1741,6 +1952,13 @@ assert_applied_tree() {
   prove_ok "managed-clis dir present on apply" test -d "$MANAGED_CLIS"
   prove_ok "opencode present on apply" test -x "$BIN/opencode"
   prove_ok "tailscale present on apply" test -x "$BIN/tailscale"
+  prove_ok "maxq-api binary at \$HOME/bin/maxq-api" test -x "$API_BIN"
+  prove_ok "api.toml exists" test -f "$API_TOML"
+  prove_grep "api listen loopback" "$API_TOML" 'listen = "127.0.0.1:7432"'
+  prove_ok "api running after apply" api_is_running
+  prove_ok "GET /status is 200 after apply" api_status_200
+  prove_ok "GET /status json state applied" api_status_applied
+  prove_ok "GET / serves settings sheet" api_ui_ok
   prove_grep "profile prepends HOME/bin" "$PROFILE_SNIPPET" 'PATH="\$HOME/bin:\$PATH"'
   local _n
   if [ -d "$MANAGED_CLIS" ]; then
@@ -1771,6 +1989,10 @@ assert_reverted_tree() {
   prove_ok "CA key kept across revert" test -s "$CA_KEY"
   prove_ok "gost binary kept across revert" test -x "$GOST_BIN"
   prove_ok "gost not running after revert" gost_not_running
+  prove_ok "api not running after revert" api_not_running
+  prove_ok "api port down after revert" api_port_down
+  prove_ok "api.toml gone on revert" test ! -e "$API_TOML"
+  prove_ok "maxq-api binary kept across revert" test -x "$API_BIN"
   prove_ok "no Chrome maxq-proxy.json after revert" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
   prove_ok "cxn-egress.json still absent" cxn_egress_untouched
   prove_ok "wallpaper gone on revert" test ! -e "$WALLPAPER"
@@ -1901,6 +2123,8 @@ cmd_prove() {
   echo "-- assert applied (final) --"
   assert_applied_tree
   prove_ok "final gost not running (enabled=false)" gost_not_running
+  prove_ok "final API up" api_is_running
+  prove_ok "final GET /status is 200" api_status_200
   prove_grep "final intercept false" "$TOML" '^intercept = false$'
   for _n in $owned_snapshot; do
     prove_ok "owned CLI $_n restored on final apply" test -x "$BIN/$_n"
@@ -1925,6 +2149,8 @@ cmd_prove() {
   echo "final_theme=$(grep -E '^theme' "$TOML" 2>/dev/null || true)"
   echo "gost=$(grep -E '^enabled' "$TOML" 2>/dev/null | head -n1 || true)"
   echo "intercept=$(grep -E '^intercept' "$TOML" 2>/dev/null | head -n1 || true)"
+  echo "api_listen=${API_LISTEN:-127.0.0.1:7432}"
+  echo "api_url=http://127.0.0.1:7432/"
   echo "gost_version=$(gost_version)"
   echo "ca=$CA_PEM"
   echo "chrome_proxy_policy=never"

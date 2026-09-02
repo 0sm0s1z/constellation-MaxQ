@@ -8,4 +8,6 @@ Do not put MaxQ in /usr (optional `ln -sfn` only). Persist under HOME. GOST is t
 
 v0 configure/unconfigure: `maxq apply`, `maxq revert`, `maxq prove`, `maxq status`, `maxq proxy`.
 
+Control API: Go stdlib binary `maxq-api` (`cmd/maxq-api`), loopback `127.0.0.1:7432`, thin TypeScript Mocha sheet at `/`. apply starts it; revert stops it. Stay light — not a cockpit.
+
 Theme is Catppuccin Mocha under `$HOME/.local/share` and `$HOME/.config`. Ghostty is config-only. Chrome theme is unpacked files plus Web Store id `bkkmolkhemgaeaeggcmfbghljjjoofoh`; never write Chrome proxy policies. Operator CLIs install into `$HOME/bin` from official linux amd64 releases; missing tools are skipped and listed in `clis.txt`. Do not overwrite preexisting OpenCode or Tailscale.

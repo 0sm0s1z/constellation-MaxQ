@@ -19,8 +19,8 @@ v0: 1-13, 18-19.
 - [ ] **15.** SSH server on operator net
 - [ ] **16.** VNC server on operator net
 - [ ] **17.** Firewall / listen-policy
-- [ ] **18.** Go control API
-- [ ] **19.** Thin TypeScript settings sheet
+- [x] **18.** Go control API
+- [x] **19.** Thin TypeScript settings sheet
 - [ ] **20.** Settings pages: theme, proxy, firewall, vault, OAuth, skills
 - [ ] **21.** Credential vault (shared bot accounts)
 - [ ] **22.** OAuth seating (Grok Build, etc.)

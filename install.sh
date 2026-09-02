@@ -31,6 +31,12 @@ if [ -n "$HERE" ] && [ -d "$HERE/share/theme" ]; then
   cp -a "$HERE/share/theme/." "$PREFIX/.config/maxq/theme/src/"
 fi
 
+# Control API source (Go + thin Mocha sheet). apply builds $HOME/bin/maxq-api.
+if [ -n "$HERE" ] && [ -d "$HERE/cmd/maxq-api" ]; then
+  mkdir -p "$PREFIX/.config/maxq/api-src"
+  cp -a "$HERE/cmd/maxq-api/." "$PREFIX/.config/maxq/api-src/"
+fi
+
 if [ "$#" -eq 0 ]; then
   exec "$BIN/maxq" apply
 fi

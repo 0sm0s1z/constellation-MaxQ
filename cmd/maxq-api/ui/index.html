@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ</title>
+  <link rel="stylesheet" href="/mocha.css">
+</head>
+<body>
+  <main class="sheet">
+    <header>
+      <div>
+        <h1>MaxQ</h1>
+        <p class="tag">Take your Grok Bot to MaxQ.</p>
+      </div>
+      <span id="pill" class="pill">…</span>
+    </header>
+
+    <section id="status-card" class="card">
+      <h2>status</h2>
+      <dl>
+        <dt>state</dt><dd id="st-state">—</dd>
+        <dt>theme</dt><dd id="st-theme">—</dd>
+        <dt>gost</dt><dd id="st-gost">—</dd>
+        <dt>clis</dt><dd id="st-clis">—</dd>
+        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>desired state</h2>
+      <div class="row">
+        <button type="button" id="btn-apply">Apply</button>
+        <button type="button" id="btn-revert" class="danger">Revert</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>proxy</h2>
+      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
+      <div class="row">
+        <button type="button" id="btn-proxy-on">On</button>
+        <button type="button" id="btn-proxy-off">Off</button>
+      </div>
+    </section>
+
+    <nav class="soon">
+      <span title="later">vault</span>
+      <span title="later">oauth</span>
+      <span title="later">skills</span>
+    </nav>
+    <p id="msg" class="msg" hidden></p>
+  </main>
+  <script src="/sheet.js"></script>
+</body>
+</html>

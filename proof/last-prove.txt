@@ -1,9 +1,9 @@
 === MaxQ prove ===
-version=0.4.0
+version=0.5.0
 host=grokbot
 prefix=/home/box
-self=/home/box/constellation-MaxQ/bin/maxq
-started_utc=2026-09-02T10:02:28Z
+self=/home/box/bin/maxq
+started_utc=2026-09-02T10:10:00Z
 initial_status=applied
 
 -- step 1: revert if applied --
@@ -15,7 +15,8 @@ maxq: operator CLI fx <- https://github.com/vercel-labs/fx/releases/download/v0.
 maxq: operator CLI grok <- https://x.ai/cli/grok-1.0.13-linux-x86_64.gz
 maxq: operator CLI codex <- https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz
 maxq: operator CLI claude <- https://downloads.claude.ai/claude-code-releases/2.1.258/linux-x64/claude
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
+maxq: building maxq-api -> /home/box/bin/maxq-api
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box api=127.0.0.1:7432 chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
 owned_clis=claude codex fx grok herdr 
 -- assert applied --
 [PASS] persist $HOME/bin exists
@@ -55,6 +56,13 @@ owned_clis=claude codex fx grok herdr
 [PASS] managed-clis dir present on apply
 [PASS] opencode present on apply
 [PASS] tailscale present on apply
+[PASS] maxq-api binary at $HOME/bin/maxq-api
+[PASS] api.toml exists
+[PASS] api listen loopback
+[PASS] api running after apply
+[PASS] GET /status is 200 after apply
+[PASS] GET /status json state applied
+[PASS] GET / serves settings sheet
 [PASS] profile prepends HOME/bin
 [PASS] owned CLI claude present on apply
 [PASS] owned CLI codex present on apply
@@ -111,6 +119,10 @@ MaxQ reverted. tombstone=/home/box/.config/maxq/last-revert.log
 [PASS] CA key kept across revert
 [PASS] gost binary kept across revert
 [PASS] gost not running after revert
+[PASS] api not running after revert
+[PASS] api port down after revert
+[PASS] api.toml gone on revert
+[PASS] maxq-api binary kept across revert
 [PASS] no Chrome maxq-proxy.json after revert
 [PASS] cxn-egress.json still absent
 [PASS] wallpaper gone on revert
@@ -141,7 +153,7 @@ maxq: operator CLI fx <- https://github.com/vercel-labs/fx/releases/download/v0.
 maxq: operator CLI grok <- https://x.ai/cli/grok-1.0.13-linux-x86_64.gz
 maxq: operator CLI codex <- https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz
 maxq: operator CLI claude <- https://downloads.claude.ai/claude-code-releases/2.1.258/linux-x64/claude
-MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
+MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefix=/home/box api=127.0.0.1:7432 chrome_theme=/home/box/.local/share/maxq/chrome-theme-mocha clis.installed=herdr fx grok codex claude clis.skipped= clis.preexisting=opencode tailscale tailscaled
 -- assert applied (final) --
 [PASS] persist $HOME/bin exists
 [PASS] persist $HOME/.config/maxq exists
@@ -180,6 +192,13 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] managed-clis dir present on apply
 [PASS] opencode present on apply
 [PASS] tailscale present on apply
+[PASS] maxq-api binary at $HOME/bin/maxq-api
+[PASS] api.toml exists
+[PASS] api listen loopback
+[PASS] api running after apply
+[PASS] GET /status is 200 after apply
+[PASS] GET /status json state applied
+[PASS] GET / serves settings sheet
 [PASS] profile prepends HOME/bin
 [PASS] owned CLI claude present on apply
 [PASS] owned CLI codex present on apply
@@ -187,6 +206,8 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 [PASS] owned CLI grok present on apply
 [PASS] owned CLI herdr present on apply
 [PASS] final gost not running (enabled=false)
+[PASS] final API up
+[PASS] final GET /status is 200
 [PASS] final intercept false
 [PASS] owned CLI claude restored on final apply
 [PASS] owned CLI codex restored on final apply
@@ -198,12 +219,14 @@ MaxQ applied. theme=mocha state=applied gost.enabled=false intercept=false prefi
 
 === MaxQ proof report ===
 result=PASS
-passed=153
+passed=173
 failed=0
 final_status=applied
 final_theme=theme = "mocha"
 gost=enabled = false
 intercept=intercept = false
+api_listen=127.0.0.1:7432
+api_url=http://127.0.0.1:7432/
 gost_version=gost v3.2.6 (go1.25.4 linux/amd64)
 ca=/home/box/.config/maxq/ca/maxq-ca.pem
 chrome_proxy_policy=never
@@ -213,5 +236,5 @@ ghostty_bin=skipped (no official linux amd64)
 clis_installed=herdr fx grok codex claude
 clis_skipped=
 clis_preexisting=opencode tailscale tailscaled
-ended_utc=2026-09-02T10:02:43Z
+ended_utc=2026-09-02T10:10:14Z
 left_state=APPLIED
