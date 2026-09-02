@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Public MaxQ shim: preserves the existing core and composes PLAN 7/36-40 desktop state.
+# Public MaxQ shim: preserves the existing core and composes PLAN 7/8/36-40 desktop state.
 set -euo pipefail
 PREFIX="${MAXQ_HOME:-$HOME}"; BIN="$PREFIX/bin"; CONFIG="$PREFIX/.config/maxq"; RUNTIME="$CONFIG/runtime"
 SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"; SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"
@@ -10,7 +10,7 @@ install_runtime_parts(){
   mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src" "$CONFIG/icons-src"
   if [ -n "$repo_root" ]; then
     cp -f "$SELF_DIR/maxq" "$CORE_SOURCE"; cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"
-    for lib in ghostty launcher shortcuts; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
+    for lib in ghostty launcher shortcuts chrome; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
     chmod +x "$CORE_SOURCE" "$DESKTOP"
     if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then cp -f "$SELF" "$PUBLIC"; chmod +x "$PUBLIC"; fi
     [ ! -d "$repo_root/cmd/maxq-api" ] || cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
@@ -19,7 +19,7 @@ install_runtime_parts(){
   else
     [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
     [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
-    for lib in ghostty launcher shortcuts; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
+    for lib in ghostty launcher shortcuts chrome; do [ -r "$BIN/maxq-desktop-$lib" ] || { echo "maxq: missing desktop runtime module $lib; rerun install.sh" >&2; exit 1; }; done
   fi
 }
 prepare_safe_core(){ python3 - "$CORE_SOURCE" "$SAFE_CORE" <<'PY'
