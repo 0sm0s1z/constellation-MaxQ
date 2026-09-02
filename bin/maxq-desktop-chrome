@@ -1,0 +1,182 @@
+# sourced by maxq-desktop
+CHROME_THEME_ID="bkkmolkhemgaeaeggcmfbghljjjoofoh"
+CHROME_UPDATE_URL="https://clients2.google.com/service/update2/crx"
+CHROME_SKEL="$C/chrome-skel/External Extensions"
+CHROME_SKEL_JSON="$CHROME_SKEL/$CHROME_THEME_ID.json"
+CHROME_THEME_DIR="$L/share/maxq/chrome-theme-mocha"
+CHROME_RECON_BEGIN='# >>> maxq chrome profile theme begin >>>'
+CHROME_RECON_END='# <<< maxq chrome profile theme end <<<'
+
+chrome_profile_allowed(){
+  case "$1" in
+    "$P/chrome-profile"|"$P"/chrome-profile-*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+chrome_profile_dirs(){
+  local d seen='|'
+  for d in "$P/chrome-profile" "$P"/chrome-profile-* "${CHROME_USER_DATA_DIR:-}"; do
+    [ -n "$d" ] || continue
+    [ -d "$d" ] || continue
+    chrome_profile_allowed "$d" || continue
+    case "$seen" in *"|$d|"*) continue;; esac
+    printf '%s\n' "$d"
+    seen="${seen}${d}|"
+  done
+}
+
+chrome_external_json_ok(){
+  python3 - "$1" "$CHROME_UPDATE_URL" <<'PY'
+import json,sys
+try:
+    data=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception:
+    raise SystemExit(1)
+raise SystemExit(0 if data == {'external_update_url': sys.argv[2]} else 1)
+PY
+}
+
+write_chrome_skeleton(){
+  mkdir -p "$CHROME_SKEL"
+  cat > "$CHROME_SKEL_JSON" <<EOF
+{
+  "external_update_url": "$CHROME_UPDATE_URL"
+}
+EOF
+}
+
+seed_chrome_profile(){
+  local profile="$1" ext json owned prev
+  [ -d "$profile" ] || return 0
+  chrome_profile_allowed "$profile" || return 0
+  ext="$profile/External Extensions"
+  json="$ext/$CHROME_THEME_ID.json"
+  owned="$json.maxq-owned"
+  prev="$json.maxq-prev"
+  mkdir -p "$ext"
+  if [ -e "$json" ] && [ ! -e "$owned" ] && [ ! -e "$prev" ]; then cp -f "$json" "$prev"; fi
+  cp -f "$CHROME_SKEL_JSON" "$json"
+  : > "$owned"
+}
+
+seed_all_chrome_profiles(){
+  local profile
+  while IFS= read -r profile; do [ -n "$profile" ] && seed_chrome_profile "$profile"; done < <(chrome_profile_dirs)
+}
+
+remove_chrome_profile_seed(){
+  local profile="$1" json owned prev
+  [ -d "$profile" ] || return 0
+  chrome_profile_allowed "$profile" || return 0
+  json="$profile/External Extensions/$CHROME_THEME_ID.json"
+  owned="$json.maxq-owned"
+  prev="$json.maxq-prev"
+  [ -e "$owned" ] || return 0
+  if [ -e "$prev" ]; then mv -f "$prev" "$json"; else rm -f "$json"; fi
+  rm -f "$owned" "$prev"
+}
+
+strip_chrome_reconciler(){
+  local f="$B/maxq-reconcile" tmp
+  [ -f "$f" ] || return 0
+  grep -qF "$CHROME_RECON_BEGIN" "$f" || return 0
+  tmp="$(mktemp "${f}.chrome.XXXXXX")"
+  awk -v b="$CHROME_RECON_BEGIN" -v e="$CHROME_RECON_END" '
+    $0==b {skip=1; next}
+    $0==e {skip=0; next}
+    !skip {print}
+  ' "$f" > "$tmp"
+  cat "$tmp" > "$f"; rm -f "$tmp"; chmod +x "$f"
+}
+
+install_chrome_reconciler(){
+  local f="$B/maxq-reconcile" tmp block
+  [ -f "$f" ] || fail 'maxq-reconcile missing after core apply'
+  strip_chrome_reconciler
+  tmp="$(mktemp "${f}.chrome.XXXXXX")"
+  block="$(mktemp "${TMPDIR:-/tmp}/maxq-chrome-reconcile.XXXXXX")"
+  cat > "$block" <<'EOF'
+# >>> maxq chrome profile theme begin >>>
+MAXQ_CHROME_THEME_ID="bkkmolkhemgaeaeggcmfbghljjjoofoh"
+MAXQ_CHROME_SKEL="$PREFIX/.config/maxq/chrome-skel/External Extensions/$MAXQ_CHROME_THEME_ID.json"
+maxq_chrome_profile_allowed(){
+  case "$1" in
+    "$PREFIX/chrome-profile"|"$PREFIX"/chrome-profile-*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+maxq_seed_chrome_profile(){
+  local profile="$1" ext json owned prev
+  [ -d "$profile" ] || return 0
+  maxq_chrome_profile_allowed "$profile" || return 0
+  [ -s "$MAXQ_CHROME_SKEL" ] || return 0
+  ext="$profile/External Extensions"
+  json="$ext/$MAXQ_CHROME_THEME_ID.json"
+  owned="$json.maxq-owned"
+  prev="$json.maxq-prev"
+  mkdir -p "$ext"
+  if [ -e "$json" ] && [ ! -e "$owned" ] && [ ! -e "$prev" ]; then cp -f "$json" "$prev"; fi
+  cp -f "$MAXQ_CHROME_SKEL" "$json"
+  : > "$owned"
+}
+for maxq_profile in "$PREFIX/chrome-profile" "$PREFIX"/chrome-profile-* "${CHROME_USER_DATA_DIR:-}"; do
+  [ -n "$maxq_profile" ] || continue
+  maxq_seed_chrome_profile "$maxq_profile"
+done
+unset maxq_profile
+# <<< maxq chrome profile theme end <<<
+EOF
+  awk -v block="$block" '
+    /^exit 0$/ && !done {
+      while ((getline line < block) > 0) print line
+      close(block); done=1
+    }
+    {print}
+    END {
+      if (!done) {
+        while ((getline line < block) > 0) print line
+        close(block)
+      }
+    }
+  ' "$f" > "$tmp"
+  cat "$tmp" > "$f"; rm -f "$tmp" "$block"; chmod +x "$f"
+}
+
+install_chrome_theme_profiles(){
+  [ -s "$CHROME_THEME_DIR/manifest.json" ] || fail 'Chrome Mocha unpacked manifest missing after core apply'
+  write_chrome_skeleton
+  seed_all_chrome_profiles
+  install_chrome_reconciler
+}
+
+remove_chrome_theme_profiles(){
+  local profile
+  while IFS= read -r profile; do [ -n "$profile" ] && remove_chrome_profile_seed "$profile"; done < <(chrome_profile_dirs)
+  strip_chrome_reconciler
+  rm -rf "$C/chrome-skel" "$CHROME_THEME_DIR"
+}
+
+check_all_chrome_profiles_seeded(){
+  local profile json
+  while IFS= read -r profile; do
+    [ -n "$profile" ] || continue
+    json="$profile/External Extensions/$CHROME_THEME_ID.json"
+    chrome_external_json_ok "$json" || return 1
+    [ -e "$json.maxq-owned" ] || return 1
+  done < <(chrome_profile_dirs)
+}
+
+chrome_reconciler_safe(){
+  local f="$B/maxq-reconcile"
+  [ -f "$f" ] || return 1
+  grep -qF "$CHROME_RECON_BEGIN" "$f" || return 1
+  grep -q 'chrome-profile-\*' "$f" || return 1
+  grep -q 'External Extensions' "$f" || return 1
+  awk -v b="$CHROME_RECON_BEGIN" -v e="$CHROME_RECON_END" '
+    $0==b {inside=1; next}
+    $0==e {inside=0; next}
+    inside {print}
+  ' "$f" | grep -Eq '(^|[^[:alnum:]_])(kill|killall|pkill)([^[:alnum:]_]|$)|/etc/opt/chrome/policies/managed|--load-extension|ProxyMode|cxn-egress|sand-egress-proxy' && return 1
+  return 0
+}
