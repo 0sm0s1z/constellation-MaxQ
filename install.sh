@@ -10,6 +10,7 @@ set -euo pipefail
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 RAW_BASE="${MAXQ_RAW_BASE:-https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main}"
+API_SRC="$PREFIX/.config/maxq/api-src"
 
 mkdir -p "$BIN"
 
@@ -32,9 +33,13 @@ if [ -n "$HERE" ] && [ -d "$HERE/share/theme" ]; then
 fi
 
 # Control API source (Go + thin Mocha sheet). apply builds $HOME/bin/maxq-api.
+mkdir -p "$API_SRC/ui"
 if [ -n "$HERE" ] && [ -d "$HERE/cmd/maxq-api" ]; then
-  mkdir -p "$PREFIX/.config/maxq/api-src"
-  cp -a "$HERE/cmd/maxq-api/." "$PREFIX/.config/maxq/api-src/"
+  cp -a "$HERE/cmd/maxq-api/." "$API_SRC/"
+else
+  for path in go.mod main.go ui/index.html ui/mocha.css ui/sheet.js; do
+    curl -fsSL "$RAW_BASE/cmd/maxq-api/$path" -o "$API_SRC/$path"
+  done
 fi
 
 if [ "$#" -eq 0 ]; then
