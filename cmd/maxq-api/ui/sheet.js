@@ -1,84 +1,16 @@
 // MaxQ thin settings sheet (compiled from sheet.ts; no framework).
 "use strict";
-
-function $(id) {
-  const el = document.getElementById(id);
-  if (!el) throw new Error("missing #" + id);
-  return el;
-}
-
-async function getStatus() {
-  const r = await fetch("/status");
-  if (!r.ok) throw new Error("status " + r.status);
-  return r.json();
-}
-
-async function postJSON(path, body) {
-  const r = await fetch(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!r.ok) {
-    let extra = "";
-    try {
-      const j = await r.json();
-      extra = j.error ? ": " + j.error : "";
-    } catch {
-      extra = "";
-    }
-    throw new Error(path + " " + r.status + extra);
-  }
-}
-
-function render(s) {
-  $("st-state").textContent = s.state;
-  $("st-theme").textContent = s.theme;
-  const g = s.gost.enabled ? "enabled" : "off";
-  const run = s.gost.running ? "running" : "stopped";
-  $("st-gost").textContent = g + " / " + run;
-  const bits = [s.clis.installed, s.clis.preexisting].filter((x) => x && x.length);
-  $("st-clis").textContent = bits.join(" ") || "—";
-  $("st-api").textContent = s.api.listen;
-  const pill = $("pill");
-  pill.textContent = s.state;
-  pill.className = "pill " + (s.state === "applied" ? "on" : "off");
-}
-
-function showMsg(text) {
-  const el = $("msg");
-  el.hidden = !text;
-  el.textContent = text;
-}
-
-async function refresh() {
-  const s = await getStatus();
-  render(s);
-}
-
-function busy(on) {
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off"].forEach((id) => {
-    $(id).disabled = on;
-  });
-}
-
-async function act(fn) {
-  showMsg("");
-  busy(true);
-  try {
-    await fn();
-    await refresh();
-  } catch (e) {
-    showMsg(e instanceof Error ? e.message : String(e));
-  } finally {
-    busy(false);
-  }
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  $("btn-apply").addEventListener("click", () => act(() => postJSON("/apply", {})));
-  $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
-  $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
-  $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
-  refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e)));
-});
+const $=(id)=>{const el=document.getElementById(id);if(!el)throw new Error("missing #"+id);return el};
+const fmtBytes=(n)=>{if(!Number.isFinite(n))return "—";const u=["B","KiB","MiB","GiB","TiB"];let i=0,v=n;while(v>=1024&&i<u.length-1){v/=1024;i++}return v.toFixed(i>=3?1:0)+" "+u[i]};
+async function getJSON(path){const r=await fetch(path);if(!r.ok)throw new Error(path+" "+r.status);return r.json()}
+async function postJSON(path,body){const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body??{})});if(!r.ok){let extra="";try{const j=await r.json();extra=j.error?": "+j.error:""}catch{}throw new Error(path+" "+r.status+extra)}return r.json()}
+function showMsg(text,ok=false){const el=$("msg");el.hidden=!text;el.textContent=text;el.className="msg"+(ok?" ok":"")}
+function busy(on){document.querySelectorAll("button").forEach((b)=>b.disabled=on)}
+function showPage(name){document.querySelectorAll("[data-page-panel]").forEach((el)=>el.hidden=el.dataset.pagePanel!==name);document.querySelectorAll("[data-page]").forEach((el)=>el.classList.toggle("active",el.dataset.page===name));if(name==="resources")refreshResources().catch(showError);if(name==="triggers")refreshTriggers().catch(showError)}
+function showError(e){showMsg(e instanceof Error?e.message:String(e))}
+async function act(fn,refresh=true){showMsg("");busy(true);try{await fn();if(refresh)await refreshStatus()}catch(e){showError(e)}finally{busy(false)}}
+async function refreshStatus(){const s=await getJSON("/status");$("st-state").textContent=s.state;$("st-theme").textContent=s.theme;$("st-api").textContent=s.api.listen;$("st-gost").textContent=(s.gost.enabled?"enabled":"off")+" / "+(s.gost.running?"running":"stopped");$("st-gost-listen").textContent=s.gost.listen;$("stub-firewall").textContent=s.firewall.note;$("stub-vault").textContent=s.vault.note;$("stub-oauth").textContent=s.oauth.note;$("stub-skills").textContent=s.skills.note;const pill=$("pill");pill.textContent=s.state;pill.className="pill "+(s.state==="applied"?"on":"off")}
+async function refreshResources(){const r=await getJSON("/resources");$("res-ram").textContent=fmtBytes(r.memory.used_bytes)+" / "+fmtBytes(r.memory.total_bytes)+" used · "+r.memory.used_percent.toFixed(1)+"% · "+fmtBytes(r.memory.available_bytes)+" available";$("res-cpu").textContent=r.cpu.used_percent.toFixed(1)+"% · "+r.cpu.cores+" cores · load1 "+r.cpu.load1.toFixed(2);$("res-agent").textContent=(r.agent_display||"DISPLAY unset")+" · "+(r.agent_profile||"profile unresolved");const list=$("chrome-list");list.replaceChildren();if(!r.chrome.length){const e=document.createElement("div");e.className="item meta";e.textContent="No Chrome processes found.";list.appendChild(e)}for(const c of r.chrome){const e=document.createElement("div");e.className="item";const h=document.createElement("div");h.className="item-head";const t=document.createElement("span");t.className="item-title";t.textContent=(c.display||"?")+" · "+(c.profile||"profile unknown");const b=document.createElement("span");b.className="badge"+(c.current_agent?"":" warn");b.textContent=c.current_agent?"this agent":"observe only";h.append(t,b);const m=document.createElement("div");m.className="meta";m.textContent=fmtBytes(c.rss_bytes)+" RSS · "+c.pids.length+" processes";e.append(h,m);list.appendChild(e)}}
+function triggerItem(t){const e=document.createElement("div");e.className="item";const h=document.createElement("div");h.className="item-head";const title=document.createElement("span");title.className="item-title";title.textContent=t.id;const badge=document.createElement("span");badge.className="badge"+(t.enabled?"":" warn");badge.textContent=t.kind+" · "+(t.enabled?"enabled":"disabled");h.append(title,badge);const meta=document.createElement("div");meta.className="meta";meta.textContent=t.spec+(t.last_fire?" · last "+t.last_fire:"");const row=document.createElement("div");row.className="row";const toggle=document.createElement("button");toggle.textContent=t.enabled?"Disable":"Enable";toggle.addEventListener("click",()=>act(async()=>{await postJSON("/triggers/enable",{id:t.id,enabled:!t.enabled});await refreshTriggers()},false));const test=document.createElement("button");test.textContent="Test";test.addEventListener("click",()=>act(async()=>{await postJSON("/triggers/test",{id:t.id});await refreshTriggers();showMsg("trigger fired",true)},false));row.append(toggle,test);e.append(h,meta,row);return e}
+async function refreshTriggers(){const t=await getJSON("/triggers");$("webhook-url").value=t.webhook_url||"";const list=$("trigger-list");list.replaceChildren();for(const tr of t.triggers)list.appendChild(triggerItem(tr))}
+window.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll("[data-page]").forEach((b)=>b.addEventListener("click",()=>showPage(b.dataset.page)));$("btn-apply").addEventListener("click",()=>act(()=>postJSON("/apply",{})));$("btn-revert").addEventListener("click",()=>act(()=>postJSON("/revert",{}),false));$("btn-proxy-on").addEventListener("click",()=>act(()=>postJSON("/proxy",{enabled:true})));$("btn-proxy-off").addEventListener("click",()=>act(()=>postJSON("/proxy",{enabled:false})));$("btn-trim").addEventListener("click",()=>act(async()=>{await postJSON("/resources/chrome",{action:"trim"});await refreshResources()},false));$("btn-restart").addEventListener("click",()=>act(async()=>{await postJSON("/resources/chrome",{action:"restart"});await new Promise(r=>setTimeout(r,500));await refreshResources()},false));$("btn-webhook-save").addEventListener("click",()=>act(async()=>{await postJSON("/triggers/webhook",{webhook_url:$("webhook-url").value.trim()});await refreshTriggers();showMsg("webhook saved",true)},false));$("btn-webhook-clear").addEventListener("click",()=>act(async()=>{await postJSON("/triggers/webhook",{webhook_url:""});await refreshTriggers();showMsg("hooks disabled",true)},false));$("btn-trigger-add").addEventListener("click",()=>act(async()=>{await postJSON("/triggers",{id:$("tr-id").value.trim(),kind:$("tr-kind").value,spec:$("tr-spec").value.trim(),hook:"webhook",enabled:true,level:"info",message:$("tr-message").value.trim(),cooldown_sec:60});$("tr-id").value="";$("tr-spec").value="";$("tr-message").value="";await refreshTriggers();showMsg("trigger added",true)},false));refreshStatus().catch(showError);showPage("theme")});

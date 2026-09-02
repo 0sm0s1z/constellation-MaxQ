@@ -1,6 +1,6 @@
 # MaxQ installer tasks
 
-v0: 1-13, 18-19.
+v0: 1-13, 18-20, 31-35.
 
 - [x] **1.** Persist layout: HOME/bin, HOME/.config/maxq, HOME/.local
 - [x] **2.** Curl installer + maxq CLI
@@ -21,7 +21,7 @@ v0: 1-13, 18-19.
 - [ ] **17.** Firewall / listen-policy
 - [x] **18.** Go control API
 - [x] **19.** Thin TypeScript settings sheet
-- [ ] **20.** Settings pages: theme, proxy, firewall, vault, OAuth, skills, resources, triggers
+- [x] **20.** Settings pages: theme, proxy, firewall, vault, OAuth, skills, resources, triggers
 - [ ] **21.** Credential vault (shared bot accounts)
 - [ ] **22.** OAuth seating (Grok Build, etc.)
 - [ ] **23.** Account seating / session persist / computer-use reauth
@@ -32,8 +32,8 @@ v0: 1-13, 18-19.
 - [ ] **28.** Skill pack catalog in settings
 - [ ] **29.** GitHub SSH key seating
 - [ ] **30.** README / homepage copy
-- [ ] **31.** Resource monitor/manager in settings: host RAM/CPU (used vs available, no swap), per-display Chrome RSS, this-agent Chrome trim/restart only. Never signal other agents' Chrome. Isolation is DISPLAY + chrome-profile-N on a shared UNIX user.
-- [ ] **32.** Trigger/hook engine: persist-safe scheduler + probes; user-visible; cron/schedule is a first-class trigger kind
-- [ ] **33.** Dynamic webhook dest: `$HOME/.config/maxq/hooks.toml` (never in git). First-run setup + settings. Empty disables hooks
-- [ ] **34.** Settings Triggers page: list, enable, last-fire, set webhook URL, add cron or shell probe
-- [ ] **35.** Builtin resource probe: MemAvailable/used%; webhook `warning resource limits exhausted: OOM` with cooldown
+- [x] **31.** Resource monitor/manager in settings: host RAM/CPU (used vs available, no swap), per-display Chrome RSS, this-agent Chrome trim/restart only. Never signal other agents' Chrome. Isolation is DISPLAY + chrome-profile-N on a shared UNIX user.
+- [x] **32.** Trigger/hook engine: persist-safe scheduler + probes; user-visible; cron/schedule is a first-class trigger kind
+- [x] **33.** Dynamic webhook dest: `$HOME/.config/maxq/hooks.toml` (never in git). First-run setup + settings. Empty disables hooks
+- [x] **34.** Settings Triggers page: list, enable, last-fire, set webhook URL, add cron or shell probe
+- [x] **35.** Builtin resource probe: MemAvailable/used%; webhook `warning resource limits exhausted: OOM` with cooldown

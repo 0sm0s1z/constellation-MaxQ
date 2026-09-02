@@ -3,52 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaxQ</title>
+  <title>MaxQ Settings</title>
   <link rel="stylesheet" href="/mocha.css">
 </head>
 <body>
   <main class="sheet">
     <header>
-      <div>
-        <h1>MaxQ</h1>
-        <p class="tag">Take your Grok Bot to MaxQ.</p>
-      </div>
+      <div><h1>MaxQ</h1><p class="tag">thin settings · bot first · Catppuccin Mocha</p></div>
       <span id="pill" class="pill">…</span>
     </header>
 
-    <section id="status-card" class="card">
-      <h2>status</h2>
-      <dl>
-        <dt>state</dt><dd id="st-state">—</dd>
-        <dt>theme</dt><dd id="st-theme">—</dd>
-        <dt>gost</dt><dd id="st-gost">—</dd>
-        <dt>clis</dt><dd id="st-clis">—</dd>
-        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
-      </dl>
-    </section>
-
-    <section class="card">
-      <h2>desired state</h2>
-      <div class="row">
-        <button type="button" id="btn-apply">Apply</button>
-        <button type="button" id="btn-revert" class="danger">Revert</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
-      <div class="row">
-        <button type="button" id="btn-proxy-on">On</button>
-        <button type="button" id="btn-proxy-off">Off</button>
-      </div>
-    </section>
-
-    <nav class="soon">
-      <span title="later">vault</span>
-      <span title="later">oauth</span>
-      <span title="later">skills</span>
+    <nav class="tabs" aria-label="settings sections">
+      <button data-page="theme">theme</button><button data-page="proxy">proxy</button><button data-page="firewall">firewall</button>
+      <button data-page="vault">vault</button><button data-page="oauth">oauth</button><button data-page="skills">skills</button>
+      <button data-page="resources">resources</button><button data-page="triggers">triggers</button>
     </nav>
+
+    <section class="card status-card">
+      <h2>status</h2>
+      <dl><dt>state</dt><dd id="st-state">—</dd><dt>api</dt><dd id="st-api">127.0.0.1:7432</dd></dl>
+      <div class="row compact"><button id="btn-apply">Apply</button><button id="btn-revert" class="danger">Revert</button></div>
+    </section>
+
+    <section class="page card" data-page-panel="theme">
+      <h2>theme</h2><dl><dt>flavor</dt><dd id="st-theme">mocha</dd><dt>scope</dt><dd>Catppuccin Mocha only</dd></dl>
+    </section>
+
+    <section class="page card" data-page-panel="proxy" hidden>
+      <h2>proxy</h2><p class="hint">GOST process only. Default off. Never Chrome CONNECT policy, cxn-egress.json, or /tmp/sand-egress-proxy.</p>
+      <dl><dt>state</dt><dd id="st-gost">—</dd><dt>listen</dt><dd id="st-gost-listen">—</dd></dl>
+      <div class="row"><button id="btn-proxy-on">On</button><button id="btn-proxy-off">Off</button></div>
+    </section>
+
+    <section class="page card" data-page-panel="firewall" hidden><h2>firewall</h2><p id="stub-firewall" class="hint">stub</p></section>
+    <section class="page card" data-page-panel="vault" hidden><h2>vault</h2><p id="stub-vault" class="hint">stub</p></section>
+    <section class="page card" data-page-panel="oauth" hidden><h2>oauth</h2><p id="stub-oauth" class="hint">stub</p></section>
+    <section class="page card" data-page-panel="skills" hidden><h2>skills</h2><p id="stub-skills" class="hint">stub</p></section>
+
+    <section class="page card" data-page-panel="resources" hidden>
+      <h2>resources</h2><p class="hint">Shared host view; controls can signal only this agent: DISPLAY=:N + chrome-profile-N.</p>
+      <dl>
+        <dt>ram</dt><dd id="res-ram">—</dd><dt>cpu</dt><dd id="res-cpu">—</dd><dt>agent</dt><dd id="res-agent">—</dd>
+      </dl>
+      <div id="chrome-list" class="stack"></div>
+      <div class="row"><button id="btn-trim">Trim this agent</button><button id="btn-restart" class="danger">Restart this agent Chrome</button></div>
+    </section>
+
+    <section class="page card" data-page-panel="triggers" hidden>
+      <h2>triggers</h2><p class="hint">schedule = cron in America/Los_Angeles. probe = shell exit 0. Empty webhook disables all delivery.</p>
+      <label>webhook URL<input id="webhook-url" type="url" placeholder="https://…"></label>
+      <div class="row"><button id="btn-webhook-save">Save</button><button id="btn-webhook-clear">Clear</button></div>
+      <div id="trigger-list" class="stack"></div>
+      <hr>
+      <label>id<input id="tr-id" placeholder="backup.ready"></label>
+      <label>kind<select id="tr-kind"><option value="schedule">schedule</option><option value="probe">probe</option></select></label>
+      <label>spec<input id="tr-spec" placeholder="0 9 * * *"></label>
+      <label>message<input id="tr-message" placeholder="optional message"></label>
+      <div class="row"><button id="btn-trigger-add">Add enabled trigger</button></div>
+    </section>
+
     <p id="msg" class="msg" hidden></p>
   </main>
   <script src="/sheet.js"></script>
