@@ -7,7 +7,7 @@ CORE_SOURCE="$BIN/maxq-core"; DESKTOP="$BIN/maxq-desktop"; SAFE_CORE="$RUNTIME/m
 repo_root=""
 if [ -x "$SELF_DIR/maxq" ] && [ -x "$SELF_DIR/maxq-desktop" ] && [ -f "$SELF_DIR/../cmd/maxq-api/main.go" ]; then repo_root="$(cd "$SELF_DIR/.." && pwd)"; fi
 install_runtime_parts(){
-  mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src"
+  mkdir -p "$BIN" "$RUNTIME" "$CONFIG/api-src" "$CONFIG/theme/src" "$CONFIG/icons-src"
   if [ -n "$repo_root" ]; then
     cp -f "$SELF_DIR/maxq" "$CORE_SOURCE"; cp -f "$SELF_DIR/maxq-desktop" "$DESKTOP"
     for lib in ghostty launcher shortcuts; do cp -f "$SELF_DIR/maxq-desktop-$lib" "$BIN/maxq-desktop-$lib"; chmod +x "$BIN/maxq-desktop-$lib"; done
@@ -15,6 +15,7 @@ install_runtime_parts(){
     if [ "$(readlink -f "$SELF" 2>/dev/null || printf '%s' "$SELF")" != "$(readlink -f "$PUBLIC" 2>/dev/null || printf '%s' "$PUBLIC")" ]; then cp -f "$SELF" "$PUBLIC"; chmod +x "$PUBLIC"; fi
     [ ! -d "$repo_root/cmd/maxq-api" ] || cp -a "$repo_root/cmd/maxq-api/." "$CONFIG/api-src/"
     [ ! -d "$repo_root/share/theme" ] || cp -a "$repo_root/share/theme/." "$CONFIG/theme/src/"
+    [ ! -d "$repo_root/share/icons" ] || cp -a "$repo_root/share/icons/." "$CONFIG/icons-src/"
   else
     [ -x "$CORE_SOURCE" ] || { echo "maxq: missing $CORE_SOURCE; rerun install.sh" >&2; exit 1; }
     [ -x "$DESKTOP" ] || { echo "maxq: missing $DESKTOP; rerun install.sh" >&2; exit 1; }
@@ -26,9 +27,10 @@ import os,sys
 src,dest=sys.argv[1:]; text=open(src,encoding='utf-8').read()
 replacements={
  '  install_self\n':'  : # public wrapper owns $HOME/bin/maxq\n',
- '  optional_usr_link\n':'  : # persist-safe: never write /usr\n',
- '  remove_optional_usr_link\n':'  : # persist-safe: never write /usr\n',
- 'if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then\n  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq\nfi\n':'# MaxQ desktop contract: HOME-only reconciler; never write /usr.\n',
+ '  optional_usr_link\n':'  : # persist-safe: no system-level link\n',
+ '  remove_optional_usr_link\n':'  : # persist-safe: no system-level link\n',
+ '# Recreates persist layout and optional /usr/local/bin link. No /usr logic.\n':'# Recreates the HOME-only persist layout.\n',
+ 'if [ -x "$PREFIX/bin/maxq" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then\n  ln -sfn "$PREFIX/bin/maxq" /usr/local/bin/maxq\nfi\n':'# HOME-only reconciler.\n',
  'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then\n':'if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] || [ "$pid" = "${MAXQ_WRAPPER_PARENT_PID:-}" ]; }; then\n',
  '  echo "ghostty_bin=skipped (no official linux amd64)"\n':'  echo "ghostty_bin=desktop-proof follows core proof"\n',
 }
