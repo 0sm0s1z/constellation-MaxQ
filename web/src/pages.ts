@@ -108,8 +108,8 @@ export function renderHome(): string {
       <div class="hero-copy">
         <p class="eyebrow">Constellation · first product</p>
         <h1>
-          <span class="words pastel-flow">Take your Grok Bot to</span>
-          <span class="h1-end">${nameLogo("hero-logo")}</span>
+          <span class="words pastel-flow">Take Grok Bot to</span>
+          ${nameLogo("hero-logo")}
         </h1>
         <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
         <div class="cta-row">
