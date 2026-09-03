@@ -32,6 +32,11 @@
   inherits: true;
   initial-value: 0;
 }
+@property --trail-reveal {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
 html, body { margin: 0; min-height: 100%; }
 html {
   background: var(--crust);
@@ -440,11 +445,12 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   animation: rocket-body-glow 5.5s ease-in-out infinite alternate;
 }
 
-/* Flame-trail layer. No background on .rocket-stage. CSS cone retired. */
+/* Endpoint-aligned flame still: anchor its broad base on the keyboard, then reveal it along the same path as rocket-lift. */
 .rocket-stage .rocket-flame {
+  --trail-reveal: 0%;
   position: absolute;
-  left: 0;
-  top: 31.9%;
+  left: 20.2%;
+  top: 24.6%;
   width: 48%;
   max-width: none;
   height: auto;
@@ -453,39 +459,75 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   z-index: 2;
   opacity: 0;
   transform-origin: 62% 94%;
-  animation: rocket-flame-on 5.5s ease-in-out infinite alternate;
+  mix-blend-mode: plus-lighter;
+  filter:
+    saturate(1.08)
+    drop-shadow(0 0 8px rgba(250,179,135,.38))
+    drop-shadow(0 0 18px rgba(255,236,214,.16));
+  -webkit-mask-image: linear-gradient(
+    to top right,
+    #000 0%,
+    #000 var(--trail-reveal),
+    rgba(0,0,0,.72) calc(var(--trail-reveal) + 4%),
+    transparent calc(var(--trail-reveal) + 10%)
+  );
+  mask-image: linear-gradient(
+    to top right,
+    #000 0%,
+    #000 var(--trail-reveal),
+    rgba(0,0,0,.72) calc(var(--trail-reveal) + 4%),
+    transparent calc(var(--trail-reveal) + 10%)
+  );
+  animation: rocket-flame-reveal 5.5s ease-in-out infinite alternate;
 }
 
-@keyframes rocket-flame-on {
-  0%, 10% { opacity: 0; transform: scaleY(.16); }
-  24% { opacity: .5; transform: scaleY(.4); }
-  56% { opacity: .82; transform: scaleY(.78); }
-  100% { opacity: .95; transform: scaleY(1.12); }
+@keyframes rocket-flame-reveal {
+  0%, 10% {
+    opacity: 0;
+    --trail-reveal: 32%;
+  }
+  20% {
+    opacity: .62;
+    --trail-reveal: 46%;
+  }
+  56% {
+    opacity: .86;
+    --trail-reveal: 72%;
+  }
+  100% {
+    opacity: .98;
+    --trail-reveal: 100%;
+  }
 }
 
+/* A compact nozzle hot spot moves with the rocket and hides sub-pixel alignment error without becoming another shaft. */
 .rocket-fly::after {
   content: "";
   position: absolute;
   left: 45.05%;
   top: 41.5%;
-  width: 3.4%;
-  height: 10%;
-  transform: translate(-50%, -18%) rotate(31deg) scaleY(.5);
-  transform-origin: 50% 8%;
+  width: 3.2%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(.6);
   z-index: 1;
   pointer-events: none;
   opacity: 0;
   mix-blend-mode: plus-lighter;
-  background:
-    radial-gradient(ellipse at 50% 12%, rgba(255,252,247,1) 0 18%, rgba(255,235,210,.9) 32%, rgba(250,179,135,.55) 52%, transparent 78%);
-  filter: blur(2.6px) drop-shadow(0 0 8px rgba(250,179,135,.8));
+  background: radial-gradient(
+    circle,
+    rgba(255,255,248,.98) 0%,
+    rgba(255,235,210,.88) 28%,
+    rgba(250,179,135,.48) 54%,
+    transparent 78%
+  );
+  filter: blur(1.8px) drop-shadow(0 0 8px rgba(250,179,135,.72));
   animation: rocket-nozzle-core 5.5s ease-in-out infinite alternate;
 }
 
 @keyframes rocket-nozzle-core {
-  0%, 10% { opacity: 0; transform: translate(-50%, -18%) rotate(31deg) scaleY(.4); }
-  24% { opacity: .7; transform: translate(-50%, -18%) rotate(31deg) scaleY(.85); }
-  100% { opacity: 1; transform: translate(-50%, -18%) rotate(31deg) scaleY(1.15); }
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  20% { opacity: .7; transform: translate(-50%, -50%) scale(.86); }
+  100% { opacity: .92; transform: translate(-50%, -50%) scale(1.08); }
 }
 
 @keyframes rocket-body-glow {
