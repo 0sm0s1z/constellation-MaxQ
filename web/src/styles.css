@@ -443,15 +443,14 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 /* Flame-trail layer. No background on .rocket-stage. CSS cone retired. */
 .rocket-flame {
   position: absolute;
-  left: 22%;
-  top: 12%;
-  width: 68%;
+  left: 0;
+  top: 31.9%;
+  width: 48%;
   height: auto;
   pointer-events: none;
   user-select: none;
-  z-index: 2;
+  z-index: 1;
   opacity: 0;
-  mix-blend-mode: plus-lighter;
   animation: rocket-flame-on 5.5s ease-in-out infinite alternate;
 }
 

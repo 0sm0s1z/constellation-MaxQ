@@ -122,8 +122,8 @@ export function renderHome(): string {
           <figure class="slide is-on rocket-slide" data-slide="0">
             <div class="rocket-stage" data-rocket-stage>
               <img class="rocket-plate" src="/art/rocket-layers/plate.webp" alt="Pastel MaxQ workstation launch plate" width="1503" height="1047" />
-              <img class="rocket-flame" src="/art/rocket-layers/flame-trail.webp" alt="" width="1437" height="1095" aria-hidden="true" />
               <div class="rocket-fly">
+                <img class="rocket-flame" src="/art/rocket-layers/flame-trail.webp" alt="" width="1437" height="1095" aria-hidden="true" />
                 <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
                 <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
               </div>
