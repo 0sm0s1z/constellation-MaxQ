@@ -34,7 +34,7 @@ function shell(inner: string, route: Route): string {
         <a class="btn-solid btn-sm" href="#install">Install</a>
       </div>
     </header>
-    <div class="accent" aria-hidden="true"></div>
+    <div class="accent pastel-flow" aria-hidden="true"></div>
     ${inner}
     <footer class="foot">
       <span>MIT · mocha</span>
