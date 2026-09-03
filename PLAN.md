@@ -37,3 +37,4 @@ v0: 1-13, 18-19.
 - [ ] **33.** Dynamic webhook dest: `$HOME/.config/maxq/hooks.toml` (never in git). First-run setup + settings. Empty disables hooks
 - [ ] **34.** Settings Triggers page: list, enable, last-fire, set webhook URL, add cron or shell probe
 - [ ] **35.** Builtin resource probe: MemAvailable/used%; webhook `warning resource limits exhausted: OOM` with cooldown
+- [x] **49.** Desktops workspace: `/desktops` is a full-viewport Catppuccin Mocha operator destination with Global paged live noVNC feed and Crew single-desktop view, slim CPU/RAM/load/MaxQ/GOST/DISPLAY telemetry, persisted visible-count preference, and a hard UI cap that creates RFB streams only for the visible carousel page. Viewer host is always `window.location.hostname`; :1 uses 6080 without a token, :2-:15 use 6081 with encoded websockify token paths.
