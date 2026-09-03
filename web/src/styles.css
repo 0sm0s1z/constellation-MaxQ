@@ -375,13 +375,18 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   font-family: IBM Plex Mono, ui-monospace, monospace;
   font-size: 11px; color: var(--overlay1);
 }
-.rocket-slide.is-on img {
-  animation: rocket-lift 2.8s ease-in-out infinite alternate;
+.rocket-flip { position: relative; }
+.rocket-flip img {
+  display: block; width: 100%; height: auto; opacity: 0;
+  transition: opacity .12s linear;
 }
-@keyframes rocket-lift {
-  from { transform: translateY(6px) scale(1); }
-  to { transform: translateY(-10px) scale(1.02); }
+.rocket-flip img + img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain;
 }
+.rocket-flip img.is-frame,
+.rocket-flip:not(.is-playing) img:first-child { opacity: 1; }
+
 .dots {
   display: flex; justify-content: center; gap: .45rem;
   margin-top: .85rem;
@@ -392,13 +397,10 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   background: color-mix(in srgb, var(--text) 22%, transparent);
 }
 .dot.is-on { background: var(--peach); }
-@media (hover: hover) {
-  .carousel:hover .rocket-slide.is-on img { animation-duration: 1.4s; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
-  .dia, .cursor, .accent, .hero h1 .words, .rocket-slide.is-on img { animation: none; }
+  .dia, .cursor, .accent, .hero h1 .words { animation: none; }
   .loader { display: none !important; }
 }
 

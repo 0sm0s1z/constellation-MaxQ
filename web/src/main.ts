@@ -109,6 +109,38 @@ function bindCarousel(root: HTMLElement) {
   show(0);
 }
 
+function bindRocketFlip(root: HTMLElement) {
+  const flip = root.querySelector<HTMLElement>("[data-rocket-flip]");
+  const slide = root.querySelector<HTMLElement>(".rocket-slide");
+  if (!flip || !slide) return;
+  const frames = [...flip.querySelectorAll<HTMLImageElement>("img")];
+  if (frames.length < 2) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return;
+  const order = [0, 1, 2, 3, 2, 1];
+  let step = 0;
+  let timer = 0;
+  const paint = (n: number) => {
+    frames.forEach((img, k) => img.classList.toggle("is-frame", k === n));
+  };
+  const stop = () => { window.clearInterval(timer); timer = 0; };
+  const play = () => {
+    if (timer || !slide.classList.contains("is-on")) return;
+    flip.classList.add("is-playing");
+    paint(order[step]);
+    timer = window.setInterval(() => {
+      step = (step + 1) % order.length;
+      paint(order[step]);
+    }, 280);
+  };
+  const mo = new MutationObserver(() => {
+    if (slide.classList.contains("is-on")) play();
+    else { stop(); step = 0; paint(0); flip.classList.remove("is-playing"); }
+  });
+  mo.observe(slide, { attributes: true, attributeFilter: ["class"] });
+  play();
+}
+
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -117,6 +149,7 @@ function draw() {
   bindCopy(app);
   bindTabs(app);
   bindCarousel(app);
+  bindRocketFlip(app);
 }
 
 function dismissLoader() {

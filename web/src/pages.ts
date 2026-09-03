@@ -120,7 +120,12 @@ export function renderHome(): string {
       <div class="hero-visual carousel" data-carousel>
         <div class="slides">
           <figure class="slide is-on rocket-slide" data-slide="0">
-            <img src="/art/rocket.webp" alt="Pastel rocket launching from a MaxQ workstation" width="1280" height="853" />
+            <div class="rocket-flip" data-rocket-flip>
+              <img src="/art/rocket-frames/frame-a-ignition.webp" alt="Pastel rocket launching from a MaxQ workstation" width="1536" height="1024" />
+              <img src="/art/rocket-frames/frame-b-building.webp" alt="" width="1536" height="1024" aria-hidden="true" />
+              <img src="/art/rocket-frames/frame-c-ascent.webp" alt="" width="1536" height="1024" aria-hidden="true" />
+              <img src="/art/rocket-frames/frame-d-departing.webp" alt="" width="1536" height="1024" aria-hidden="true" />
+            </div>
             <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
           </figure>
           <figure class="slide" data-slide="1" hidden>
