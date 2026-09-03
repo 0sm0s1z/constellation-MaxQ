@@ -121,14 +121,15 @@ export function renderHome(): string {
         <div class="slides">
           <figure class="slide is-on rocket-slide" data-slide="0">
             <div class="rocket-stage" data-rocket-stage>
-              <img class="rocket-plate" src="/art/rocket-layers/plate.webp" alt="Pastel rocket launching from a MaxQ workstation" width="1503" height="1047" />
-              <div class="rocket-fly">
-              <div class="rocket-exhaust" aria-hidden="true">
-                <img class="smoke-puff smoke-a" src="/art/rocket-layers/smoke-puff-01.webp" alt="" width="1254" height="1254" />
-                <img class="smoke-puff smoke-b" src="/art/rocket-layers/smoke-puff-02.webp" alt="" width="1254" height="1254" />
+              <img class="rocket-plate" src="/art/rocket-layers/plate.webp" alt="Pastel MaxQ workstation launch plate" width="1503" height="1047" />
+              <div class="rocket-beam" aria-hidden="true"></div>
+              <div class="rocket-pad-fx" aria-hidden="true">
+                <img class="pad-puff pad-puff-a" src="/art/rocket-layers/smoke-puff-01.webp" alt="" width="1254" height="1254" />
+                <img class="pad-puff pad-puff-b" src="/art/rocket-layers/smoke-puff-02.webp" alt="" width="1254" height="1254" />
               </div>
-              <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
-              <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
+              <div class="rocket-fly">
+                <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
+                <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
               </div>
             </div>
             <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
@@ -232,7 +233,7 @@ export function renderCrew(): string {
       <p class="lede">Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac. Chat stays in Crew. The box is a provider.</p>
     </article>
     <div class="device-row one">
-      ${bezel("/shots/crew-macos.webp", "Crew macOS: Messages, MuxBot, Multiplexer", "crew · macOS", "laptop", 1006, 670)}
+      ${bezel("/shots/crew-macos.webp", "Crew macOS: Messages, MuxBot, Multiplexer", "crew · macOS", 1006, 670)}
     </div>`;
 }
 
