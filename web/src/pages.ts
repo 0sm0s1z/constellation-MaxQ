@@ -43,13 +43,13 @@ const surfaces = [
     id: "maxq",
     num: "02",
     label: "MaxQ",
-    title: "Persist-safe. Revert is part of the product.",
-    lede: "Only $HOME. Mocha on the glass. Loopback for control. Revert does not delete the machine.",
-    src: "/shots/settings.webp",
-    alt: "MaxQ settings sheet, theme mocha, state applied",
-    cap: "maxq · settings applied",
-    w: 1000,
-    h: 624,
+    title: "The computer Grok Bot runs on.",
+    lede: "Utilities for the bot. Secondary controls for you: settings, telemetry, processes, every desktop.",
+    src: "/shots/desktops.webp",
+    alt: "MaxQ desktops multiplexer, live Xvfb :1 through :15, current :5",
+    cap: "maxq · desktops",
+    w: 1037,
+    h: 1200,
     href: "#home",
   },
   {
@@ -71,9 +71,9 @@ const surfaces = [
     label: "Crew",
     title: "Chat stays in Crew. The box is a provider.",
     lede: "Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac.",
-    src: "/shots/crew-macos.webp",
-    alt: "Crew multiplexer on macOS: Assigns computers",
-    cap: "crew · macOS multiplexer",
+    src: "",
+    alt: "",
+    cap: "crew · screenshot landing",
     w: 1006,
     h: 670,
     href: "#crew",
@@ -97,26 +97,35 @@ export function renderHome(): string {
           <p class="lede">${s.lede}</p>
           <a class="btn-ghost" href="${s.href}">Open ${s.label}</a>
         </div>
-        ${bezel(s.src, s.alt, s.cap, "laptop", s.w, s.h)}
+        ${s.src
+          ? bezel(s.src, s.alt, s.cap, "laptop", s.w, s.h)
+          : `<figure class="bezel empty"><div class="chrome"><span></span><span></span><span></span></div><p class="ph">Crew screenshot landing. Not Cue.</p><figcaption>${s.cap}</figcaption></figure>`}
       </div>`
     )
     .join("");
   return `
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">Persist-safe Grok Bot computer</p>
-        <h1>Take your Grok Bot to ${nameLogo("hero-logo")}.</h1>
-        <p class="lede">Mocha on the glass. Loopback for control. Revert does not delete the machine.</p>
+        <p class="eyebrow">Constellation · first product</p>
+        <h1>
+          <span class="words">Take your Grok Bot to</span>
+          <span class="h1-end">${nameLogo("hero-logo")}</span>
+        </h1>
+        <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
         <div class="cta-row">
           <a class="btn-solid" href="#install">Install</a>
           <a class="btn-ghost" href="#how">See how it works</a>
         </div>
-        ${installLine()}
       </div>
       <div class="hero-visual">
-        ${bezel("/shots/maxq-desktop.webp", "MaxQ mocha workstation on grokbot", "maxq · ghostty 1.3.1", "laptop", 1100, 687)}
+        ${bezel("/shots/desktops.webp", "MaxQ desktops multiplexer: live Xvfb :1 through :15, current :5", "maxq · desktops", "laptop", 1037, 1200)}
+        <figure class="float-shot">
+          <img src="/shots/packages.webp" alt="MaxQ SBOM packages inventory" width="439" height="835" />
+          <figcaption>packages · SBOM</figcaption>
+        </figure>
       </div>
     </section>
+    <div class="install-bar">${installLine()}</div>
     <div class="proof">
       <span>state=applied</span>
       <span>intercept=false</span>
@@ -126,12 +135,12 @@ export function renderHome(): string {
     <section class="how" id="how">
       <div class="how-copy">
         <p class="eyebrow">How it works</p>
-        <h2 class="display">One box. Four simple steps.</h2>
+        <h2 class="display">One box. Operator and bot.</h2>
         <ol class="steps">
-          <li><span class="step-num">01</span><div><h3>Persist</h3><p>Only <code>$HOME</code> — bin, .config/maxq, .local. Revert does not delete the machine.</p></div></li>
-          <li><span class="step-num">02</span><div><h3>Glass</h3><p>Mocha wallpaper, GTK, Ghostty, unpacked Chrome theme, plank, rofi.</p></div></li>
-          <li><span class="step-num">03</span><div><h3>Loopback</h3><p>maxq-api on 127.0.0.1:7432. Apply, revert, proxy. Non-loopback binds are refused.</p></div></li>
-          <li><span class="step-num">04</span><div><h3>Prove</h3><p>Revert → apply → assert. Leaves APPLIED. Intercept stays false.</p></div></li>
+          <li><span class="step-num">01</span><div><h3>Packages</h3><p>SBOM inventory for the bot: go, node, docker, ghostty, grok, claude. Not apt. Does not mutate packages.</p></div></li>
+          <li><span class="step-num">02</span><div><h3>Operator glass</h3><p>Settings on loopback. Side-saddle the bot. Configure the machine without taking it hostage.</p></div></li>
+          <li><span class="step-num">03</span><div><h3>Desktops</h3><p>Live Xvfb through the noVNC multiplexer. :1–:15. View, switch, this desktop.</p></div></li>
+          <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code>. Revert does not delete the machine. Prove leaves APPLIED.</p></div></li>
         </ol>
       </div>
       ${bezel("/shots/settings.webp", "MaxQ settings sheet, theme mocha, state applied", "settings · applied", "laptop", 1000, 624)}
@@ -184,7 +193,10 @@ export function renderCue(): string {
       <p class="lede">Swift/SwiftUI chat-and-steer for macOS. iOS still landing.</p>
     </article>
     <div class="device-row one">
-      ${bezel("/shots/cue-macos.webp", "Cue macOS: Messages, MuxBot chat, Multiplexer assigns computers", "cue · macOS", "laptop", 1006, 670)}
+      ${bezel("/shots/cue-macos.webp", "Cue macOS: Messages, MuxBot chat, Multiplexer assigns computers", "cue · macOS", "laptop", 1006, 612)}
+    </div>
+    <div class="device-row one">
+      ${bezel("/shots/cue-macos-2.webp", "Cue macOS 3-pane, MuxBot Hello world, Multiplexer host and agents", "cue · macOS", "laptop", 1006, 635)}
     </div>`;
 }
 
@@ -196,7 +208,11 @@ export function renderCrew(): string {
       <p class="lede">Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac. Chat stays in Crew. The box is a provider.</p>
     </article>
     <div class="device-row one">
-      ${bezel("/shots/crew-macos.webp", "Crew multiplexer on macOS: Assigns computers", "crew · macOS multiplexer", "laptop", 1006, 670)}
+      <figure class="bezel empty">
+        <div class="chrome"><span></span><span></span><span></span></div>
+        <p class="ph">Crew screenshot landing. Cue is not a stand-in.</p>
+        <figcaption>crew · pending</figcaption>
+      </figure>
     </div>`;
 }
 

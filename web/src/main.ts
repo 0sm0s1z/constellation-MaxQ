@@ -24,13 +24,17 @@ function shell(inner: string, route: Route): string {
   }).join("");
   return `
     <header class="topbar">
-      <a class="brand" href="#home"><img class="namelogo" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" /></a>
+      <a class="brand" href="#home">
+        <span class="brand-kicker">Constellation</span>
+        <img class="namelogo" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" />
+      </a>
       <nav class="nav">${links}</nav>
       <div class="nav-end">
         <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
         <a class="btn-solid btn-sm" href="#install">Install</a>
       </div>
     </header>
+    <div class="accent" aria-hidden="true"></div>
     ${inner}
     <footer class="foot">
       <span>MIT · mocha</span>
