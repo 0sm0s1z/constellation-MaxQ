@@ -130,10 +130,6 @@ export function renderHome(): string {
               <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
               <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
               </div>
-              <div class="rocket-smoke" aria-hidden="true">
-                <img class="smoke-puff smoke-c" src="/art/rocket-layers/smoke-puff-03.webp" alt="" width="1254" height="1254" />
-                <img class="smoke-puff smoke-d" src="/art/rocket-layers/smoke-puff-04.webp" alt="" width="1254" height="1254" />
-              </div>
             </div>
             <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
           </figure>
