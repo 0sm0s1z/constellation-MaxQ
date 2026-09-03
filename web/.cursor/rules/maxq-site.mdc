@@ -3,10 +3,14 @@ description: MaxQ marketing site — git is source of truth, hero slides stay fl
 globs: web/**
 ---
 
-# MaxQ site
-
-- Source of truth is GitHub `0sm0s1z/constellation-MaxQ` `web/` on `web/maxq-site`. `/workspace/maxq-web` is not canonical.
-- Hero slides sit flat on the canvas: no bezel, no card, no shadow. Field is crust `#11111b` or transparent — no navy plate.
-- `public/art/desk.webp` is stolen Catppuccin art. Replace it.
-- ChatGPT work is Chat mode only. Never click Turn on auto-reload.
+- GitHub `0sm0s1z/constellation-MaxQ` is canonical; `/workspace/maxq-web` is not.
+- Production is Vercel project **maxq** (`prj_AfUTP6OHL2unAEnwkBtMNpjzMbDD`). Never deploy to leftover **maxq-site**.
+- Target **maxq** link: Root Directory `web`, production branch `web/maxq-site`.
+- Until linked, file deploys are stopgaps and must include all of `public/`.
+- Run the package build script; do not commit `dist/`, `node_modules`, or `qa/`.
+- All three hero slides stay flat: no border, radius card, box shadow, window chrome, or `.bezel`.
+- `.bezel` is for product screenshots only.
+- Keep and animate `public/art/rocket.webp` as a flipbook. Keep `public/art/ops.webp` for now.
+- Replace `public/art/desk.webp`; it came from the Catppuccin website.
+- Use IBM Plex Sans, IBM Plex Mono, and the palette in `docs/BRAND.md`.
 - Do not merge unless Matthew says.

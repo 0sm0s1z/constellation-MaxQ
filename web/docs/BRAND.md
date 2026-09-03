@@ -47,5 +47,3 @@ Flattened CSS already shipped live: `.slide { margin: 0; }` with no box.
 ## Voice
 
 Short. Direct. Operator-register. Explain what the system does and what the operator does next. No startup poetry.
-
-Hero art field must match page crust `#11111b` or be fully transparent. A baked navy plate (even without CSS chrome) reads as a ghost rectangle.

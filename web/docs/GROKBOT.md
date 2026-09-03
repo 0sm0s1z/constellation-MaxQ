@@ -21,4 +21,4 @@ Persist only `$HOME`. Stay off `10.0.0.0/16`. Never write Chrome `ProxyMode` or 
 
 ## Image generation
 
-Continue the existing **CONSTELLATION / MaxQ** ChatGPT thread. Save approved output under `public/art/`, reference it from source, and commit both.
+Continue the existing **CONSTELLATION / MaxQ** ChatGPT thread. Save approved output under `public/art/`, reference it from source, and commit both. Do not source new work from `public/art/desk.webp`; replace that image.

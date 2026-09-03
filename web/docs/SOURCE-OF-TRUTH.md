@@ -19,6 +19,7 @@
 Git-link **maxq** to this repo with Root Directory `web` and production branch `web/maxq-site`. Do not use **maxq-site**.
 
 Until linked, file deploys must include all of `public/` (art/shots/logos) or images 404.
+
 ## Prove a ship
 
 1. Identify the site branch and commit SHA.
