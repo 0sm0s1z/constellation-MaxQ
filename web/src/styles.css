@@ -118,7 +118,6 @@ a { color: inherit; }
   margin: 0 -1.5rem .4rem;
 }
 
-
 .btn-solid, .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center;
   text-decoration: none; font-size: 14px; font-weight: 600;
@@ -381,7 +380,6 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .loader img, .loader svg { width: 96px; height: 96px; display: block; }
 .loader.out { opacity: 0; pointer-events: none; }
 
-
 .carousel { position: relative; }
 .slides { margin: 0; }
 .slide { margin: 0; }
@@ -391,17 +389,22 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   font-family: IBM Plex Mono, ui-monospace, monospace;
   font-size: 11px; color: var(--overlay1);
 }
-.rocket-stage { position: relative; isolation: isolate; }
+.rocket-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: var(--crust);
+}
 .rocket-stage .rocket-plate { display: block; width: 100%; height: auto; position: relative; z-index: 0; }
 .rocket-stage .rocket-sprite {
   position: absolute; left: 40%; top: 26%; width: 10%; height: auto;
-  pointer-events: none; user-select: none; z-index: 2;
+  pointer-events: none; user-select: none; z-index: 3;
   filter: drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
           drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
 }
 .rocket-fly {
   position: absolute; inset: 0;
-  pointer-events: none; z-index: 2;
+  pointer-events: none; z-index: 4;
   animation: rocket-lift 5.5s ease-in-out infinite alternate;
 }
 @keyframes rocket-lift {
@@ -415,40 +418,75 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   transform: translate(0, 6%) scale(1.14);
   transform-origin: 50% 80%;
 }
-.rocket-exhaust {
+.rocket-pad-fx {
   position: absolute;
-  left: 40%;
-  top: 26%;
-  width: 10%;
-  aspect-ratio: 881 / 1476;
+  left: 41.8%;
+  top: 52.5%;
+  width: 15%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
-.rocket-exhaust .smoke-puff {
+.rocket-pad-fx .pad-puff {
   position: absolute;
   left: 50%;
-  top: 72%;
-  width: 170%;
+  top: 50%;
+  width: 100%;
   height: auto;
-  transform: translateX(-50%);
-  transform-origin: 50% 0%;
-  mix-blend-mode: screen;
-  filter: saturate(1.45);
-  animation: exhaust-a 5.5s ease-in-out infinite alternate;
+  transform: translate(-50%, -50%);
+  opacity: .92;
+  filter: saturate(1.12) drop-shadow(0 0 12px rgba(250,179,135,.28));
 }
-.rocket-exhaust .smoke-b {
-  animation-name: exhaust-b;
-  filter: blur(3px) saturate(1.2) hue-rotate(-12deg);
-  top: 78%;
-  width: 190%;
+.rocket-pad-fx .pad-puff-b {
+  width: 72%;
+  left: 61%;
+  top: 44%;
+  opacity: .58;
+  filter: saturate(1.08) blur(.4px);
 }
-@keyframes exhaust-a {
-  0%, 10% { opacity: .9; transform: translateX(-50%) scale(.85); }
-  100% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+.rocket-beam {
+  position: absolute;
+  left: 42.4%;
+  top: 28.5%;
+  width: 5.4%;
+  height: 27%;
+  transform: translateX(-50%) scaleY(.24) rotate(-7deg);
+  transform-origin: 50% 100%;
+  border-radius: 999px 999px 36% 36%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: .34;
+  background:
+    linear-gradient(
+      to top,
+      rgba(250,179,135,.98) 0%,
+      rgba(250,179,135,.88) 22%,
+      rgba(245,194,231,.72) 48%,
+      rgba(203,166,247,.38) 72%,
+      rgba(180,190,254,0) 100%
+    );
+  filter: blur(2px) drop-shadow(0 0 10px rgba(250,179,135,.72)) drop-shadow(0 0 18px rgba(203,166,247,.38));
+  animation: rocket-beam-rise 5.5s ease-in-out infinite alternate;
 }
-@keyframes exhaust-b {
-  0%, 10% { opacity: .35; transform: translateX(-50%) scale(.95); }
-  100% { opacity: .55; transform: translateX(-50%) scale(1.2); }
+.rocket-beam::after {
+  content: "";
+  position: absolute;
+  inset: 0 32%;
+  border-radius: inherit;
+  background: linear-gradient(to top, rgba(255,224,190,.96), rgba(250,179,135,.74) 45%, rgba(245,194,231,0));
+  filter: blur(.6px);
+}
+@keyframes rocket-beam-rise {
+  0%, 10% {
+    opacity: .24;
+    transform: translateX(-50%) scaleY(.24) rotate(-7deg);
+  }
+  55% { opacity: .72; }
+  100% {
+    opacity: .9;
+    transform: translateX(-50%) scaleY(1) rotate(-7deg);
+  }
 }
 
 .dots {
@@ -465,8 +503,9 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
-  .rocket-fly { animation: none; }
-  .rocket-exhaust .smoke-puff { animation: none; opacity: .35; }
+  .rocket-fly { animation: none; transform: translate(8%, -18%); }
+  .rocket-beam { animation: none; opacity: .62; transform: translateX(-50%) scaleY(.66) rotate(-7deg); }
+  .rocket-pad-fx .pad-puff { opacity: .82; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
