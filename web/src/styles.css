@@ -392,16 +392,16 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   font-size: 11px; color: var(--overlay1);
 }
 .rocket-stage { position: relative; isolation: isolate; }
-.rocket-stage .rocket-plate { display: block; width: 100%; height: auto; }
+.rocket-stage .rocket-plate { display: block; width: 100%; height: auto; position: relative; z-index: 0; }
 .rocket-stage .rocket-sprite {
   position: absolute; left: 40%; top: 26%; width: 10%; height: auto;
-  pointer-events: none; user-select: none;
+  pointer-events: none; user-select: none; z-index: 2;
   filter: drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
           drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
 }
 .rocket-fly {
   position: absolute; inset: 0;
-  pointer-events: none;
+  pointer-events: none; z-index: 2;
   animation: rocket-lift 5.5s ease-in-out infinite alternate;
 }
 @keyframes rocket-lift {
@@ -414,6 +414,51 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   filter: blur(12px) saturate(1.35);
   transform: translate(0, 6%) scale(1.14);
   transform-origin: 50% 80%;
+}
+.rocket-exhaust {
+  position: absolute;
+  left: 39%;
+  top: 34%;
+  width: 11%;
+  pointer-events: none;
+  z-index: 0;
+}
+.rocket-exhaust .smoke-puff,
+.rocket-smoke .smoke-puff {
+  position: absolute; left: 0; top: 0; width: 100%; height: auto;
+  transform-origin: 50% 50%;
+}
+.rocket-exhaust .smoke-puff {
+  mix-blend-mode: screen;
+  filter: saturate(1.45);
+  animation: exhaust-a 5.5s ease-in-out infinite alternate;
+}
+.rocket-exhaust .smoke-b { animation-name: exhaust-b; filter: blur(4px) saturate(1.15) hue-rotate(-20deg); }
+@keyframes exhaust-a {
+  0%, 10% { opacity: .85; transform: scale(.75); }
+  100% { opacity: 1; transform: scale(.95); }
+}
+@keyframes exhaust-b {
+  0%, 10% { opacity: .28; transform: scale(.9); }
+  100% { opacity: .5; transform: scale(1.08); }
+}
+.rocket-smoke {
+  position: absolute; left: 36%; top: 46%; width: 22%;
+  pointer-events: none; z-index: 1;
+}
+.rocket-smoke .smoke-puff {
+  mix-blend-mode: plus-lighter;
+  filter: blur(8px) saturate(1.25);
+  animation: smoke-c 5.5s ease-in-out infinite alternate;
+}
+.rocket-smoke .smoke-d { animation-name: smoke-d; }
+@keyframes smoke-c {
+  0%, 10% { opacity: .1; transform: scale(.42) translate(0, 0); }
+  100% { opacity: .24; transform: scale(.85) translate(-4%, 8%); }
+}
+@keyframes smoke-d {
+  0%, 10% { opacity: 0; transform: scale(.5) translate(4%, 4%); }
+  100% { opacity: .18; transform: scale(1.1) translate(6%, 14%); }
 }
 
 .dots {
@@ -431,6 +476,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
   .rocket-fly { animation: none; }
+  .rocket-exhaust .smoke-puff,
+  .rocket-smoke .smoke-puff { animation: none; opacity: .2; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
