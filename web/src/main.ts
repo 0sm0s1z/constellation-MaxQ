@@ -15,19 +15,32 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   ops: { label: "ops", draw: renderOps },
 };
 
+const NAV: Route[] = ["home", "stack", "router", "cue", "crew"];
+
 function shell(inner: string, route: Route): string {
-  const links = (Object.keys(routes) as Route[]).map((key) => {
+  const links = NAV.map((key) => {
     const active = key === route ? " active" : "";
     return `<a class="${active}" href="#${key}">${routes[key].label}</a>`;
   }).join("");
   return `
     <header class="topbar">
       <a class="brand" href="#home"><img class="namelogo" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" /></a>
-      <nav class="nav">${links}<a class="gh" href="${GITHUB}">github</a></nav>
+      <nav class="nav">${links}</nav>
+      <div class="nav-end">
+        <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
+        <a class="btn-solid btn-sm" href="#install">Install</a>
+      </div>
     </header>
-    <div class="accent" aria-hidden="true"></div>
     ${inner}
-    <footer class="foot"><span>MIT · mocha</span><span><a href="${GITHUB}">github</a> · <a href="${GITHUB}/blob/main/docs/TRUST.md">trust</a></span></footer>`;
+    <footer class="foot">
+      <span>MIT · mocha</span>
+      <span>
+        <a href="#invariants">invariants</a>
+        · <a href="#ops">ops</a>
+        · <a href="${GITHUB}">github</a>
+        · <a href="${GITHUB}/blob/main/docs/TRUST.md">trust</a>
+      </span>
+    </footer>`;
 }
 
 function bindCopy(root: HTMLElement) {
@@ -43,12 +56,30 @@ function bindCopy(root: HTMLElement) {
   });
 }
 
+function bindTabs(root: HTMLElement) {
+  const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-tab]")];
+  const panels = [...root.querySelectorAll<HTMLElement>("[data-panel]")];
+  if (!tabs.length) return;
+  const show = (id: string) => {
+    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === id));
+    panels.forEach((p) => {
+      const on = p.dataset.panel === id;
+      p.classList.toggle("active", on);
+      p.hidden = !on;
+    });
+  };
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => show(tab.dataset.tab ?? "router"));
+  });
+}
+
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
   const route = parseRoute();
   app.innerHTML = shell(routes[route].draw(), route);
   bindCopy(app);
+  bindTabs(app);
 }
 
 function dismissLoader() {
