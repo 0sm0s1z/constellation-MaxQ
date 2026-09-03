@@ -52,6 +52,28 @@ h1 {
 }
 .pill.on { background: #313244; color: var(--green); }
 .pill.off { color: var(--peach); }
+.destination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(203, 166, 247, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(203, 166, 247, 0.12), rgba(49, 50, 68, 0.42));
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+.destination:hover {
+  border-color: rgba(203, 166, 247, 0.62);
+  background: linear-gradient(135deg, rgba(203, 166, 247, 0.17), rgba(49, 50, 68, 0.54));
+  transform: translateY(-1px);
+}
+.destination strong { display: block; color: var(--mauve); font-size: 0.86rem; }
+.destination small { display: block; margin-top: 0.12rem; color: var(--sub); font-size: 0.72rem; }
+.destination b { color: var(--mauve); font-size: 1.05rem; font-weight: 500; }
 .card {
   background: var(--base);
   border: 1px solid var(--overlay);
