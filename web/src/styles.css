@@ -450,15 +450,42 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   height: auto;
   pointer-events: none;
   user-select: none;
-  z-index: 1;
+  z-index: 2;
   opacity: 0;
+  transform-origin: 62% 94%;
   animation: rocket-flame-on 5.5s ease-in-out infinite alternate;
 }
 
 @keyframes rocket-flame-on {
-  0%, 10% { opacity: 0; }
-  22% { opacity: .42; }
-  100% { opacity: .95; }
+  0%, 10% { opacity: 0; transform: scaleY(.16); }
+  24% { opacity: .5; transform: scaleY(.4); }
+  56% { opacity: .82; transform: scaleY(.78); }
+  100% { opacity: .95; transform: scaleY(1.12); }
+}
+
+.rocket-fly::after {
+  content: "";
+  position: absolute;
+  left: 45.05%;
+  top: 41.5%;
+  width: 3.4%;
+  height: 10%;
+  transform: translate(-50%, -18%) rotate(31deg) scaleY(.5);
+  transform-origin: 50% 8%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: plus-lighter;
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(255,252,247,1) 0 18%, rgba(255,235,210,.9) 32%, rgba(250,179,135,.55) 52%, transparent 78%);
+  filter: blur(2.6px) drop-shadow(0 0 8px rgba(250,179,135,.8));
+  animation: rocket-nozzle-core 5.5s ease-in-out infinite alternate;
+}
+
+@keyframes rocket-nozzle-core {
+  0%, 10% { opacity: 0; transform: translate(-50%, -18%) rotate(31deg) scaleY(.4); }
+  24% { opacity: .7; transform: translate(-50%, -18%) rotate(31deg) scaleY(.85); }
+  100% { opacity: 1; transform: translate(-50%, -18%) rotate(31deg) scaleY(1.15); }
 }
 
 @keyframes rocket-body-glow {
@@ -483,7 +510,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   html { animation: none; }
   .rocket-fly { animation: none; transform: none; }
   .rocket-stage .rocket-glow,
-  .rocket-stage .rocket-flame { animation: none; opacity: 0; }
+  .rocket-stage .rocket-flame,
+  .rocket-fly::after { animation: none; opacity: 0; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
