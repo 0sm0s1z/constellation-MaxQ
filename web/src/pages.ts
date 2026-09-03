@@ -122,8 +122,10 @@ export function renderHome(): string {
           <figure class="slide is-on rocket-slide" data-slide="0">
             <div class="rocket-stage" data-rocket-stage>
               <img class="rocket-plate" src="/art/rocket-layers/plate.png" alt="Pastel rocket launching from a MaxQ workstation" width="1503" height="1047" />
+              <div class="rocket-fly">
               <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.png" alt="" width="881" height="1476" aria-hidden="true" />
               <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.png" alt="" width="881" height="1476" aria-hidden="true" />
+              </div>
             </div>
             <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
           </figure>

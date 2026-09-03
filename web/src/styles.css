@@ -395,6 +395,15 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   filter: drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
           drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
 }
+.rocket-fly {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  animation: rocket-lift 5.5s ease-in-out infinite alternate;
+}
+@keyframes rocket-lift {
+  0%, 10% { transform: translate(0, 0); }
+  100% { transform: translate(16%, -38%); }
+}
 .rocket-stage .rocket-glow {
   mix-blend-mode: plus-lighter;
   opacity: .62;
@@ -417,6 +426,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
+  .rocket-fly { animation: none; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
