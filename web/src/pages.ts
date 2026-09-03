@@ -71,9 +71,9 @@ const surfaces = [
     label: "Crew",
     title: "Chat stays in Crew. The box is a provider.",
     lede: "Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac.",
-    src: "",
-    alt: "",
-    cap: "crew · screenshot landing",
+    src: "/shots/crew-macos.webp",
+    alt: "Crew macOS: Messages, MuxBot, Multiplexer",
+    cap: "crew · macOS",
     w: 1006,
     h: 670,
     href: "#crew",
@@ -117,12 +117,26 @@ export function renderHome(): string {
           <a class="btn-ghost" href="#how">See how it works</a>
         </div>
       </div>
-      <div class="hero-visual">
-        ${bezel("/shots/desktops.webp", "MaxQ desktops multiplexer: live Xvfb :1 through :15, current :5", "maxq · desktops", "laptop", 1037, 1200)}
-        <figure class="float-shot">
-          <img src="/shots/packages.webp" alt="MaxQ SBOM packages inventory" width="439" height="835" />
-          <figcaption>packages · SBOM</figcaption>
-        </figure>
+      <div class="hero-visual carousel" data-carousel>
+        <div class="slides">
+          <figure class="slide is-on rocket-slide" data-slide="0">
+            <img src="/art/rocket.webp" alt="Pastel rocket launching from a MaxQ workstation" width="1280" height="853" />
+            <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
+          </figure>
+          <figure class="slide" data-slide="1" hidden>
+            <img src="/art/desk.webp" alt="Isometric agent workstation, code on the glass" width="1280" height="853" />
+            <figcaption>02 · the computer the bot actually lives on.</figcaption>
+          </figure>
+          <figure class="slide" data-slide="2" hidden>
+            <img src="/art/ops.webp" alt="Operator stack: three desktops, one control deck" width="1280" height="853" />
+            <figcaption>03 · side door. telemetry, processes, every desktop.</figcaption>
+          </figure>
+        </div>
+        <div class="dots" role="tablist">
+          <button type="button" class="dot is-on" data-dot="0" aria-label="Slide 1"></button>
+          <button type="button" class="dot" data-dot="1" aria-label="Slide 2"></button>
+          <button type="button" class="dot" data-dot="2" aria-label="Slide 3"></button>
+        </div>
       </div>
     </section>
     <div class="install-bar">${installLine()}</div>
@@ -143,7 +157,7 @@ export function renderHome(): string {
           <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code>. Revert does not delete the machine. Prove leaves APPLIED.</p></div></li>
         </ol>
       </div>
-      ${bezel("/shots/settings.webp", "MaxQ settings sheet, theme mocha, state applied", "settings · applied", "laptop", 1000, 624)}
+      ${bezel("/shots/collage.webp", "MaxQ operator glass: desktops multiplexer, settings, packages, OpenCode", "maxq · desktops, settings, packages", "laptop", 900, 1059)}
     </section>
     <section class="surfaces" id="surfaces">
       <div class="section-head">
@@ -208,11 +222,7 @@ export function renderCrew(): string {
       <p class="lede">Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac. Chat stays in Crew. The box is a provider.</p>
     </article>
     <div class="device-row one">
-      <figure class="bezel empty">
-        <div class="chrome"><span></span><span></span><span></span></div>
-        <p class="ph">Crew screenshot landing. Cue is not a stand-in.</p>
-        <figcaption>crew · pending</figcaption>
-      </figure>
+      ${bezel("/shots/crew-macos.webp", "Crew macOS: Messages, MuxBot, Multiplexer", "crew · macOS", "laptop", 1006, 670)}
     </div>`;
 }
 

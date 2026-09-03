@@ -365,9 +365,40 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .loader img, .loader svg { width: 96px; height: 96px; display: block; }
 .loader.out { opacity: 0; pointer-events: none; }
 
+
+.carousel { position: relative; }
+.slides { margin: 0; }
+.slide { margin: 0; }
+.slide img { display: block; width: 100%; height: auto; }
+.slide figcaption {
+  padding-top: .55rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace;
+  font-size: 11px; color: var(--overlay1);
+}
+.rocket-slide.is-on img {
+  animation: rocket-lift 2.8s ease-in-out infinite alternate;
+}
+@keyframes rocket-lift {
+  from { transform: translateY(6px) scale(1); }
+  to { transform: translateY(-10px) scale(1.02); }
+}
+.dots {
+  display: flex; justify-content: center; gap: .45rem;
+  margin-top: .85rem;
+}
+.dot {
+  appearance: none; width: 8px; height: 8px; padding: 0; border: 0;
+  border-radius: 50%; cursor: pointer;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+}
+.dot.is-on { background: var(--peach); }
+@media (hover: hover) {
+  .carousel:hover .rocket-slide.is-on img { animation-duration: 1.4s; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
-  .dia, .cursor, .accent, .hero h1 .words { animation: none; }
+  .dia, .cursor, .accent, .hero h1 .words, .rocket-slide.is-on img { animation: none; }
   .loader { display: none !important; }
 }
 

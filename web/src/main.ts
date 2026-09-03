@@ -77,6 +77,38 @@ function bindTabs(root: HTMLElement) {
   });
 }
 
+
+function bindCarousel(root: HTMLElement) {
+  const box = root.querySelector<HTMLElement>("[data-carousel]");
+  if (!box) return;
+  const slides = [...box.querySelectorAll<HTMLElement>(".slide")];
+  const dots = [...box.querySelectorAll<HTMLButtonElement>("[data-dot]")];
+  let i = 0;
+  let timer = 0;
+  const show = (n: number) => {
+    i = ((n % slides.length) + slides.length) % slides.length;
+    slides.forEach((s, k) => {
+      const on = k === i;
+      s.classList.toggle("is-on", on);
+      s.hidden = !on;
+    });
+    dots.forEach((d, k) => d.classList.toggle("is-on", k === i));
+  };
+  const play = () => {
+    window.clearInterval(timer);
+    timer = window.setInterval(() => show(i + 1), 4200);
+  };
+  dots.forEach((d) => d.addEventListener("click", () => { show(Number(d.dataset.dot)); play(); }));
+  box.addEventListener("mouseenter", () => window.clearInterval(timer));
+  box.addEventListener("mouseleave", play);
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) play();
+    else window.clearInterval(timer);
+  }, { threshold: 0.35 });
+  io.observe(box);
+  show(0);
+}
+
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -84,6 +116,7 @@ function draw() {
   app.innerHTML = shell(routes[route].draw(), route);
   bindCopy(app);
   bindTabs(app);
+  bindCarousel(app);
 }
 
 function dismissLoader() {
