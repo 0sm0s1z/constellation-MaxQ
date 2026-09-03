@@ -390,7 +390,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .rocket-stage { position: relative; isolation: isolate; }
 .rocket-stage .rocket-plate { display: block; width: 100%; height: auto; }
 .rocket-stage .rocket-sprite {
-  position: absolute; left: 40%; top: 20%; width: 10%; height: auto;
+  position: absolute; left: 40%; top: 26%; width: 10%; height: auto;
   pointer-events: none; user-select: none;
   filter: drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
           drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
