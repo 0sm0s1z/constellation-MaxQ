@@ -1,0 +1,12 @@
+---
+description: MaxQ marketing site — git is source of truth, hero slides stay flat
+globs: web/**
+---
+
+# MaxQ site
+
+- Source of truth is GitHub `0sm0s1z/constellation-MaxQ` `web/` on `web/maxq-site`. `/workspace/maxq-web` is not canonical.
+- Hero slides sit flat on the canvas: no bezel, no card, no shadow. Field is crust `#11111b` or transparent — no navy plate.
+- `public/art/desk.webp` is stolen Catppuccin art. Replace it.
+- ChatGPT work is Chat mode only. Never click Turn on auto-reload.
+- Do not merge unless Matthew says.
