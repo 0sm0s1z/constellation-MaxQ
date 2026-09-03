@@ -441,11 +441,12 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 }
 
 /* Flame-trail layer. No background on .rocket-stage. CSS cone retired. */
-.rocket-flame {
+.rocket-stage .rocket-flame {
   position: absolute;
   left: 0;
   top: 31.9%;
   width: 48%;
+  max-width: none;
   height: auto;
   pointer-events: none;
   user-select: none;
@@ -482,7 +483,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   html { animation: none; }
   .rocket-fly { animation: none; transform: none; }
   .rocket-stage .rocket-glow,
-  .rocket-flame { animation: none; opacity: 0; }
+  .rocket-stage .rocket-flame { animation: none; opacity: 0; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
