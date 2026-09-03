@@ -147,34 +147,21 @@ a { color: inherit; }
 }
 .hero h1 {
   margin: 0 0 .85rem; font-weight: 900; letter-spacing: -.045em;
-  font-size: clamp(2.4rem, 5vw, 4.1rem); line-height: .96; color: var(--text);
-  display: flex; flex-direction: column; align-items: flex-start; gap: .02em;
+  font-size: clamp(2.4rem, 5vw, 4.1rem); line-height: 1.05; color: var(--text);
+  display: flex; flex-direction: column; align-items: flex-start; gap: .12em;
 }
-.hero h1 .words { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
-.hero h1 .kicker-line,
-.hero h1 .lead-line,
-.hero h1 .to {
+.hero h1 .words {
+  display: block;
   color: transparent;
   background: linear-gradient(90deg, var(--pink), var(--mauve), var(--blue), var(--sky), var(--teal), var(--green), var(--yellow), var(--peach));
   background-size: 140% 100%;
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   animation: accent-shift 18s linear infinite;
 }
-.hero h1 .h1-end {
-  display: flex; align-items: flex-end; gap: .22em;
-  margin-top: .08em;
-}
-.hero h1 .to {
-  font-size: clamp(1.55rem, 3vw, 2.35rem); line-height: 1; padding-bottom: .06em;
-  color: transparent;
-  background: linear-gradient(90deg, var(--teal), var(--green), var(--yellow), var(--peach));
-  background-size: 140% 100%;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  animation: accent-shift 18s linear infinite;
-}
+.hero h1 .h1-end { display: block; margin: 0; }
 .hero h1 .hero-logo {
-  display: block; height: clamp(56px, 9.5vw, 100px); width: auto;
-  max-height: clamp(56px, 9.5vw, 100px); object-fit: contain; object-position: left bottom;
+  display: block; height: clamp(52px, 8.5vw, 92px); width: auto;
+  max-height: clamp(52px, 8.5vw, 92px); object-fit: contain; object-position: left bottom;
 }
 
 .hero-copy .lede { font-size: 1.08rem; }
@@ -389,17 +376,12 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   font-family: IBM Plex Mono, ui-monospace, monospace;
   font-size: 11px; color: var(--overlay1);
 }
-.rocket-flip { position: relative; }
-.rocket-flip img {
-  display: block; width: 100%; height: auto; opacity: 0;
-  transition: opacity .12s linear;
+.rocket-stage { position: relative; }
+.rocket-stage .rocket-plate { display: block; width: 100%; height: auto; }
+.rocket-stage .rocket-sprite {
+  position: absolute; left: 40%; top: 20%; width: 10%; height: auto;
+  pointer-events: none; user-select: none;
 }
-.rocket-flip img + img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: contain;
-}
-.rocket-flip img.is-frame,
-.rocket-flip:not(.is-playing) img:first-child { opacity: 1; }
 
 .dots {
   display: flex; justify-content: center; gap: .45rem;
@@ -414,7 +396,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
-  .dia, .cursor, .accent, .hero h1 .words, .hero h1 .kicker-line, .hero h1 .lead-line, .hero h1 .to { animation: none; }
+  .dia, .cursor, .accent, .hero h1 .words { animation: none; }
   .loader { display: none !important; }
 }
 

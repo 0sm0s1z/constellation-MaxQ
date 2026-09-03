@@ -108,11 +108,8 @@ export function renderHome(): string {
       <div class="hero-copy">
         <p class="eyebrow">Constellation · first product</p>
         <h1>
-          <span class="words">
-            <span class="kicker-line">Take your</span>
-            <span class="lead-line">Grok Bot</span>
-          </span>
-          <span class="h1-end"><span class="to">to</span>${nameLogo("hero-logo")}</span>
+          <span class="words">Take your Grok Bot to</span>
+          <span class="h1-end">${nameLogo("hero-logo")}</span>
         </h1>
         <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
         <div class="cta-row">
@@ -120,14 +117,12 @@ export function renderHome(): string {
           <a class="btn-ghost" href="#how">See how it works</a>
         </div>
       </div>
-      <div class="hero-visual carousel" data-carousel>
+      <div class="hero-visual carousel" data-carousel data-carousel-lock>
         <div class="slides">
           <figure class="slide is-on rocket-slide" data-slide="0">
-            <div class="rocket-flip" data-rocket-flip>
-              <img src="/art/rocket-frames/frame-a-ignition.webp" alt="Pastel rocket launching from a MaxQ workstation" width="1536" height="1024" />
-              <img src="/art/rocket-frames/frame-b-building.webp" alt="" width="1536" height="1024" aria-hidden="true" />
-              <img src="/art/rocket-frames/frame-c-ascent.webp" alt="" width="1536" height="1024" aria-hidden="true" />
-              <img src="/art/rocket-frames/frame-d-departing.webp" alt="" width="1536" height="1024" aria-hidden="true" />
+            <div class="rocket-stage" data-rocket-stage>
+              <img class="rocket-plate" src="/art/rocket-layers/plate.png" alt="Pastel rocket launching from a MaxQ workstation" width="1503" height="1047" />
+              <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.png" alt="" width="881" height="1476" aria-hidden="true" />
             </div>
             <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
           </figure>
