@@ -1,8 +1,11 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,7 +69,7 @@ func TestDesktopViewerMetadata(t *testing.T) {
 	x11SocketRoot = t.TempDir()
 	defer func() { x11SocketRoot = oldRoot }()
 	oldDisplay := os.Getenv("DISPLAY")
-	defer os.Setenv("DISPLAY", oldDisplay)
+	defer func() { _ = os.Setenv("DISPLAY", oldDisplay) }()
 	if err := os.Setenv("DISPLAY", ":2"); err != nil {
 		t.Fatal(err)
 	}
@@ -83,5 +86,52 @@ func TestDesktopViewerMetadata(t *testing.T) {
 	two := resp.Desktops[1]
 	if !two.Current || two.VNC != 5902 || two.ViewerPort != 6081 || two.Token != 2 {
 		t.Fatalf("desktop 2 metadata=%+v", two)
+	}
+}
+
+func TestDesktopPreferencesHTTP(t *testing.T) {
+	s := &server{config: t.TempDir()}
+	req := httptest.NewRequest(http.MethodPost, "/desktops/preferences", strings.NewReader(`{"visible_count":5}`))
+	rr := httptest.NewRecorder()
+	s.handleDesktopPreferences(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := s.loadDesktopPrefs().VisibleCount; got != 5 {
+		t.Fatalf("visible_count=%d want 5", got)
+	}
+
+	bad := httptest.NewRequest(http.MethodPost, "/desktops/preferences", strings.NewReader(`{"visible_count":15}`))
+	badRR := httptest.NewRecorder()
+	s.handleDesktopPreferences(badRR, bad)
+	if badRR.Code != http.StatusBadRequest {
+		t.Fatalf("bad preference status=%d want 400", badRR.Code)
+	}
+}
+
+func TestDesktopsContentNegotiation(t *testing.T) {
+	oldRoot := x11SocketRoot
+	x11SocketRoot = t.TempDir()
+	defer func() { x11SocketRoot = oldRoot }()
+	s := &server{config: t.TempDir(), listen: defaultListen, prefix: t.TempDir()}
+
+	apiReq := httptest.NewRequest(http.MethodGet, "/desktops", nil)
+	apiReq.Header.Set("Accept", "application/json")
+	apiRR := httptest.NewRecorder()
+	s.handleDesktops(apiRR, apiReq, http.Dir(t.TempDir()))
+	if apiRR.Code != http.StatusOK || !strings.Contains(apiRR.Body.String(), `"desktops"`) {
+		t.Fatalf("api response status=%d body=%s", apiRR.Code, apiRR.Body.String())
+	}
+
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "desktops.html"), []byte("<h1>Desktops</h1>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	htmlReq := httptest.NewRequest(http.MethodGet, "/desktops", nil)
+	htmlReq.Header.Set("Accept", "text/html,application/xhtml+xml")
+	htmlRR := httptest.NewRecorder()
+	s.handleDesktops(htmlRR, htmlReq, http.Dir(root))
+	if htmlRR.Code != http.StatusOK || !strings.Contains(htmlRR.Body.String(), "<h1>Desktops</h1>") {
+		t.Fatalf("html response status=%d body=%s", htmlRR.Code, htmlRR.Body.String())
 	}
 }
