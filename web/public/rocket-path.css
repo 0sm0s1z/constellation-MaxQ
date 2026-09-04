@@ -1,8 +1,8 @@
 /* Apply-slide layered interpolation override.
    Plan A only: immutable plate, rocket-trim is the only moving object,
    flame-trail is fixed in stage coordinates and revealed AE-style.
-   Timeline is synchronized so trail/stitch/cloud densify toward the
-   wallpaper end-state without ever crossfading whole-scene frames. */
+   The pad cloud is static from frame one; only rocket lift, trail reveal,
+   and nozzle stitch are animated. */
 
 @property --trail-reveal {
   syntax: "<percentage>";
@@ -83,7 +83,6 @@
 }
 
 @keyframes rocket-flame-path-reveal {
-  /* START LOCK from #37: no orphan cloud, only a short tip under nozzle. */
   0%, 10% {
     opacity: .58;
     --trail-reveal: 18%;
@@ -117,7 +116,6 @@
       drop-shadow(0 0 28px rgba(255, 236, 214, .32))
       drop-shadow(0 0 42px rgba(250, 179, 135, .14));
   }
-  /* ~72% is the wallpaper visual target: dense, luminous, still layered. */
   72% {
     opacity: 1;
     --trail-reveal: 91%;
@@ -138,9 +136,7 @@
   }
 }
 
-/* Nozzle stitch rides .rocket-fly, so it inherits the exact rocket trajectory.
-   It lengthens as the rocket climbs to deliberately overlap the fixed trail,
-   removing the dark break that appeared when the rocket outran the reveal edge. */
+/* Nozzle stitch rides .rocket-fly and inherits the exact rocket trajectory. */
 .rocket-fly::after {
   content: "" !important;
   position: absolute !important;
@@ -207,37 +203,7 @@
   }
 }
 
-/* Pad smoke appears only after the start/nozzle lock. It stays stage-anchored,
-   uses normal blend, and densifies toward mid/end without becoming a sticker. */
-/* FIRST TAKE (CEO): static dense pad plume — do not keyframe the cloud.
-   Animate only rocket-trim + flame-trail reveal + nozzle stitch. */
-.rocket-pad-fx .pad-puff {
-  animation: none !important;
-  opacity: .78 !important;
-  transform: translate(-50%, -50%) scale(1.05) !important;
-  filter:
-    saturate(1.12)
-    blur(.55px)
-    drop-shadow(0 0 14px rgba(250, 179, 135, .32)) !important;
-}
-.rocket-pad-fx .pad-puff-b {
-  animation: none !important;
-  animation-delay: 0s !important;
-  opacity: .7 !important;
-  transform: translate(-50%, -50%) scale(.92) !important;
-}
-.rocket-pad-fx .pad-puff-c {
-  animation: none !important;
-  animation-delay: 0s !important;
-  opacity: .74 !important;
-  transform: translate(-50%, -50%) scale(1.0) !important;
-}
-.rocket-pad-fx .pad-puff-d {
-  animation: none !important;
-  animation-delay: 0s !important;
-  opacity: .66 !important;
-  transform: translate(-50%, -50%) scale(.88) !important;
-}
+/* Pad puffs are intentionally absent here: their fixed first-frame values live in styles.css. */
 
 @media (prefers-reduced-motion: reduce) {
   .rocket-fly {
@@ -248,7 +214,6 @@
   .rocket-stage .rocket-glow,
   .rocket-fly::after,
   .rocket-pad-fx .pad-puff {
-    animation: none !important;
-    opacity: .55 !important;
+    opacity: 0 !important;
   }
 }
