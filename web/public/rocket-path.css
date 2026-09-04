@@ -209,41 +209,36 @@
 
 /* Pad smoke appears only after the start/nozzle lock. It stays stage-anchored,
    uses normal blend, and densifies toward mid/end without becoming a sticker. */
+/* FIRST TAKE (CEO): static dense pad plume — do not keyframe the cloud.
+   Animate only rocket-trim + flame-trail reveal + nozzle stitch. */
 .rocket-pad-fx .pad-puff {
-  animation: rocket-pad-cloud-interpolated 5.5s ease-in-out infinite alternate !important;
+  animation: none !important;
+  opacity: .78 !important;
+  transform: translate(-50%, -50%) scale(1.05) !important;
+  filter:
+    saturate(1.12)
+    blur(.55px)
+    drop-shadow(0 0 14px rgba(250, 179, 135, .32)) !important;
 }
-.rocket-pad-fx .pad-puff-b { animation-delay: .08s !important; }
-.rocket-pad-fx .pad-puff-c { animation-delay: .04s !important; }
-.rocket-pad-fx .pad-puff-d { animation-delay: .12s !important; }
-
-@keyframes rocket-pad-cloud-interpolated {
-  0%, 16% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(.30);
-  }
-  24% {
-    opacity: .18;
-    transform: translate(-50%, -50%) scale(.50);
-  }
-  36% {
-    opacity: .42;
-    transform: translate(-50%, -50%) scale(.72);
-  }
-  56% {
-    opacity: .68;
-    transform: translate(-50%, -50%) scale(.94);
-  }
-  72% {
-    opacity: .84;
-    transform: translate(-50%, -50%) scale(1.08);
-  }
-  100% {
-    opacity: .9;
-    transform: translate(-50%, -50%) scale(1.16);
-  }
+.rocket-pad-fx .pad-puff-b {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .7 !important;
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+.rocket-pad-fx .pad-puff-c {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .74 !important;
+  transform: translate(-50%, -50%) scale(1.0) !important;
+}
+.rocket-pad-fx .pad-puff-d {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .66 !important;
+  transform: translate(-50%, -50%) scale(.88) !important;
 }
 
-/* Reduced motion = fixed plate + fixed rocket only. No exhaust or smoke. */
 @media (prefers-reduced-motion: reduce) {
   .rocket-fly {
     animation: none !important;
@@ -254,6 +249,6 @@
   .rocket-fly::after,
   .rocket-pad-fx .pad-puff {
     animation: none !important;
-    opacity: 0 !important;
+    opacity: .55 !important;
   }
 }
