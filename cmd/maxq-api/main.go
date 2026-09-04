@@ -329,6 +329,22 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
+	// Implicit local inventory unless a saved self connection already covers it.
+	local := []map[string]any{}
+	hasSelf := false
+	for _, c := range connections {
+		if s.isSelfConnection(c) {
+			hasSelf = true
+			break
+		}
+	}
+	if !hasSelf {
+		local, err = s.localDesktops()
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
+		}
+	}
 	type result struct {
 		index int
 		items []map[string]any
@@ -354,7 +370,8 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 	for res := range results {
 		ordered[res.index] = res
 	}
-	all := make([]map[string]any, 0)
+	all := make([]map[string]any, 0, len(local))
+	all = append(all, local...)
 	errors := make([]map[string]any, 0)
 	for i, res := range ordered {
 		if res.err != "" {
@@ -648,9 +665,9 @@ func setAuth(req *http.Request, auth string) {
 }
 
 func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string]any, error) {
-	// A saved loopback URL may point back to this process. Use the provider
-	// directly instead of making this aggregator call its own /desktops route.
-	if isLocalBaseURL(c.BaseURL) {
+	// Only treat loopback URLs that target THIS listen port as self.
+	// Other 127.0.0.1 ports (tests, second API) still use HTTP.
+	if s.isSelfConnection(c) {
 		local, err := s.localDesktops()
 		if err != nil {
 			return nil, err
@@ -699,17 +716,28 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 	return s.enrichDesktopValues(c, identity, values), nil
 }
 
-func isLocalBaseURL(raw string) bool {
-	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || u.Host == "" {
+func (s *server) isSelfConnection(c connection) bool {
+	u, err := url.Parse(c.BaseURL)
+	if err != nil || u.Hostname() == "" || !isLoopbackHost(u.Hostname()) {
 		return false
 	}
-	switch strings.ToLower(u.Hostname()) {
-	case "127.0.0.1", "localhost", "::1":
+	listen := s.listen
+	if strings.TrimSpace(listen) == "" {
+		listen = defaultListen
+	}
+	_, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		return false
+	}
+	return u.Port() == port
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(strings.TrimSpace(host), "localhost") {
 		return true
-	default:
-		return false
 	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (s *server) enrichDesktopValues(c connection, identity string, values []any) []map[string]any {
