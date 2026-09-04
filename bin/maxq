@@ -822,7 +822,10 @@ CURSOR_THEME_NAME="MaxQ-Catppuccin-Mocha"
 GTK_THEME_DIR="$LOCAL/share/themes/$GTK_THEME_NAME"
 CURSOR_DIR="$LOCAL/share/icons/$CURSOR_THEME_NAME"
 WALLPAPER_DIR="$LOCAL/share/backgrounds/maxq"
-WALLPAPER="$WALLPAPER_DIR/mocha.png"
+WALLPAPER="$WALLPAPER_DIR/pastel.png"
+LAUNCHER_BIN="$BIN/maxq-launcher"
+LAUNCHER_DESKTOP="$LOCAL/share/applications/maxq-launcher.desktop"
+SHORTCUTS_FILE="$CONFIG/shortcuts.conf"
 CHROME_THEME_DIR="$LOCAL/share/maxq/chrome-theme-mocha"
 CHROME_STORE_ID="bkkmolkhemgaeaeggcmfbghljjjoofoh"
 GHOSTTY_DIR="$PREFIX/.config/ghostty"
@@ -880,9 +883,9 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 dest = sys.argv[1]
 w, h = 1920, 1080
-crust, mantle, base = (17, 17, 27), (24, 24, 37), (30, 30, 46)
-text, sub, mauve = (205, 214, 244), (166, 173, 200), (203, 166, 247)
-blue, lavender, peach = (137, 180, 250), (180, 190, 254), (250, 179, 135)
+crust, mantle, base = (255, 248, 244), (246, 238, 250), (234, 242, 250)
+text, sub, mauve = (55, 49, 72), (96, 88, 112), (173, 132, 207)
+blue, lavender, peach = (126, 177, 222), (179, 158, 219), (245, 174, 153)
 teal, green, sky = (148, 226, 213), (166, 227, 161), (137, 220, 235)
 red, yellow, pink = (243, 139, 168), (249, 226, 175), (245, 194, 231)
 img = Image.new("RGB", (w, h), crust)
@@ -926,8 +929,17 @@ try:
 except Exception:
     font_lg = font_sm = font_xs = ImageFont.load_default()
 d.text((120, 280), "MaxQ", font=font_lg, fill=text+(255,))
-d.text((128, 420), "Catppuccin Mocha", font=font_sm, fill=mauve+(255,))
+d.text((128, 420), "Pastel operator desktop", font=font_sm, fill=mauve+(255,))
 d.text((128, 480), "Take your Grok Bot to MaxQ.", font=font_xs, fill=sub+(255,))
+# Subtle terminal-style shortcut card in the top-right.
+card_x, card_y, card_w, card_h = 1210, 76, 610, 292
+d.rounded_rectangle((card_x, card_y, card_x+card_w, card_y+card_h), radius=18, fill=(255,255,255,185), outline=(173,132,207,180), width=2)
+d.text((card_x+26, card_y+18), "MAXQ // SHORTCUTS", font=font_xs, fill=mauve+(255,))
+rows = [("Super+Space", "app launcher"), ("maxq apply", "apply desktop"), ("maxq status", "show state"), ("maxq prove", "verify setup")]
+for i, (key, action) in enumerate(rows):
+    y = card_y + 62 + i*49
+    d.text((card_x+26, y), key, font=font_xs, fill=text+(255,))
+    d.text((card_x+280, y), action, font=font_xs, fill=sub+(255,))
 q = img.convert("RGB").quantize(colors=64, method=Image.Quantize.MEDIANCUT)
 q.save(dest, format="PNG", optimize=True)
 PY
@@ -1237,12 +1249,82 @@ EOF
 
 install_wallpaper() {
   mkdir -p "$WALLPAPER_DIR"
-  if [ -s "$THEME_SRC/wallpaper/mocha.png" ]; then
+  if [ -s "$THEME_SRC/wallpaper/pastel.png" ]; then
+    cp -f "$THEME_SRC/wallpaper/pastel.png" "$WALLPAPER"
+  elif [ -s "$THEME_SRC/wallpaper/mocha.png" ]; then
     cp -f "$THEME_SRC/wallpaper/mocha.png" "$WALLPAPER"
   else
     generate_wallpaper "$WALLPAPER"
   fi
   mark_owned "$WALLPAPER_DIR"
+}
+
+apply_wallpaper_live() {
+  # Live application is best-effort and never blocks apply on headless bots.
+  [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return 0
+  local uri="file://$WALLPAPER"
+  if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.background picture-uri "$uri" 2>/dev/null || true
+    gsettings set org.gnome.desktop.background picture-uri-dark "$uri" 2>/dev/null || true
+  fi
+  if command -v feh >/dev/null 2>&1; then
+    feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
+  elif command -v nitrogen >/dev/null 2>&1; then
+    nitrogen --set-zoom-fill "$WALLPAPER" >/dev/null 2>&1 || true
+  elif command -v swaymsg >/dev/null 2>&1; then
+    swaymsg output '*' bg "$WALLPAPER" fill >/dev/null 2>&1 || true
+  fi
+}
+
+install_launcher() {
+  mkdir -p "$LOCAL/share/applications" "$CONFIG"
+  if [ -s "$THEME_SRC/launcher/maxq-launcher" ]; then
+    cp -f "$THEME_SRC/launcher/maxq-launcher" "$LAUNCHER_BIN"
+  else
+    cat > "$LAUNCHER_BIN" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if command -v rofi >/dev/null 2>&1; then exec rofi -show drun; fi
+if command -v fuzzel >/dev/null 2>&1; then exec fuzzel; fi
+if command -v wofi >/dev/null 2>&1; then exec wofi --show drun; fi
+if command -v dmenu_run >/dev/null 2>&1; then exec dmenu_run; fi
+exec gtk-launch maxq-launcher
+EOF
+  fi
+  chmod +x "$LAUNCHER_BIN"
+  cat > "$LAUNCHER_DESKTOP" <<EOF
+[Desktop Entry]
+Type=Application
+Name=MaxQ App Launcher
+Comment=Launch applications with the MaxQ launcher
+Exec=$LAUNCHER_BIN
+Terminal=false
+Categories=Utility;System;
+Keywords=launcher;rofi;apps;MaxQ;
+EOF
+  cat > "$SHORTCUTS_FILE" <<EOF
+# MaxQ desktop shortcuts (managed)
+# Primary binding: Super+Space -> $LAUNCHER_BIN
+launcher = Super+Space
+apply = maxq apply
+status = maxq status
+prove = maxq prove
+EOF
+  if command -v gsettings >/dev/null 2>&1; then
+    local schema uri current updated
+    schema="org.gnome.settings-daemon.plugins.media-keys"
+    uri="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/maxq-launcher/"
+    dconf write "$uri/name" "'MaxQ App Launcher'" 2>/dev/null || true
+    dconf write "$uri/command" "'$LAUNCHER_BIN'" 2>/dev/null || true
+    dconf write "$uri/binding" "'<Super>space'" 2>/dev/null || true
+    current="$(gsettings get "$schema" custom-keybindings 2>/dev/null || printf '@as []')"
+    case "$current" in
+      *"$uri"*) updated="$current" ;;
+      "@as []") updated="['$uri']" ;;
+      *) updated="${current%]} , '$uri']" ;;
+    esac
+    gsettings set "$schema" custom-keybindings "$updated" 2>/dev/null || true
+  fi
 }
 
 install_gtk_theme() {
@@ -1319,6 +1401,8 @@ theme = mocha (latte is a future flag only).
 Installed (MaxQ-owned; revert removes these dest files):
 
 - wallpaper: $WALLPAPER
+- launcher: $LAUNCHER_BIN (Super+Space)
+- desktop entry: $LAUNCHER_DESKTOP
 - GTK: $GTK_THEME_DIR
 - cursor: $CURSOR_DIR
 - Ghostty config block: $GHOSTTY_CONFIG
@@ -1337,6 +1421,8 @@ apply_theme() {
   THEME="mocha"
   seed_theme_src
   install_wallpaper
+  apply_wallpaper_live
+  install_launcher
   install_gtk_theme
   install_cursor_theme
   install_ghostty_theme
@@ -1350,7 +1436,7 @@ revert_theme() {
   strip_profile_hook "$GTK3_INI"
   strip_profile_hook "$GTK4_INI"
   local p
-  for p in "$WALLPAPER" "$GHOSTTY_THEME_FILE"; do
+  for p in "$WALLPAPER" "$GHOSTTY_THEME_FILE" "$LAUNCHER_BIN" "$LAUNCHER_DESKTOP" "$SHORTCUTS_FILE"; do
     if [ -e "$p" ] || [ -L "$p" ]; then
       rm -f "$p"
       echo "  $p" >> "$REVERT_LOG"
@@ -1888,7 +1974,11 @@ assert_applied_tree() {
   prove_ok "no Chrome maxq-proxy.json" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
   prove_ok "no /tmp/sand-egress-proxy" test ! -e /tmp/sand-egress-proxy
   prove_ok "cxn-egress.json not recreated" cxn_egress_untouched
-  prove_ok "wallpaper mocha.png present" test -s "$WALLPAPER"
+  prove_ok "pastel wallpaper present" test -s "$WALLPAPER"
+  prove_ok "wallpaper is owned" test -s "$WALLPAPER_DIR/.maxq-owned"
+  prove_ok "MaxQ launcher executable" test -x "$LAUNCHER_BIN"
+  prove_ok "MaxQ launcher desktop entry" test -s "$LAUNCHER_DESKTOP"
+  prove_grep "Super+Space launcher shortcut" "$SHORTCUTS_FILE" "Super[+]Space"
   prove_ok "GTK theme gtk.css present" test -s "$GTK_THEME_DIR/gtk-3.0/gtk.css"
   prove_ok "GTK theme index.theme present" test -s "$GTK_THEME_DIR/index.theme"
   prove_ok "cursor theme index.theme present" test -s "$CURSOR_DIR/index.theme"
