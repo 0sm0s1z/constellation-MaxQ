@@ -18,19 +18,20 @@ FRAME_COUNT = 145
 PLATE_X, PLATE_Y = 60, 68
 
 # Keep the #48 stage/trajectory lock.
-PAD = np.float32([318.0, 319.0])
-ROCKET_START = np.float32([325.0, 175.0])
-ROCKET_END = np.float32([394.0, 56.0])
-ROCKET_W = 61
-NOZZLE_OVERLAP = 9.0
+PAD = np.float32([276.0, 320.0])
+ROCKET_START = np.float32([292.0, 204.0])
+ROCKET_END = np.float32([438.0, 28.0])
+ROCKET_W = 64
+NOZZLE_OVERLAP = 18.0
 FLAME_CANONICAL_HEIGHT = 250
+FLAME_CHANNEL_WIDTH = 44
 
 # Original puffs only. These are fixed from frame one and never animate.
 PAD_PUFF_SPECS = (
-    (0, 96, (-38, -26), 0.74),
-    (1, 112, (-12, -38), 0.82),
-    (2, 98, (24, -29), 0.76),
-    (3, 86, (8, -55), 0.66),
+    (0, 74, (-28, -20), 0.70),
+    (1, 88, (-8, -31), 0.76),
+    (2, 78, (20, -23), 0.70),
+    (3, 68, (4, -44), 0.62),
 )
 
 
@@ -133,7 +134,13 @@ def canonicalize_flame(im: Image.Image) -> Image.Image:
     flame = trim_alpha(flame, 6)
     scale = FLAME_CANONICAL_HEIGHT / flame.height
     size = (max(1, round(flame.width * scale)), FLAME_CANONICAL_HEIGHT)
-    return flame.resize(size, Image.Resampling.LANCZOS)
+    flame = flame.resize(size, Image.Resampling.LANCZOS)
+
+    # Keep the authored length and profile, but center-crop its visible channel once.
+    # Per-frame reveal below only crops this fixed-width strip; it never stretches it.
+    channel_width = min(FLAME_CHANNEL_WIDTH, flame.width)
+    left = max(0, (flame.width - channel_width) // 2)
+    return flame.crop((left, 0, left + channel_width, flame.height))
 
 
 def load_assets() -> tuple[Image.Image, Image.Image, list[Image.Image], Image.Image]:
@@ -214,7 +221,7 @@ def render() -> None:
 
         # Only the original flame-trail reveal changes length with ascent.
         trail, trail_xy = oriented_flame(flame, PAD, nozzle)
-        frame.alpha_composite(glow_layer(trail, 7, 0.18), trail_xy)
+        frame.alpha_composite(glow_layer(trail, 6, 0.12), trail_xy)
         frame.alpha_composite(alpha_scale(trail, 0.94), trail_xy)
 
         # Original smoke puffs sit over the flame base and never move/change.
@@ -222,12 +229,12 @@ def render() -> None:
 
         # Small continuity stitch only; not a replacement exhaust effect.
         stitch = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        radial_blob(stitch, tuple(nozzle), 8, 68, (250, 179, 135))
-        radial_blob(stitch, tuple(nozzle), 4, 178, (255, 247, 220))
+        radial_blob(stitch, tuple(nozzle), 3, 26, (250, 179, 135))
+        radial_blob(stitch, tuple(nozzle), 2, 72, (255, 247, 220))
         frame.alpha_composite(stitch)
 
         frame.alpha_composite(
-            glow_layer(rocket, 8, 0.46),
+            glow_layer(rocket, 6, 0.24),
             (round(rocket_xy[0]), round(rocket_xy[1])),
         )
         frame.alpha_composite(rocket, (round(rocket_xy[0]), round(rocket_xy[1])))

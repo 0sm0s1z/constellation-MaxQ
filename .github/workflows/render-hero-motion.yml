@@ -3,7 +3,7 @@ name: Render hero motion
 on:
   push:
     branches:
-      - web/original-layered-flame-reveal
+      - web/hero-*
     paths:
       - tools/render_hero_motion.py
       - .github/workflows/render-hero-motion.yml
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: web/original-layered-flame-reveal
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -108,5 +108,5 @@ jobs:
             echo "Rendered assets unchanged"
             exit 0
           fi
-          git commit -m "fix(web): render original plume + flame-trail hero"
-          git push origin HEAD:web/original-layered-flame-reveal
+          git commit -m "fix(web): regenerate hero motion assets"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
