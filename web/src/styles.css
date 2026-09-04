@@ -556,8 +556,9 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   height: auto;
   transform: translate(-50%, -50%) scale(.42);
   opacity: 0;
-  mix-blend-mode: plus-lighter;
-  filter: saturate(1.14) drop-shadow(0 0 14px rgba(250,179,135,.34));
+  /* Keep pad cloud on normal composite — plus-lighter blows pastels against flame. */
+  mix-blend-mode: normal;
+  filter: saturate(1.12) drop-shadow(0 0 14px rgba(250,179,135,.34));
   animation: rocket-pad-cloud 5.5s ease-in-out infinite alternate;
 }
 .rocket-pad-fx .pad-puff-b {
