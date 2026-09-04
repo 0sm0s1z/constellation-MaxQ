@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# MaxQ noVNC runtime helper. HOME-only.
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"
+BIN="$PREFIX/bin"
+ROOT="$PREFIX/.local/share/maxq/novnc"
+TOKEN_FILE="$PREFIX/.config/maxq/desktops.json"
+NOVNC_VERSION="1.7.0"
+NOVNC_URL="https://github.com/novnc/noVNC/archive/refs/tags/v${NOVNC_VERSION}.tar.gz"
+
+install_novnc(){
+  mkdir -p "$ROOT" "$PREFIX/.config/maxq"
+  [ -f "$ROOT/vnc.html" ] && return 0
+  tmp="$(mktemp -d)"
+  curl -fsSL "$NOVNC_URL" -o "$tmp/novnc.tgz"
+  tar -xzf "$tmp/novnc.tgz" -C "$tmp"
+  src="$tmp/noVNC-${NOVNC_VERSION}"
+  [ -d "$src" ] || src="$(find "$tmp" -maxdepth 2 -type d -name 'noVNC-*' | head -n1)"
+  cp -a "$src"/. "$ROOT/"
+  rm -rf "$tmp"
+  printf 'constellation-MaxQ\n' > "$ROOT/.maxq-owned"
+}
+
+viewer_url(){
+  n="${1:-1}"
+  case "$n" in
+    1) echo "http://$(hostname):6080/vnc.html?autoconnect=true&resize=scale" ;;
+    *) echo "http://$(hostname):6081/vnc.html?autoconnect=true&resize=scale&path=websockify%3Ftoken%3D${n}" ;;
+  esac
+}
+
+case "${1:-status}" in
+ install) install_novnc ;;
+ url) viewer_url "${2:-1}" ;;
+ status) [ -f "$ROOT/vnc.html" ] && echo installed || echo missing ;;
+ *) echo "usage: maxq-novnc install|url [display]|status" >&2; exit 2 ;;
+esac
