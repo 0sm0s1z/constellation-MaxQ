@@ -402,159 +402,87 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   overflow: visible;
 }
 
-.rocket-stage .rocket-plate {
+/* Wallpaper SoT: stock frames A→D crossfade (frame-c ≈ wallpaper end @~72%). */
+.rocket-frame-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.rocket-stage .rocket-frame,
+.rocket-stage .rocket-frame-sot {
   display: block;
   width: 100%;
   height: auto;
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.rocket-stage .rocket-frame-sot {
   position: relative;
+  opacity: 0;
   z-index: 0;
 }
-
-.rocket-stage .rocket-sprite {
-  position: absolute;
-  left: 40%;
-  top: 26%;
-  width: 10%;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 3;
-  filter:
-    drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
-    drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
-}
-
-.rocket-fly {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  animation: rocket-lift 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-lift {
-  0%, 10% { transform: translate(0, 0); }
-  100% { transform: translate(16%, -38%); }
-}
-
-.rocket-stage .rocket-glow {
-  mix-blend-mode: plus-lighter;
+.rocket-stage .rocket-frame {
   opacity: 0;
-  filter: blur(14px) saturate(1.38);
-  transform: translate(0, 5%) scale(1.16);
-  transform-origin: 50% 80%;
-  animation: rocket-body-glow 5.5s ease-in-out infinite alternate;
-}
-
-/* Endpoint-aligned flame still: tip under nozzle; reveal tip→pad (rocket-path.css overrides). */
-.rocket-stage .rocket-flame {
-  --trail-reveal: 18%;
-  position: absolute;
-  left: 2%;
-  top: 28%;
-  width: 46%;
-  max-width: none;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 2;
-  opacity: 0;
-  transform-origin: 0 0;
-  transform: rotate(-9.5deg);
-  mix-blend-mode: plus-lighter;
-  filter:
-    saturate(1.08)
-    drop-shadow(0 0 8px rgba(250,179,135,.38))
-    drop-shadow(0 0 18px rgba(255,236,214,.16));
-  -webkit-mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  animation: rocket-flame-reveal 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-flame-reveal {
-  0%, 5% {
-    opacity: .62;
-    --trail-reveal: 18%;
-  }
-  16% {
-    opacity: .9;
-    --trail-reveal: 48%;
-  }
-  36% {
-    opacity: .98;
-    --trail-reveal: 72%;
-  }
-  56% {
-    opacity: 1;
-    --trail-reveal: 88%;
-  }
-  100% {
-    opacity: 1;
-    --trail-reveal: 100%;
-  }
-}
-
-/* Compact nozzle hot spot moves with the rocket. */
-.rocket-fly::after {
-  content: "";
-  position: absolute;
-  left: 44.5%;
-  top: 44.2%;
-  width: 2.6%;
-  height: 7%;
-  transform-origin: 50% 0;
-  transform: translate(-50%, 0) rotate(31deg) scaleY(.7);
   z-index: 1;
-  pointer-events: none;
-  opacity: 0;
-  mix-blend-mode: plus-lighter;
-  background: radial-gradient(
-    ellipse at 50% 4%,
-    rgba(255,255,248,.98) 0%,
-    rgba(255,235,210,.88) 28%,
-    rgba(250,179,135,.48) 54%,
-    transparent 78%
-  );
-  filter: blur(1.8px) drop-shadow(0 0 8px rgba(250,179,135,.72));
-  animation: rocket-nozzle-core 5.5s ease-in-out infinite alternate;
+  animation-duration: 5.5s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-fill-mode: both;
 }
+.rocket-stage .rf-a { animation-name: rocket-frame-a; }
+.rocket-stage .rf-b { animation-name: rocket-frame-b; }
+.rocket-stage .rf-c { animation-name: rocket-frame-c; }
+.rocket-stage .rf-d { animation-name: rocket-frame-d; }
 
-@keyframes rocket-nozzle-core {
-  0%, 5% { opacity: .72; transform: translate(-50%, 0) rotate(31deg) scaleY(.65); }
-  16% { opacity: .85; transform: translate(-50%, 0) rotate(31deg) scaleY(.9); }
-  100% { opacity: .92; transform: translate(-50%, 0) rotate(31deg) scaleY(1.08); }
+/* Sequential crossfade — avoid dual full-scene ghosting.
+   START lock 0–5% (~300ms): frame-a only. */
+@keyframes rocket-frame-a {
+  0%, 6% { opacity: 1; }
+  14% { opacity: .4; }
+  20% { opacity: 0; }
+  100% { opacity: 0; }
 }
-
-@keyframes rocket-body-glow {
+@keyframes rocket-frame-b {
   0%, 8% { opacity: 0; }
-  28% { opacity: .22; }
-  100% { opacity: .58; }
+  14% { opacity: .55; }
+  20% { opacity: 1; }
+  30% { opacity: 1; }
+  38% { opacity: .35; }
+  44% { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes rocket-frame-c {
+  0%, 32% { opacity: 0; }
+  38% { opacity: .55; }
+  46% { opacity: 1; }
+  58% { opacity: .72; } /* wallpaper end-state feel */
+  68% { opacity: .35; }
+  74% { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes rocket-frame-d {
+  0%, 62% { opacity: 0; }
+  68% { opacity: .45; }
+  76% { opacity: 1; }
+  100% { opacity: 1; }
 }
 
-
-/* Base launch cloud at the keyboard/pad — restored from apply-slide smoke assets. */
+/* Soft pad densify AFTER start lock — layered stock puffs only */
 .rocket-pad-fx {
   position: absolute;
-  /* Sit on keyboard under nozzle — not mid-air orphan puff. */
-  left: 44.5%;
-  top: 55.5%;
-  width: 30%;
+  left: 46%;
+  top: 58%;
+  width: 28%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
   overflow: visible;
 }
 .rocket-pad-fx .pad-puff {
@@ -566,13 +494,12 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   transform: translate(-50%, -50%) scale(.42);
   opacity: 0;
   mix-blend-mode: normal;
-  /* Soft edges — no hard sprite clip look. */
   filter:
-    saturate(1.1)
-    blur(.55px)
-    drop-shadow(0 0 12px rgba(250,179,135,.28));
-  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
-  mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
+    saturate(1.12)
+    blur(.65px)
+    drop-shadow(0 0 14px rgba(250,179,135,.3));
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 48%, transparent 86%);
+  mask-image: radial-gradient(ellipse at 50% 55%, #000 48%, transparent 86%);
   animation: rocket-pad-cloud 5.5s ease-in-out infinite alternate;
 }
 .rocket-pad-fx .pad-puff-b {
@@ -580,7 +507,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   left: 62%;
   top: 44%;
   animation-delay: .12s;
-  filter: saturate(1.08) blur(.35px) drop-shadow(0 0 10px rgba(245,194,231,.22));
+  filter: saturate(1.08) blur(.4px) drop-shadow(0 0 10px rgba(245,194,231,.22));
 }
 .rocket-pad-fx .pad-puff-c {
   width: 92%;
@@ -597,28 +524,28 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   filter: saturate(1.06) blur(.7px);
 }
 @keyframes rocket-pad-cloud {
-  /* After tip lock (~300ms); denser soft bloom — no hard sprite edge. */
   0%, 8% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(.32);
+    transform: translate(-50%, -50%) scale(.3);
   }
-  14% {
-    opacity: .42;
-    transform: translate(-50%, -50%) scale(.62);
+  16% {
+    opacity: .28;
+    transform: translate(-50%, -50%) scale(.55);
   }
-  28% {
-    opacity: .72;
-    transform: translate(-50%, -50%) scale(.92);
+  32% {
+    opacity: .55;
+    transform: translate(-50%, -50%) scale(.85);
   }
   56% {
-    opacity: .9;
-    transform: translate(-50%, -50%) scale(1.12);
+    opacity: .7;
+    transform: translate(-50%, -50%) scale(1.05);
   }
   100% {
-    opacity: .96;
-    transform: translate(-50%, -50%) scale(1.28);
+    opacity: .78;
+    transform: translate(-50%, -50%) scale(1.18);
   }
 }
+
 
 .dots {
   display: flex; justify-content: center; gap: .45rem;
@@ -634,11 +561,9 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
-  .rocket-fly { animation: none; transform: none; }
-  .rocket-stage .rocket-glow,
-  .rocket-stage .rocket-flame,
-  .rocket-fly::after { animation: none; opacity: 0; }
-  .rocket-pad-fx .pad-puff { animation: none; opacity: .55; transform: translate(-50%, -50%) scale(.85); }
+  .rocket-stage .rocket-frame { animation: none; opacity: 0; }
+  .rocket-stage .rf-c { opacity: .72; } /* wallpaper SoT still */
+  .rocket-pad-fx .pad-puff { animation: none; opacity: .45; transform: translate(-50%, -50%) scale(.85); }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
