@@ -83,7 +83,7 @@ CA:      \$HOME/.config/maxq/ca  (kept across revert)
 CLIs:    herdr fx grok codex claude opencode tailscale into \$HOME/bin
          (skip + document if no linux amd64 binary; managed by MaxQ)
 Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
-Chrome:  theme files unpacked under \$HOME/.local/share/maxq; not live-applied.
+Chrome:  theme unpacked + External Extensions live-apply under chrome-profile* (HOME-only).
 API:     \$HOME/bin/maxq-api on 127.0.0.1:7432 (or api.toml). apply starts; revert stops.
 EOF
 }
@@ -845,6 +845,88 @@ mark_owned() {
   printf 'constellation-MaxQ\n' > "$1/.maxq-owned"
 }
 
+# HOME-only Chrome Mocha live-apply via External Extensions (per MaxQ chrome-profile*).
+# Matches Chrome's supported JSON: filename = store id, external_update_url for Web Store.
+# Never writes ProxyMode/ProxyServer or /etc/opt/chrome/policies/managed/.
+CHROME_THEME_LIVE_COUNT=0
+CHROME_EXT_UPDATE_URL="https://clients2.google.com/service/update2/crx"
+
+chrome_profile_dirs() {
+  local d
+  for d in "$PREFIX"/chrome-profile "$PREFIX"/chrome-profile-*; do
+    [ -d "$d" ] || continue
+    case "$(basename "$d")" in
+      chrome-profile|chrome-profile-*) printf '%s\n' "$d" ;;
+    esac
+  done
+}
+
+chrome_theme_ext_json() {
+  printf '%s/External Extensions/%s.json' "$1" "$CHROME_STORE_ID"
+}
+
+activate_chrome_theme_live() {
+  local profile ext_dir json sidecar n=0
+  CHROME_THEME_LIVE_COUNT=0
+  while IFS= read -r profile; do
+    [ -n "$profile" ] || continue
+    ext_dir="$profile/External Extensions"
+    mkdir -p "$ext_dir"
+    json="$(chrome_theme_ext_json "$profile")"
+    sidecar="${json}.maxq-owned"
+    cat > "$json" <<EOF
+{
+  "external_update_url": "${CHROME_EXT_UPDATE_URL}"
+}
+EOF
+    : > "$sidecar"
+    n=$((n + 1))
+  done < <(chrome_profile_dirs)
+  CHROME_THEME_LIVE_COUNT=$n
+}
+
+revert_chrome_theme_live() {
+  local profile json sidecar ext_dir
+  while IFS= read -r profile; do
+    [ -n "$profile" ] || continue
+    json="$(chrome_theme_ext_json "$profile")"
+    sidecar="${json}.maxq-owned"
+    ext_dir="$(dirname "$json")"
+    # Only remove MaxQ-owned activation artifacts; leave the rest of the profile intact.
+    if [ -f "$sidecar" ]; then
+      rm -f "$json" "$sidecar"
+      echo "  $json" >> "$REVERT_LOG"
+      echo "  $sidecar" >> "$REVERT_LOG"
+      rmdir "$ext_dir" 2>/dev/null || true
+    fi
+  done < <(chrome_profile_dirs)
+}
+
+chrome_theme_live_summary() {
+  local n
+  n="$(chrome_profile_dirs | wc -l | tr -d ' ')"
+  if [ "${CHROME_THEME_LIVE_COUNT:-0}" -gt 0 ]; then
+    printf 'external_extensions profiles=%s' "$CHROME_THEME_LIVE_COUNT"
+  elif [ "$n" -gt 0 ]; then
+    # Count on-disk MaxQ activation artifacts if count unset (e.g. status/prove report).
+    local profile json sidecar c=0
+    while IFS= read -r profile; do
+      json="$(chrome_theme_ext_json "$profile")"
+      sidecar="${json}.maxq-owned"
+      if [ -f "$sidecar" ] && [ -s "$json" ]; then
+        c=$((c + 1))
+      fi
+    done < <(chrome_profile_dirs)
+    if [ "$c" -gt 0 ]; then
+      printf 'external_extensions profiles=%s' "$c"
+    else
+      printf 'external_extensions profiles=0 (pending apply)'
+    fi
+  else
+    printf 'external_extensions profiles=0 (no chrome-profile*)'
+  fi
+}
+
 theme_pack_candidates() {
   local here src
   src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
@@ -1061,12 +1143,20 @@ https://chrome.google.com/webstore/detail/catppuccin-chrome-theme-m/${CHROME_STO
 MaxQ ships this unpacked under:
   ${CHROME_THEME_DIR}
 
-Chrome will not live-apply a theme without chrome://extensions developer
-mode ("Load unpacked") or enterprise flags MaxQ will not set. Prove checks
-these files on disk and does not fail if Chrome is not showing the theme.
+Live-apply (HOME-only): for each existing \$PREFIX/chrome-profile* directory,
+MaxQ writes External Extensions/${CHROME_STORE_ID}.json with
+external_update_url (Chrome Web Store) plus a .maxq-owned sidecar. That
+registers the official Mocha theme for that --user-data-dir profile only.
+Chrome may need a relaunch before the theme appears; prove checks the
+activation files on disk and does not fail if UI pixels are not Mocha yet.
+
+External Extensions cannot point at an unpacked theme directory (Chrome only
+accepts external_update_url or external_crx). Unpacked files remain for
+manual "Load unpacked" / offline reference; live-apply uses the store id.
 
 MaxQ never writes Chrome ProxyMode/ProxyServer or any file under
-/etc/opt/chrome/policies/managed/.
+/etc/opt/chrome/policies/managed/. It does not touch
+\$HOME/.config/google-chrome (not a MaxQ profile).
 EOF
 }
 
@@ -1367,6 +1457,7 @@ install_chrome_theme() {
   write_chrome_note "$CHROME_THEME_DIR"
   mark_owned "$CHROME_THEME_DIR"
   mark_owned "$LOCAL/share/maxq"
+  activate_chrome_theme_live
 }
 
 install_ghostty_theme() {
@@ -1411,7 +1502,8 @@ Installed (MaxQ-owned; revert removes these dest files):
 - Chrome Web Store ID: $CHROME_STORE_ID
 
 Ghostty binary: skipped (no official linux amd64 build). Config-only.
-Chrome theme: files shipped; not live-applied (no flags, no managed policies).
+Chrome theme: unpacked files + External Extensions live-apply under chrome-profile*
+(store id via external_update_url; no flags, no managed proxy/theme policies).
 Vendor cache kept at $THEME_SRC across revert (like the CA).
 EOF
 }
@@ -1432,6 +1524,7 @@ apply_theme() {
 }
 
 revert_theme() {
+  revert_chrome_theme_live
   strip_profile_hook "$GHOSTTY_CONFIG"
   strip_profile_hook "$GTK3_INI"
   strip_profile_hook "$GTK4_INI"
@@ -1730,7 +1823,7 @@ cmd_apply() {
   optional_usr_link
   apply_proxy_runtime
   start_api
-  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED"
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR chrome_theme_live=$(chrome_theme_live_summary) clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED"
 }
 
 cmd_revert() {
@@ -1949,6 +2042,37 @@ cxn_egress_untouched() {
   [ ! -e "$CHROME_CXN_EGRESS" ]
 }
 
+assert_chrome_theme_live_applied() {
+  local profile json sidecar n=0
+  while IFS= read -r profile; do
+    [ -n "$profile" ] || continue
+    n=$((n + 1))
+    json="$(chrome_theme_ext_json "$profile")"
+    sidecar="${json}.maxq-owned"
+    prove_ok "Chrome External Extensions JSON ($(basename "$profile"))" test -s "$json"
+    prove_grep "Chrome External Extensions store update URL ($(basename "$profile"))" "$json" "external_update_url"
+    prove_grep "Chrome External Extensions points at store endpoint ($(basename "$profile"))" "$json" "clients2.google.com/service/update2/crx"
+    prove_ok "Chrome External Extensions MaxQ sidecar ($(basename "$profile"))" test -f "$sidecar"
+  done < <(chrome_profile_dirs)
+  if [ "$n" -eq 0 ]; then
+    echo "[PASS] Chrome theme live-apply: no chrome-profile* dirs (nothing to activate)"
+    PROVE_PASS=$((PROVE_PASS + 1))
+  fi
+  # Disk artifacts prove activation was written; do not require Mocha UI pixels.
+  prove_ok "no Chrome managed proxy/theme force-install from MaxQ" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
+}
+
+assert_chrome_theme_live_reverted() {
+  local profile json sidecar
+  while IFS= read -r profile; do
+    [ -n "$profile" ] || continue
+    json="$(chrome_theme_ext_json "$profile")"
+    sidecar="${json}.maxq-owned"
+    prove_ok "Chrome External Extensions MaxQ sidecar gone ($(basename "$profile"))" test ! -e "$sidecar"
+    prove_ok "Chrome External Extensions MaxQ JSON gone ($(basename "$profile"))" test ! -e "$json"
+  done < <(chrome_profile_dirs)
+}
+
 assert_applied_tree() {
   prove_ok "persist \$HOME/bin exists" test -d "$BIN"
   prove_ok "persist \$HOME/.config/maxq exists" test -d "$CONFIG"
@@ -1987,6 +2111,7 @@ assert_applied_tree() {
   prove_ok "Ghostty config MaxQ block" has_profile_block "$GHOSTTY_CONFIG"
   prove_ok "Chrome unpacked manifest present" test -s "$CHROME_THEME_DIR/manifest.json"
   prove_grep "Chrome theme note documents store id" "$CHROME_THEME_DIR/MAXQ.txt" "$CHROME_STORE_ID"
+  assert_chrome_theme_live_applied
   prove_ok "clis.txt present on apply" test -s "$CLIS_TXT"
   prove_ok "managed-clis dir present on apply" test -d "$MANAGED_CLIS"
   prove_ok "opencode present on apply" test -x "$BIN/opencode"
@@ -2038,6 +2163,7 @@ assert_reverted_tree() {
   prove_ok "GTK theme dir gone on revert" test ! -e "$GTK_THEME_DIR"
   prove_ok "cursor theme dir gone on revert" test ! -e "$CURSOR_DIR"
   prove_ok "Chrome unpacked theme gone on revert" test ! -e "$CHROME_THEME_DIR"
+  assert_chrome_theme_live_reverted
   prove_ok "Ghostty Mocha theme file gone on revert" test ! -e "$GHOSTTY_THEME_FILE"
   prove_ok "Ghostty MaxQ block gone on revert" not_has_profile_block "$GHOSTTY_CONFIG"
   prove_ok "gtk-3.0 MaxQ block gone on revert" not_has_profile_block "$GTK3_INI"
@@ -2177,7 +2303,7 @@ cmd_prove() {
   echo "ca=$CA_PEM"
   echo "chrome_proxy_policy=never"
   echo "chrome_theme_store_id=$CHROME_STORE_ID"
-  echo "chrome_theme_live=skipped (unpacked files only)"
+  echo "chrome_theme_live=$(chrome_theme_live_summary)"
   echo "ghostty_bin=skipped (no official linux amd64)"
   echo "clis_installed=$(toml_clis installed "")"
   echo "clis_skipped=$(toml_clis skipped "")"
