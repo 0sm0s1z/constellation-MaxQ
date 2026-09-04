@@ -123,6 +123,12 @@ export function renderHome(): string {
             <div class="rocket-stage" data-rocket-stage>
               <img class="rocket-plate" src="/art/rocket-layers/plate.webp" alt="Pastel MaxQ workstation launch plate" width="1503" height="1047" />
               <img class="rocket-flame" src="/art/rocket-layers/flame-trail.webp" alt="" width="1437" height="1095" aria-hidden="true" />
+              <div class="rocket-pad-fx" aria-hidden="true">
+                <img class="pad-puff pad-puff-a" src="/art/rocket-layers/smoke-puff-01.webp" alt="" width="1254" height="1254" />
+                <img class="pad-puff pad-puff-b" src="/art/rocket-layers/smoke-puff-02.webp" alt="" width="1254" height="1254" />
+                <img class="pad-puff pad-puff-c" src="/art/rocket-layers/smoke-puff-03.webp" alt="" width="1254" height="1254" />
+                <img class="pad-puff pad-puff-d" src="/art/rocket-layers/smoke-puff-04.webp" alt="" width="1254" height="1254" />
+              </div>
               <div class="rocket-fly">
                 <img class="rocket-sprite rocket-glow" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
                 <img class="rocket-sprite" src="/art/rocket-layers/rocket-trim.webp" alt="" width="881" height="1476" aria-hidden="true" />
