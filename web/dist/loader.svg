@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="MaxQ">
+  <title>MaxQ</title>
+  <style>
+    .sat { transform-box: fill-box; transform-origin: center; }
+    @media (prefers-reduced-motion: reduce) {
+      .sat animateMotion { display: none; }
+    }
+  </style>
+  <g transform="translate(60 60)">
+    <!-- far orbit (behind the Q) -->
+    <g transform="rotate(-35)">
+      <path d="M -48 0 A 48 20 0 0 1 48 0" fill="none" stroke="#ffffff" stroke-width="1.7" opacity="0.45"/>
+    </g>
+    <!-- geometric sans Q: rounded-square ring + diagonal tail -->
+    <rect x="-22" y="-22" width="44" height="44" rx="13" ry="13" fill="none" stroke="#ffffff" stroke-width="7.2"/>
+    <line x1="12.5" y1="12.5" x2="27" y2="27" stroke="#ffffff" stroke-width="7.2" stroke-linecap="round"/>
+    <!-- near orbit (in front) + peach satellite -->
+    <g transform="rotate(-35)">
+      <path id="orbitNear" d="M 48 0 A 48 20 0 0 1 -48 0" fill="none" stroke="#ffffff" stroke-width="1.7"/>
+      <circle class="sat" r="5.6" fill="#E8A07A">
+        <animateMotion dur="2s" repeatCount="indefinite" rotate="0"
+          path="M 48 0 A 48 20 0 1 1 -48 0 A 48 20 0 1 1 48 0"/>
+      </circle>
+    </g>
+  </g>
+</svg>
