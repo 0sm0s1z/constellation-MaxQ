@@ -1,17 +1,29 @@
-/* Apply-slide flame path override.
-   Geometry locked to 1503x1047 plate + rocket-lift.
-   Flame = fixed final-state still; mask reveals tip→pad (AE-style).
-   START gate: tip registers under nozzle — no orphan pad-cloud first. */
+/* Apply-slide layered interpolation override.
+   Plan A only: immutable plate, rocket-trim is the only moving object,
+   flame-trail is fixed in stage coordinates and revealed AE-style.
+   Timeline is synchronized so trail/stitch/cloud densify toward the
+   wallpaper end-state without ever crossfading whole-scene frames. */
 
 @property --trail-reveal {
   syntax: "<percentage>";
   inherits: false;
-  initial-value: 20%;
+  initial-value: 18%;
 }
 
+/* Explicit rocket path checkpoints. These remain the only stage-space motion. */
+@keyframes rocket-lift {
+  0%, 10% { transform: translate(0, 0); }
+  24% { transform: translate(3.4%, -7.4%); }
+  36% { transform: translate(6.2%, -14.4%); }
+  56% { transform: translate(10.1%, -24.2%); }
+  72% { transform: translate(13.1%, -31.1%); }
+  100% { transform: translate(16%, -38%); }
+}
+
+/* Fixed flame artwork. The mask edge advances along the same timeline as rocket-lift.
+   Keep the image itself stationary; only reveal/density change. */
 .rocket-stage .rocket-flame {
-  --trail-reveal: 20%;
-  /* Tip of flame-trail.webp (upper-right) under rest nozzle (~44%/46%). */
+  --trail-reveal: 18%;
   left: 2% !important;
   top: 28% !important;
   width: 46% !important;
@@ -25,146 +37,218 @@
   user-select: none;
   mix-blend-mode: plus-lighter;
   filter:
-    saturate(1.16)
+    saturate(1.12)
     contrast(1.04)
-    drop-shadow(0 0 10px rgba(250, 179, 135, .52))
-    drop-shadow(0 0 22px rgba(255, 236, 214, .28))
-    drop-shadow(0 0 36px rgba(250, 179, 135, .16));
-  /* Tip-first reveal (to bottom-left) ∩ soft bottom fade (kills hard art clip). */
+    brightness(1.02)
+    drop-shadow(0 0 10px rgba(250, 179, 135, .48))
+    drop-shadow(0 0 22px rgba(255, 236, 214, .24))
+    drop-shadow(0 0 38px rgba(250, 179, 135, .14));
   -webkit-mask-image:
     linear-gradient(
       to bottom left,
       #000 0%,
       #000 var(--trail-reveal),
-      rgba(0, 0, 0, .75) calc(var(--trail-reveal) + 3%),
-      transparent calc(var(--trail-reveal) + 10%)
+      rgba(0, 0, 0, .86) calc(var(--trail-reveal) + 3%),
+      rgba(0, 0, 0, .42) calc(var(--trail-reveal) + 8%),
+      transparent calc(var(--trail-reveal) + 15%)
     ),
     linear-gradient(
       to top,
       transparent 0%,
-      rgba(0, 0, 0, .4) 4%,
-      #000 12%,
+      rgba(0, 0, 0, .22) 3%,
+      rgba(0, 0, 0, .72) 8%,
+      #000 16%,
       #000 100%
-    ) !important;
+    );
   mask-image:
     linear-gradient(
       to bottom left,
       #000 0%,
       #000 var(--trail-reveal),
-      rgba(0, 0, 0, .75) calc(var(--trail-reveal) + 3%),
-      transparent calc(var(--trail-reveal) + 10%)
+      rgba(0, 0, 0, .86) calc(var(--trail-reveal) + 3%),
+      rgba(0, 0, 0, .42) calc(var(--trail-reveal) + 8%),
+      transparent calc(var(--trail-reveal) + 15%)
     ),
     linear-gradient(
       to top,
       transparent 0%,
-      rgba(0, 0, 0, .4) 4%,
-      #000 12%,
+      rgba(0, 0, 0, .22) 3%,
+      rgba(0, 0, 0, .72) 8%,
+      #000 16%,
       #000 100%
-    ) !important;
-  -webkit-mask-composite: source-in !important;
-  mask-composite: intersect !important;
+    );
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
   animation: rocket-flame-path-reveal 5.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes rocket-flame-path-reveal {
-  /* 0–~300ms LOCKED: tip under nozzle only (PR #37 gate) */
-  0%, 5% {
-    opacity: .62;
+  /* START LOCK from #37: no orphan cloud, only a short tip under nozzle. */
+  0%, 10% {
+    opacity: .58;
     --trail-reveal: 18%;
+    filter:
+      saturate(1.06) contrast(1.02) brightness(.98)
+      drop-shadow(0 0 7px rgba(250, 179, 135, .34))
+      drop-shadow(0 0 14px rgba(255, 236, 214, .14));
   }
-  8% {
-    opacity: .8;
-    --trail-reveal: 28%;
+  24% {
+    opacity: .78;
+    --trail-reveal: 34%;
+    filter:
+      saturate(1.10) contrast(1.03) brightness(1.02)
+      drop-shadow(0 0 9px rgba(250, 179, 135, .44))
+      drop-shadow(0 0 18px rgba(255, 236, 214, .20));
   }
-  16% {
-    opacity: .9;
-    --trail-reveal: 48%;
-  }
-  /* mid: denser continuous trail */
   36% {
-    opacity: .98;
-    --trail-reveal: 72%;
+    opacity: .9;
+    --trail-reveal: 54%;
+    filter:
+      saturate(1.14) contrast(1.04) brightness(1.05)
+      drop-shadow(0 0 11px rgba(250, 179, 135, .54))
+      drop-shadow(0 0 24px rgba(255, 236, 214, .27));
   }
   56% {
+    opacity: .97;
+    --trail-reveal: 74%;
+    filter:
+      saturate(1.18) contrast(1.05) brightness(1.08)
+      drop-shadow(0 0 13px rgba(250, 179, 135, .62))
+      drop-shadow(0 0 28px rgba(255, 236, 214, .32))
+      drop-shadow(0 0 42px rgba(250, 179, 135, .14));
+  }
+  /* ~72% is the wallpaper visual target: dense, luminous, still layered. */
+  72% {
     opacity: 1;
-    --trail-reveal: 88%;
+    --trail-reveal: 91%;
+    filter:
+      saturate(1.22) contrast(1.06) brightness(1.11)
+      drop-shadow(0 0 15px rgba(250, 179, 135, .70))
+      drop-shadow(0 0 32px rgba(255, 236, 214, .38))
+      drop-shadow(0 0 48px rgba(250, 179, 135, .18));
   }
   100% {
     opacity: 1;
     --trail-reveal: 100%;
+    filter:
+      saturate(1.24) contrast(1.06) brightness(1.12)
+      drop-shadow(0 0 16px rgba(250, 179, 135, .74))
+      drop-shadow(0 0 34px rgba(255, 236, 214, .40))
+      drop-shadow(0 0 52px rgba(250, 179, 135, .20));
   }
 }
 
-/* Nozzle stitch rides .rocket-fly — inherits rocket trajectory. */
+/* Nozzle stitch rides .rocket-fly, so it inherits the exact rocket trajectory.
+   It lengthens as the rocket climbs to deliberately overlap the fixed trail,
+   removing the dark break that appeared when the rocket outran the reveal edge. */
 .rocket-fly::after {
   content: "" !important;
   position: absolute !important;
   left: 44.5% !important;
   top: 44.2% !important;
-  width: 2.6% !important;
-  height: 7% !important;
+  width: 3.1% !important;
+  height: 11% !important;
   aspect-ratio: auto !important;
   transform-origin: 50% 0 !important;
-  transform: translate(-50%, 0) rotate(31deg) scaleY(.7) !important;
+  transform: translate(-50%, -6%) rotate(31deg) scaleY(.56) !important;
   z-index: 1 !important;
   pointer-events: none !important;
   opacity: 0;
   mix-blend-mode: plus-lighter;
   background:
     radial-gradient(
-      ellipse at 50% 4%,
-      rgba(255, 255, 248, 1) 0%,
-      rgba(255, 239, 216, .96) 22%,
-      rgba(250, 179, 135, .70) 42%,
-      rgba(245, 194, 231, .18) 64%,
-      transparent 82%
+      ellipse at 50% 2%,
+      rgba(255, 255, 249, 1) 0%,
+      rgba(255, 241, 219, .98) 18%,
+      rgba(255, 223, 187, .92) 32%,
+      rgba(250, 179, 135, .74) 48%,
+      rgba(245, 194, 231, .22) 68%,
+      transparent 88%
     ),
     linear-gradient(
       to bottom,
-      rgba(255, 249, 239, .96) 0%,
-      rgba(255, 229, 199, .88) 20%,
-      rgba(250, 179, 135, .56) 48%,
-      rgba(245, 194, 231, .15) 70%,
+      rgba(255, 252, 245, .98) 0%,
+      rgba(255, 235, 209, .94) 22%,
+      rgba(250, 179, 135, .68) 50%,
+      rgba(245, 194, 231, .18) 74%,
       transparent 100%
     ) !important;
   filter:
-    blur(2px)
-    drop-shadow(0 0 6px rgba(250, 179, 135, .78))
-    drop-shadow(0 0 12px rgba(255, 239, 219, .16)) !important;
+    blur(2.1px)
+    drop-shadow(0 0 7px rgba(250, 179, 135, .82))
+    drop-shadow(0 0 14px rgba(255, 239, 219, .24)) !important;
   animation: rocket-nozzle-stitch 5.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes rocket-nozzle-stitch {
-  0%, 5% {
-    opacity: .72;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(.65);
+  0%, 10% {
+    opacity: .66;
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(.56);
   }
-  8% {
-    opacity: .82;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(.85);
-  }
-  16% {
-    opacity: .88;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(.95);
+  24% {
+    opacity: .8;
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(.78);
   }
   36% {
-    opacity: .92;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(1.05);
+    opacity: .88;
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(.98);
   }
   56% {
-    opacity: .95;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(1.1);
+    opacity: .94;
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.18);
+  }
+  72% {
+    opacity: .98;
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.34);
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(1.16);
+    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.46);
   }
 }
 
+/* Pad smoke appears only after the start/nozzle lock. It stays stage-anchored,
+   uses normal blend, and densifies toward mid/end without becoming a sticker. */
+/* FIRST TAKE (CEO): static dense pad plume — do not keyframe the cloud.
+   Animate only rocket-trim + flame-trail reveal + nozzle stitch. */
+.rocket-pad-fx .pad-puff {
+  animation: none !important;
+  opacity: .78 !important;
+  transform: translate(-50%, -50%) scale(1.05) !important;
+  filter:
+    saturate(1.12)
+    blur(.55px)
+    drop-shadow(0 0 14px rgba(250, 179, 135, .32)) !important;
+}
+.rocket-pad-fx .pad-puff-b {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .7 !important;
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+.rocket-pad-fx .pad-puff-c {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .74 !important;
+  transform: translate(-50%, -50%) scale(1.0) !important;
+}
+.rocket-pad-fx .pad-puff-d {
+  animation: none !important;
+  animation-delay: 0s !important;
+  opacity: .66 !important;
+  transform: translate(-50%, -50%) scale(.88) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rocket-stage .rocket-flame,
-  .rocket-fly::after {
+  .rocket-fly {
     animation: none !important;
-    opacity: 0 !important;
+    transform: none !important;
+  }
+  .rocket-stage .rocket-flame,
+  .rocket-stage .rocket-glow,
+  .rocket-fly::after,
+  .rocket-pad-fx .pad-puff {
+    animation: none !important;
+    opacity: .55 !important;
   }
 }
