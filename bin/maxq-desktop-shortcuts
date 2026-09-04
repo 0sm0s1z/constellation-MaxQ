@@ -48,15 +48,51 @@ Categories=Network;Chat;
 X-MaxQ-Managed=true
 EOF
 }
+managed_desktop_copy(){
+  local src="$1" dest="$2" key backup marker
+  key="$(basename "$dest")"
+  backup="$S/shortcut-prev/$key"
+  marker="$S/shortcut-owned/$key"
+  mkdir -p "$S/shortcut-prev" "$S/shortcut-owned"
+  if [ -e "$dest" ] && [ ! -e "$marker" ] && [ ! -e "$backup" ]; then
+    cp -a "$dest" "$backup"
+  fi
+  cp -f "$src" "$dest"
+  : > "$marker"
+}
+restore_desktop_copy(){
+  local dest="$1" key backup marker
+  key="$(basename "$dest")"
+  backup="$S/shortcut-prev/$key"
+  marker="$S/shortcut-owned/$key"
+  [ -e "$marker" ] || return 0
+  rm -f "$dest"
+  if [ -e "$backup" ]; then mv -f "$backup" "$dest"; fi
+  rm -f "$marker"
+}
 install_apps(){
   app maxq-ai 'MaxQ AI Chat' ai ai; app maxq-chatgpt ChatGPT chatgpt chatgpt; app maxq-grok Grok grok grok; app maxq-claude Claude claude claude; app maxq-discord Discord discord discord; app maxq-slack Slack slack slack; app maxq-settings 'MaxQ Settings' settings settings
-  cp -f "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"; cp -f "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"; cp -f "$A/maxq-grok.desktop" "$E/Grok.desktop"; cp -f "$A/maxq-claude.desktop" "$E/Claude.desktop"; cp -f "$A/maxq-discord.desktop" "$E/Discord.desktop"; cp -f "$A/maxq-slack.desktop" "$E/Slack.desktop"; cp -f "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
+  managed_desktop_copy "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"
+  managed_desktop_copy "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"
+  managed_desktop_copy "$A/maxq-grok.desktop" "$E/Grok.desktop"
+  managed_desktop_copy "$A/maxq-claude.desktop" "$E/Claude.desktop"
+  managed_desktop_copy "$A/maxq-discord.desktop" "$E/Discord.desktop"
+  managed_desktop_copy "$A/maxq-slack.desktop" "$E/Slack.desktop"
+  managed_desktop_copy "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
   chmod +x "$E/Ghostty.desktop" "$E/MaxQ-AI-Chat.desktop" "$E/ChatGPT.desktop" "$E/Grok.desktop" "$E/Claude.desktop" "$E/Discord.desktop" "$E/Slack.desktop" "$E/MaxQ-Settings.desktop"
 }
 dock(){ printf '[PlankDockItemPreferences]\nLauncher=file://%s\n' "$2" > "$K/$1.dockitem"; }
 install_docks(){ dock maxq-00-ai "$A/maxq-ai.desktop"; dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"; dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"; dock maxq-40-ghostty "$GD"; }
 remove_shortcuts(){
+  restore_desktop_copy "$E/MaxQ-AI-Chat.desktop"
+  restore_desktop_copy "$E/ChatGPT.desktop"
+  restore_desktop_copy "$E/Grok.desktop"
+  restore_desktop_copy "$E/Claude.desktop"
+  restore_desktop_copy "$E/Discord.desktop"
+  restore_desktop_copy "$E/Slack.desktop"
+  restore_desktop_copy "$E/MaxQ-Settings.desktop"
   rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings}.desktop
-  rm -f "$E"/{Ghostty,MaxQ-AI-Chat,ChatGPT,Grok,Claude,Discord,Slack,MaxQ-Settings}.desktop "$K"/maxq-*.dockitem
+  rm -f "$K"/maxq-*.dockitem
   rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty}.png "$I/.maxq-owned"
+  rmdir "$S/shortcut-prev" "$S/shortcut-owned" 2>/dev/null || true
 }
