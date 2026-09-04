@@ -20,7 +20,7 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
 | DELETE | `/connections/{id}` | Remove a saved remote API |
-| GET | `/desktops` | Concurrently aggregates `GET /desktops` from every connection |
+| GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
 | GET | `/` | thin settings sheet (status, connections, aggregate desktops, proxy) |
 
@@ -34,6 +34,6 @@ TypeScript: `cmd/maxq-api/ui/sheet.ts` (no framework). Served file is `sheet.js`
 
 Connections are stored in `$HOME/.config/maxq/connections.json` with mode `0600`. The `auth` request field is treated as a bearer token unless it already contains an authorization scheme; it is sent only to that connection and is represented in list responses by `auth_configured`.
 
-The desktop aggregator queries all saved APIs concurrently. Each returned desktop is enriched with `connection_id`, `connection_name`, `source_api`, and `box_identity`; identity is taken from the desktop, then the response (`box_identity`, `identity`, or `hostname`), and finally the saved connection name. A failed connection is reported in `errors` without hiding desktops from healthy boxes.
+The local provider discovers X11 displays under `/tmp/.X11-unix` (and honors an inventory-shaped `desktops.json` when supplied by the desktop runtime), adding VNC/noVNC metadata without making an HTTP request to itself. The desktop aggregator includes that local inventory and queries all saved APIs concurrently. Each returned desktop is enriched with `connection_id`, `connection_name`, `source_api`, and `box_identity`; identity is taken from the desktop, then the response (`box_identity`, `identity`, or `hostname`), and finally the saved connection name. A failed connection is reported in `errors` without hiding desktops from healthy boxes.
 
 Connected APIs should return either an array of desktop objects or `{"box_identity": "...", "desktops": [...]}`. Actions use the remote `POST /desktops/{desktop_id}/action` endpoint and carry `{action, payload}`.

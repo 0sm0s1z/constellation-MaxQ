@@ -1,6 +1,6 @@
 // MaxQ settings sheet (TypeScript, no framework).
 type Gost = { enabled: boolean; running: boolean; listen: string; upstream: string; iface: string; intercept: boolean };
-type Clis = { installed: string; skipped: string; preexisting: string };
+type Clis = { installed: string; skipped: string };
 type Status = { state: string; theme: string; gost: Gost; clis: Clis; api: { listen: string } };
 type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
@@ -33,7 +33,7 @@ function renderStatus(s: Status): void {
   $("st-state").textContent = s.state;
   $("st-theme").textContent = s.theme;
   $("st-gost").textContent = (s.gost.enabled ? "enabled" : "off") + " / " + (s.gost.running ? "running" : "stopped");
-  $("st-clis").textContent = [s.clis.installed, s.clis.preexisting].filter((x) => x && x.length).join(" ") || "—";
+  $("st-clis").textContent = [s.clis.installed, s.clis.skipped].filter((x) => x && x.length).join(" ") || "—";
   $("st-api").textContent = s.api.listen;
   const pill = $("pill"); pill.textContent = s.state; pill.className = "pill " + (s.state === "applied" ? "on" : "off");
 }

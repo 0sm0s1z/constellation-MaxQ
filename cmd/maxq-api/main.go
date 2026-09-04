@@ -39,9 +39,8 @@ type gostInfo struct {
 }
 
 type clisInfo struct {
-	Installed   string `json:"installed"`
-	Skipped     string `json:"skipped"`
-	Preexisting string `json:"preexisting"`
+	Installed string `json:"installed"`
+	Skipped   string `json:"skipped"`
 }
 
 type apiInfo struct {
@@ -96,12 +95,13 @@ type proxyReq struct {
 }
 
 type server struct {
-	prefix  string
-	config  string
-	listen  string
-	maxqBin string
-	mu      sync.Mutex
-	connMu  sync.Mutex
+	prefix         string
+	config         string
+	listen         string
+	maxqBin        string
+	localInventory func() ([]map[string]any, error)
+	mu             sync.Mutex
+	connMu         sync.Mutex
 }
 
 func main() {
@@ -309,10 +309,19 @@ func (s *server) handleDeleteConnection(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
-	// A request carrying this header is a provider request made by another
-	// MaxQ aggregator. There is no local desktop store in the control API yet.
+	// An aggregate request turns this API into a local provider. In particular,
+	// do not call our own HTTP endpoint: that would recurse when this API is also
+	// listed as a connection by another MaxQ instance.
 	if r.Header.Get("X-MaxQ-Aggregate") == "1" {
-		writeJSON(w, http.StatusOK, map[string]any{"desktops": []any{}})
+		items, err := s.localDesktops()
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"desktops":     items,
+			"box_identity": s.boxIdentity(),
+		})
 		return
 	}
 	connections, err := s.loadConnections()
@@ -504,9 +513,8 @@ func (s *server) status() statusResp {
 			Intercept: asBool(sec(toml, "gost", "intercept")),
 		},
 		Clis: clisInfo{
-			Installed:   sec(toml, "clis", "installed"),
-			Skipped:     sec(toml, "clis", "skipped"),
-			Preexisting: sec(toml, "clis", "preexisting"),
+			Installed: sec(toml, "clis", "installed"),
+			Skipped:   sec(toml, "clis", "skipped"),
 		},
 		API: apiInfo{Listen: s.listen},
 	}
@@ -640,6 +648,15 @@ func setAuth(req *http.Request, auth string) {
 }
 
 func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string]any, error) {
+	// A saved loopback URL may point back to this process. Use the provider
+	// directly instead of making this aggregator call its own /desktops route.
+	if isLocalBaseURL(c.BaseURL) {
+		local, err := s.localDesktops()
+		if err != nil {
+			return nil, err
+		}
+		return s.enrichDesktopMaps(c, s.boxIdentity(), local), nil
+	}
 	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL(c.BaseURL, "/desktops"), nil)
@@ -679,12 +696,36 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 	default:
 		return nil, fmt.Errorf("desktops response must be an array or object")
 	}
-	items := make([]map[string]any, 0, len(values))
+	return s.enrichDesktopValues(c, identity, values), nil
+}
+
+func isLocalBaseURL(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return false
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "127.0.0.1", "localhost", "::1":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *server) enrichDesktopValues(c connection, identity string, values []any) []map[string]any {
+	maps := make([]map[string]any, 0, len(values))
 	for _, value := range values {
 		desktop, ok := value.(map[string]any)
-		if !ok {
-			continue
+		if ok {
+			maps = append(maps, desktop)
 		}
+	}
+	return s.enrichDesktopMaps(c, identity, maps)
+}
+
+func (s *server) enrichDesktopMaps(c connection, identity string, values []map[string]any) []map[string]any {
+	items := make([]map[string]any, 0, len(values))
+	for _, desktop := range values {
 		copy := make(map[string]any, len(desktop)+4)
 		for key, value := range desktop {
 			copy[key] = value
@@ -702,7 +743,7 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 		copy["source_api"] = c.BaseURL
 		items = append(items, copy)
 	}
-	return items, nil
+	return items
 }
 
 func (s *server) postDesktopAction(parent *http.Request, c connection, desktopID string, body map[string]any) (int, any, error) {
