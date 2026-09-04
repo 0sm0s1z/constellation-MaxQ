@@ -57,14 +57,8 @@ def scale_to_width(img: Image.Image, width: int) -> Image.Image:
     return img.resize((width, height), Image.Resampling.LANCZOS)
 
 
-def tint_alpha(img: Image.Image, color: tuple[int, int, int], amount: float, blur: float) -> Image.Image:
-    a = img.getchannel("A")
-    if blur:
-        a = a.filter(ImageFilter.GaussianBlur(blur))
-    a = a.point(lambda p: round(p * clamp(amount)))
-    layer = Image.new("RGBA", img.size, color + (0,))
-    layer.putalpha(a)
-    return layer
+def alpha_scale(alpha: Image.Image, amount: float) -> Image.Image:
+    return alpha.point(lambda p: round(p * clamp(amount)))
 
 
 def alpha_over(dst: Image.Image, src: Image.Image, xy: tuple[int, int]) -> None:
@@ -79,7 +73,6 @@ def prepare_reveal_field(size: tuple[int, int]) -> np.ndarray:
 
 
 def flame_reveal_mask(field: np.ndarray, reveal: float) -> Image.Image:
-    """Tip-first feathered diagonal reveal: top-right -> bottom-left."""
     r = 0.16 + 0.84 * clamp(reveal)
     edge = 0.105
     threshold = 1.0 - r
@@ -88,19 +81,29 @@ def flame_reveal_mask(field: np.ndarray, reveal: float) -> Image.Image:
     return Image.fromarray(np.rint(a * 255.0).astype(np.uint8), mode="L")
 
 
-def prepare_flame() -> Image.Image:
+def prepare_flame() -> tuple[Image.Image, Image.Image, list[tuple[Image.Image, tuple[int, int, int], float]]]:
     flame = scale_to_width(rgba(LAYERS / "flame-trail.webp"), round(W * 0.46))
     flame = ImageEnhance.Color(flame).enhance(1.16)
     flame = ImageEnhance.Contrast(flame).enhance(1.04)
     flame = ImageEnhance.Brightness(flame).enhance(1.08)
-    return flame.rotate(-9.5, resample=Image.Resampling.BICUBIC, expand=True)
+    flame = flame.rotate(-9.5, resample=Image.Resampling.BICUBIC, expand=True)
+    base_alpha = flame.getchannel("A")
+    glow_specs = []
+    for radius, color, base_op in [
+        (28, PEACH, 0.22),
+        (12, (255, 226, 188), 0.30),
+        (5, WARM_WHITE, 0.24),
+    ]:
+        glow_specs.append((base_alpha.filter(ImageFilter.GaussianBlur(radius)), color, base_op))
+    return flame, base_alpha, glow_specs
 
 
-def prepare_puffs() -> list[Image.Image]:
-    return [rgba(LAYERS / f"smoke-puff-0{i}.webp") for i in range(1, 5)]
+def compose_static_base() -> Image.Image:
+    plate = rgba(LAYERS / "plate.webp")
+    if plate.size != (W, H):
+        plate = plate.resize((W, H), Image.Resampling.LANCZOS)
 
-
-def composite_pad(frame: Image.Image, puffs: list[Image.Image]) -> None:
+    puffs = [rgba(LAYERS / f"smoke-puff-0{i}.webp") for i in range(1, 5)]
     cx, cy = round(W * 0.445), round(H * 0.555)
     group = round(W * 0.30)
     specs = [
@@ -112,13 +115,24 @@ def composite_pad(frame: Image.Image, puffs: list[Image.Image]) -> None:
     for idx, scale, ox, oy, op, blur in specs:
         puff = scale_to_width(puffs[idx], max(1, round(group * scale)))
         alpha = puff.getchannel("A").filter(ImageFilter.GaussianBlur(blur))
-        puff.putalpha(alpha.point(lambda p: round(p * op)))
+        puff.putalpha(alpha_scale(alpha, op))
         x = round(cx + ox * group - puff.width / 2)
         y = round(cy + oy * group - puff.height / 2)
-        alpha_over(frame, puff, (x, y))
+        alpha_over(plate, puff, (x, y))
+    return plate
 
 
-def draw_nozzle_energy(frame: Image.Image, nozzle: tuple[float, float], progress: float) -> None:
+def prepare_rocket() -> tuple[Image.Image, Image.Image, Image.Image]:
+    rocket = scale_to_width(rgba(LAYERS / "rocket-trim.webp"), round(W * 0.10))
+    a = rocket.getchannel("A")
+    peach = Image.new("RGBA", rocket.size, PEACH + (0,))
+    peach.putalpha(a.filter(ImageFilter.GaussianBlur(16)))
+    mauve = Image.new("RGBA", rocket.size, MAUVE + (0,))
+    mauve.putalpha(a.filter(ImageFilter.GaussianBlur(28)))
+    return rocket, peach, mauve
+
+
+def nozzle_tile(nozzle: tuple[float, float], progress: float) -> tuple[Image.Image, tuple[int, int]]:
     nx, ny = nozzle
     px, py = W * 0.445, H * 0.555
     vx, vy = px - nx, py - ny
@@ -127,25 +141,39 @@ def draw_nozzle_energy(frame: Image.Image, nozzle: tuple[float, float], progress
     length = 58 + 34 * progress
     ex, ey = nx + ux * length, ny + uy * length
 
-    for width, color, alpha, blur in [
+    margin = 64
+    x0 = math.floor(min(nx, ex) - margin)
+    y0 = math.floor(min(ny, ey) - margin)
+    x1 = math.ceil(max(nx, ex) + margin)
+    y1 = math.ceil(max(ny, ey) + margin)
+    tw, th = max(1, x1 - x0), max(1, y1 - y0)
+    sx, sy = nx - x0, ny - y0
+    tx, ty = ex - x0, ey - y0
+
+    tile = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+    layers = [
         (52 + 20 * progress, PEACH, 88, 20),
         (30 + 12 * progress, (255, 208, 159), 150, 11),
         (14 + 6 * progress, WARM_WHITE, 230, 5),
         (5 + 2 * progress, (255, 255, 249), 255, 1.5),
-    ]:
-        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ]
+    for width, color, alpha, blur in layers:
+        layer = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
-        d.line((nx, ny, ex, ey), fill=color + (round(alpha * (0.72 + 0.28 * progress)),), width=max(1, round(width)))
-        d.ellipse((nx - width * 0.5, ny - width * 0.5, nx + width * 0.5, ny + width * 0.5), fill=color + (round(alpha * 0.82),))
+        a = round(alpha * (0.72 + 0.28 * progress))
+        d.line((sx, sy, tx, ty), fill=color + (a,), width=max(1, round(width)))
+        d.ellipse((sx - width * 0.5, sy - width * 0.5, sx + width * 0.5, sy + width * 0.5), fill=color + (round(alpha * 0.82),))
         if blur:
             layer = layer.filter(ImageFilter.GaussianBlur(blur))
-        frame.alpha_composite(layer)
+        tile.alpha_composite(layer)
+    return tile, (x0, y0)
 
 
 def draw_embers(frame: Image.Image, progress: float, phase: float) -> None:
     if progress < 0.18:
         return
     rng = random.Random(0x4D415851)
+    d = ImageDraw.Draw(frame)
     pad = (W * 0.445, H * 0.555)
     for i in range(18):
         base_t = rng.uniform(0.08, 0.86) * progress
@@ -154,15 +182,10 @@ def draw_embers(frame: Image.Image, progress: float, phase: float) -> None:
         x = pad[0] + math.cos(angle) * dist + rng.uniform(-28, 28)
         y = pad[1] + math.sin(angle) * dist + rng.uniform(-20, 20)
         flicker = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(phase * 2 * math.pi + i * 1.77))
-        a = round(180 * progress * flicker)
+        a = round(175 * progress * flicker)
         r = 1.2 + 2.6 * rng.random()
-        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        gd = ImageDraw.Draw(glow)
-        gd.ellipse((x - r * 3, y - r * 3, x + r * 3, y + r * 3), fill=PEACH + (max(0, a // 4),))
-        glow = glow.filter(ImageFilter.GaussianBlur(3.0))
-        frame.alpha_composite(glow)
-        d = ImageDraw.Draw(frame)
-        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 222, 176, a))
+        d.ellipse((x - r * 3.2, y - r * 3.2, x + r * 3.2, y + r * 3.2), fill=PEACH + (max(0, a // 7),))
+        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 224, 184, a))
 
 
 def render() -> None:
@@ -170,77 +193,65 @@ def render() -> None:
         shutil.rmtree(FRAMES)
     FRAMES.mkdir(parents=True)
 
-    plate = rgba(LAYERS / "plate.webp")
-    if plate.size != (W, H):
-        plate = plate.resize((W, H), Image.Resampling.LANCZOS)
-    rocket = scale_to_width(rgba(LAYERS / "rocket-trim.webp"), round(W * 0.10))
-    flame = prepare_flame()
+    static_base = compose_static_base()
+    rocket, rocket_peach, rocket_mauve = prepare_rocket()
+    flame, flame_alpha, flame_glows = prepare_flame()
     reveal_field = prepare_reveal_field(flame.size)
-    puffs = prepare_puffs()
 
     kx = [(0.0, 0.0), (0.10, 0.0), (0.24, 0.034), (0.36, 0.062), (0.56, 0.101), (0.72, 0.131), (1.0, 0.160)]
     ky = [(0.0, 0.0), (0.10, 0.0), (0.24, -0.074), (0.36, -0.144), (0.56, -0.242), (0.72, -0.311), (1.0, -0.380)]
-
     flame_x = round(W * 0.02)
     flame_y = round(H * 0.28)
 
     for i in range(N):
         t = i / FPS
-        if t <= FORWARD_S:
-            raw = t / FORWARD_S
-        else:
-            raw = 1.0 - (t - FORWARD_S) / FORWARD_S
+        raw = t / FORWARD_S if t <= FORWARD_S else 1.0 - (t - FORWARD_S) / FORWARD_S
         progress = smooth(raw)
 
-        frame = plate.copy()
-        composite_pad(frame, puffs)
-
+        frame = static_base.copy()
         reveal = keyed(progress, [(0.0, 0.02), (0.10, 0.02), (0.24, 0.30), (0.36, 0.58), (0.56, 0.82), (0.72, 0.97), (1.0, 1.0)])
-        fm = flame_reveal_mask(reveal_field, reveal)
-        fa = flame.getchannel("A")
-        combined_data = ImageChops.multiply(fa, fm)
-        flame_frame = flame.copy()
-        flame_frame.putalpha(combined_data.point(lambda p: round(p * (0.58 + 0.42 * progress))))
+        mask = flame_reveal_mask(reveal_field, reveal)
+        masked_alpha = ImageChops.multiply(flame_alpha, mask)
 
-        bloom_alpha = flame_frame.getchannel("A")
-        for radius, color, op in [
-            (28, PEACH, 0.20 + 0.24 * progress),
-            (12, (255, 226, 188), 0.26 + 0.28 * progress),
-            (5, WARM_WHITE, 0.20 + 0.35 * progress),
-        ]:
-            glow = Image.new("RGBA", flame_frame.size, color + (0,))
-            ga = bloom_alpha.filter(ImageFilter.GaussianBlur(radius)).point(lambda p, o=op: round(p * o))
-            glow.putalpha(ga)
-            alpha_over(frame, glow, (flame_x, flame_y))
+        for glow_alpha, color, base_op in flame_glows:
+            g = Image.new("RGBA", flame.size, color + (0,))
+            ga = ImageChops.multiply(glow_alpha, mask)
+            g.putalpha(alpha_scale(ga, base_op + 0.28 * progress))
+            alpha_over(frame, g, (flame_x, flame_y))
+
+        flame_frame = flame.copy()
+        flame_frame.putalpha(alpha_scale(masked_alpha, 0.58 + 0.42 * progress))
         alpha_over(frame, flame_frame, (flame_x, flame_y))
 
         dx = keyed(progress, kx) * W
         dy = keyed(progress, ky) * H
         rx = round(W * 0.40 + dx)
         ry = round(H * 0.26 + dy)
-
         nozzle = (W * 0.445 + dx, H * 0.442 + dy)
-        draw_nozzle_energy(frame, nozzle, progress)
+
+        tile, xy = nozzle_tile(nozzle, progress)
+        alpha_over(frame, tile, xy)
         draw_embers(frame, progress, i / N)
 
-        glow1 = tint_alpha(rocket, PEACH, 0.18 + 0.28 * progress, 16)
-        glow2 = tint_alpha(rocket, MAUVE, 0.08 + 0.16 * progress, 28)
-        alpha_over(frame, glow2, (rx, ry + 4))
-        alpha_over(frame, glow1, (rx, ry + 2))
+        mg = rocket_mauve.copy()
+        mg.putalpha(alpha_scale(mg.getchannel("A"), 0.10 + 0.20 * progress))
+        pg = rocket_peach.copy()
+        pg.putalpha(alpha_scale(pg.getchannel("A"), 0.18 + 0.30 * progress))
+        alpha_over(frame, mg, (rx, ry + 4))
+        alpha_over(frame, pg, (rx, ry + 2))
         alpha_over(frame, rocket, (rx, ry))
 
         frame.save(FRAMES / f"frame-{i:04d}.png", optimize=False)
 
-    cmd = [
+    subprocess.run([
         "ffmpeg", "-y", "-framerate", str(FPS),
         "-i", str(FRAMES / "frame-%04d.png"),
         "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p",
         "-auto-alt-ref", "0", "-crf", "25", "-b:v", "0",
-        "-row-mt", "1", "-deadline", "good", "-cpu-used", "2",
+        "-row-mt", "1", "-deadline", "good", "-cpu-used", "3",
         "-metadata:s:v:0", "alpha_mode=1",
         str(OUT),
-    ]
-    subprocess.run(cmd, check=True)
+    ], check=True)
     print(f"rendered {OUT} ({OUT.stat().st_size / 1024:.1f} KiB), {N} frames @ {FPS} fps")
 
 
