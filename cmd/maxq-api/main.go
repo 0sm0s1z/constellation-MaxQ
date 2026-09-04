@@ -665,8 +665,8 @@ func setAuth(req *http.Request, auth string) {
 }
 
 func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string]any, error) {
-	// Only treat loopback URLs that target THIS listen port as self.
-	// Other 127.0.0.1 ports (tests, second API) still use HTTP.
+	// Any loopback base URL is local to this box. Use the provider directly
+	// instead of making an HTTP request back through a local API.
 	if s.isSelfConnection(c) {
 		local, err := s.localDesktops()
 		if err != nil {
@@ -717,27 +717,20 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 }
 
 func (s *server) isSelfConnection(c connection) bool {
-	u, err := url.Parse(c.BaseURL)
-	if err != nil || u.Hostname() == "" || !isLoopbackHost(u.Hostname()) {
-		return false
-	}
-	listen := s.listen
-	if strings.TrimSpace(listen) == "" {
-		listen = defaultListen
-	}
-	_, port, err := net.SplitHostPort(listen)
-	if err != nil {
-		return false
-	}
-	return u.Port() == port
+	return isLocalBaseURL(c.BaseURL)
 }
 
-func isLoopbackHost(host string) bool {
-	if strings.EqualFold(strings.TrimSpace(host), "localhost") {
-		return true
+func isLocalBaseURL(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return false
 	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
+	switch strings.ToLower(u.Hostname()) {
+	case "127.0.0.1", "localhost", "::1":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *server) enrichDesktopValues(c connection, identity string, values []any) []map[string]any {
