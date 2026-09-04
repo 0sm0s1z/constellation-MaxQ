@@ -536,6 +536,70 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   100% { opacity: .48; }
 }
 
+
+/* Base launch cloud at the keyboard/pad — restored from apply-slide smoke assets. */
+.rocket-pad-fx {
+  position: absolute;
+  left: 42.2%;
+  top: 51.8%;
+  width: 26%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.rocket-pad-fx .pad-puff {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: auto;
+  transform: translate(-50%, -50%) scale(.42);
+  opacity: 0;
+  mix-blend-mode: plus-lighter;
+  filter: saturate(1.14) drop-shadow(0 0 14px rgba(250,179,135,.34));
+  animation: rocket-pad-cloud 5.5s ease-in-out infinite alternate;
+}
+.rocket-pad-fx .pad-puff-b {
+  width: 78%;
+  left: 62%;
+  top: 44%;
+  animation-delay: .12s;
+  filter: saturate(1.08) blur(.35px) drop-shadow(0 0 10px rgba(245,194,231,.22));
+}
+.rocket-pad-fx .pad-puff-c {
+  width: 92%;
+  left: 38%;
+  top: 58%;
+  animation-delay: .05s;
+  filter: saturate(1.1) blur(.55px) drop-shadow(0 0 12px rgba(203,166,247,.2));
+}
+.rocket-pad-fx .pad-puff-d {
+  width: 68%;
+  left: 54%;
+  top: 62%;
+  animation-delay: .18s;
+  filter: saturate(1.06) blur(.7px);
+}
+@keyframes rocket-pad-cloud {
+  0%, 10% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.38);
+  }
+  22% {
+    opacity: .42;
+    transform: translate(-50%, -50%) scale(.62);
+  }
+  56% {
+    opacity: .78;
+    transform: translate(-50%, -50%) scale(.92);
+  }
+  100% {
+    opacity: .92;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
 .dots {
   display: flex; justify-content: center; gap: .45rem;
   margin-top: .85rem;
@@ -554,6 +618,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .rocket-stage .rocket-glow,
   .rocket-stage .rocket-flame,
   .rocket-fly::after { animation: none; opacity: 0; }
+  .rocket-pad-fx .pad-puff { animation: none; opacity: .55; transform: translate(-50%, -50%) scale(.85); }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
