@@ -134,7 +134,7 @@ func TestAggregateReturnsLocalInventoryWithoutHTTPRecursion(t *testing.T) {
 			break
 		}
 	}
-	if live7 == nil || live7["live"] != true || live7["connection_name"] != "Local" {
+	if live7 == nil || live7["live"] != true || live7["id"] != "7" {
 		t.Fatalf("local desktop :7=%+v", live7)
 	}
 

@@ -14,63 +14,65 @@ const desktopCount = 15
 
 var x11SocketRoot = "/tmp/.X11-unix"
 
-func (s *server) localDesktops() ([]map[string]any, error) {
-	if s.localInventory != nil {
-		return s.localInventory()
+func (s *server) boxIdentity() string {
+	if h, err := os.Hostname(); err == nil && strings.TrimSpace(h) != "" {
+		return strings.TrimSpace(h)
 	}
+	return s.listen
+}
 
+func (s *server) localDesktopMaps() []map[string]any {
+	if s.localInventory != nil {
+		items, err := s.localInventory()
+		if err == nil {
+			return items
+		}
+	}
 	current := displayNumber(os.Getenv("DISPLAY"))
 	items := make([]map[string]any, 0, desktopCount)
 	for n := 1; n <= desktopCount; n++ {
-		vncPort, viewerPort := 5900+n, 6081
-		if n == 1 {
-			vncPort, viewerPort = 5900, 6080
+		live := desktopLive(x11SocketRoot, n)
+		item := map[string]any{
+			"id":          strconv.Itoa(n),
+			"number":      n,
+			"display":     fmt.Sprintf(":%d", n),
+			"live":        live,
+			"current":     n == current,
+			"vnc_port":    5900 + n,
+			"viewer_port": 6081,
 		}
-		items = append(items, map[string]any{
-			"id":              fmt.Sprintf("local-desktop-%d", n),
-			"name":            fmt.Sprintf("Desktop :%d", n),
-			"number":          n,
-			"display":         fmt.Sprintf(":%d", n),
-			"live":            desktopLive(x11SocketRoot, n),
-			"current":         n == current,
-			"vnc_port":        vncPort,
-			"viewer_port":     viewerPort,
-			"box_identity":    s.boxIdentity(),
-			"connection_name": "Local",
-			"source_api":      "local",
-		})
+		if n == 1 {
+			item["vnc_port"] = 5900
+			item["viewer_port"] = 6080
+		} else {
+			item["token"] = n
+		}
+		items = append(items, item)
 	}
-	return items, nil
+	return items
 }
 
-func (s *server) boxIdentity() string {
-	if host, err := os.Hostname(); err == nil && strings.TrimSpace(host) != "" {
-		return strings.TrimSpace(host)
-	}
-	return "local"
-}
-
-func displayNumber(value string) int {
-	value = strings.TrimSpace(value)
-	i := strings.LastIndexByte(value, ':')
-	if i < 0 || i+1 >= len(value) {
+func displayNumber(v string) int {
+	v = strings.TrimSpace(v)
+	i := strings.LastIndexByte(v, ':')
+	if i < 0 || i == len(v)-1 {
 		return 0
 	}
-	value = value[i+1:]
-	if i := strings.IndexByte(value, '.'); i >= 0 {
-		value = value[:i]
+	n := v[i+1:]
+	if j := strings.IndexByte(n, '.'); j >= 0 {
+		n = n[:j]
 	}
-	n, err := strconv.Atoi(value)
-	if err != nil || n < 1 || n > desktopCount {
+	out, err := strconv.Atoi(n)
+	if err != nil || out < 1 || out > desktopCount {
 		return 0
 	}
-	return n
+	return out
 }
 
 func desktopLive(root string, n int) bool {
 	if n < 1 || n > desktopCount {
 		return false
 	}
-	info, err := os.Stat(filepath.Join(root, "X"+strconv.Itoa(n)))
-	return err == nil && !info.IsDir()
+	st, err := os.Stat(filepath.Join(root, "X"+strconv.Itoa(n)))
+	return err == nil && !st.IsDir()
 }
