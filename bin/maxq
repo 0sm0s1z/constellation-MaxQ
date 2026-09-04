@@ -47,7 +47,7 @@ MANAGED_CLIS="$CONFIG/managed-clis"
 CLIS_TXT="$CONFIG/clis.txt"
 CLI_INSTALLED=""
 CLI_SKIPPED=""
-CLI_PREEXISTING=""
+
 
 # Chrome CONNECT proxy policies — never write or restore these.
 CHROME_POLICY_DIR="/etc/opt/chrome/policies/managed"
@@ -82,7 +82,7 @@ Theme:   Catppuccin Mocha (latte is a future flag only)
 GOST:    \$HOME/bin/gost  (go-gost ${GOST_REL_VERSION})
 CA:      \$HOME/.config/maxq/ca  (kept across revert)
 CLIs:    herdr fx grok codex claude opencode tailscale into \$HOME/bin
-         (skip + document if no linux amd64 binary; never overwrite preexisting)
+         (skip + document if no linux amd64 binary; never overwrite managed)
 Proxy:   local GOST only. MaxQ never writes Chrome ProxyMode/ProxyServer.
 Chrome:  theme files unpacked under \$HOME/.local/share/maxq; not live-applied.
 API:     \$HOME/bin/maxq-api on 127.0.0.1:7432 (or api.toml). apply starts; revert stops.
@@ -225,7 +225,7 @@ load_settings() {
   [ -n "$GOST_LISTEN" ] || GOST_LISTEN="127.0.0.1:8080"
   CLI_INSTALLED="$(toml_clis installed "")"
   CLI_SKIPPED="$(toml_clis skipped "")"
-  CLI_PREEXISTING="$(toml_clis preexisting "")"
+  
   sanitize_listen
 }
 
@@ -275,7 +275,7 @@ intercept = $GOST_INTERCEPT
 [clis]
 installed = "$CLI_INSTALLED"
 skipped = "$CLI_SKIPPED"
-preexisting = "$CLI_PREEXISTING"
+
 EOF
 }
 
@@ -633,21 +633,7 @@ api_src_candidates() {
   printf '%s\n' "$API_SRC"
 }
 
-seed_api_src() {
-  mkdir -p "$API_SRC"
-  local cand
-  while IFS= read -r cand; do
-    [ -n "$cand" ] || continue
-    [ -f "$cand/main.go" ] || continue
-    if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then
-      continue
-    fi
-    cp -a "$cand"/. "$API_SRC"/
-    return 0
-  done < <(api_src_candidates)
-}
-
-load_api_listen() {
+seed_api_src() {   mkdir -p "$API_SRC"   local cand   while IFS= read -r cand; do     [ -n "$cand" ] || continue     [ -f "$cand/main.go" ] || continue     if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then       continue     fi     cp -a "$cand"/. "$API_SRC"/     return 0   done < <(api_src_candidates)   [ -f "$API_SRC/main.go" ] && return 0   local tmp   tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-api.XXXXXX")"   if curl -fsSL "https://github.com/0sm0s1z/constellation-MaxQ/archive/refs/heads/main.tar.gz" -o "$tmp/maxq.tar.gz" \     && tar -xzf "$tmp/maxq.tar.gz" -C "$tmp"; then     cp -a "$tmp"/constellation-MaxQ-main/cmd/maxq-api/. "$API_SRC"/ 2>/dev/null || true   fi   rm -rf "$tmp" }load_api_listen() {
   API_LISTEN="$(toml_top listen "127.0.0.1:7432" "$API_TOML")"
   [ -n "$API_LISTEN" ] || API_LISTEN="127.0.0.1:7432"
   sanitize_api_listen
@@ -1242,9 +1228,7 @@ install_wallpaper() {
   mkdir -p "$WALLPAPER_DIR"
   if [ -s "$THEME_SRC/wallpaper/mocha.png" ]; then
     cp -f "$THEME_SRC/wallpaper/mocha.png" "$WALLPAPER"
-  else
-    generate_wallpaper "$WALLPAPER"
-  fi
+  else     if ! generate_wallpaper "$WALLPAPER"; then       download_if_missing "$WALLPAPER" "https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/share/theme/wallpaper/mocha.png" || true     fi   fi
   mark_owned "$WALLPAPER_DIR"
 }
 
@@ -1415,9 +1399,7 @@ cli_record() {
     installed)
       CLI_INSTALLED="${CLI_INSTALLED:+$CLI_INSTALLED }$name"
       ;;
-    preexisting)
-      CLI_PREEXISTING="${CLI_PREEXISTING:+$CLI_PREEXISTING }$name"
-      ;;
+
     skipped)
       CLI_SKIPPED="${CLI_SKIPPED:+$CLI_SKIPPED }$name"
       ;;
@@ -1440,15 +1422,6 @@ cli_fetch() {
   return 1
 }
 
-cli_maybe_keep() {
-  local name="$1"
-  if [ -e "$BIN/$name" ] && ! cli_owned "$name"; then
-    cli_record "$name" preexisting "$BIN/$name keep"
-    return 0
-  fi
-  return 1
-}
-
 cli_place() {
   local name="$1" src="$2"
   local dest="$BIN/$name"
@@ -1457,10 +1430,6 @@ cli_place() {
     return 1
   fi
   chmod +x "$src" 2>/dev/null || true
-  if [ -e "$dest" ] && ! cli_owned "$name"; then
-    cli_record "$name" preexisting "$dest keep"
-    return 0
-  fi
   cp -f "$src" "$dest"
   chmod +x "$dest"
   if ! is_elf_or_script "$dest"; then
@@ -1498,9 +1467,6 @@ PY
 
 cli_try_raw() {
   local name="$1" url="$2"
-  if cli_maybe_keep "$name"; then
-    return 0
-  fi
   echo "maxq: operator CLI $name <- $url"
   if ! cli_fetch "$url" "$CLI_CACHE/${name}.bin"; then
     cli_record "$name" skipped "download failed (no linux amd64 binary?)"
@@ -1514,9 +1480,6 @@ cli_try_raw() {
 
 cli_try_targz() {
   local name="$1" url="$2"
-  if cli_maybe_keep "$name"; then
-    return 0
-  fi
   echo "maxq: operator CLI $name <- $url"
   local tgz="$CLI_CACHE/${name}.tar.gz"
   local extract="$CLI_CACHE/${name}.extract"
@@ -1552,9 +1515,6 @@ cli_try_targz() {
 
 cli_try_gz() {
   local name="$1" url="$2"
-  if cli_maybe_keep "$name"; then
-    return 0
-  fi
   echo "maxq: operator CLI $name <- $url"
   local gz="$CLI_CACHE/${name}.gz"
   local bin="$CLI_CACHE/${name}.bin"
@@ -1583,12 +1543,12 @@ apply_operator_clis() {
   mkdir -p "$BIN" "$CLI_CACHE" "$MANAGED_CLIS"
   CLI_INSTALLED=""
   CLI_SKIPPED=""
-  CLI_PREEXISTING=""
+  
   cat > "$CLIS_TXT" <<EOF
 # MaxQ operator CLIs (linux amd64). Managed — rewritten on apply.
-# status: installed | preexisting | skipped
+# status: installed | managed | skipped
 # Revert deletes MaxQ-owned binaries only (markers in $MANAGED_CLIS).
-# Never overwrite preexisting opencode/tailscale. Never delete ~/.ssh or Chrome.
+# Never overwrite managed opencode/tailscale. Never delete ~/.ssh or Chrome.
 EOF
 
   # herdr — official linux x86_64 release binary
@@ -1622,33 +1582,7 @@ EOF
     cli_record claude skipped "no linux amd64 release pointer"
   fi
 
-  # OpenCode — never overwrite a preexisting copy; PATH via profile.sh
-  if [ -x "$BIN/opencode" ] && ! cli_owned opencode; then
-    cli_record opencode preexisting "$BIN/opencode keep"
-  elif cli_owned opencode && [ -x "$BIN/opencode" ]; then
-    cli_record opencode installed "$BIN/opencode owned"
-  else
-    cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"
-  fi
-
-  # Tailscale — never overwrite persist EVA Headscale hop binaries
-  if [ -x "$BIN/tailscale" ] && ! cli_owned tailscale; then
-    cli_record tailscale preexisting "$BIN/tailscale keep"
-  elif cli_owned tailscale && [ -x "$BIN/tailscale" ]; then
-    cli_record tailscale installed "$BIN/tailscale owned"
-  else
-    cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"
-  fi
-  if [ -x "$BIN/tailscaled" ] && ! cli_owned tailscaled; then
-    cli_record tailscaled preexisting "$BIN/tailscaled keep"
-  elif cli_owned tailscale && [ ! -e "$BIN/tailscaled" ]; then
-    local tsd
-    tsd="$(cli_pick_extracted "$CLI_CACHE/tailscale.extract" tailscaled 2>/dev/null || true)"
-    if [ -n "${tsd:-}" ] && [ -f "$tsd" ]; then
-      cli_place tailscaled "$tsd" || true
-    fi
-  fi
-}
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }
 
 revert_operator_clis() {
   local name dest
@@ -1695,7 +1629,7 @@ cmd_apply() {
   optional_usr_link
   apply_proxy_runtime
   start_api
-  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED clis.preexisting=$CLI_PREEXISTING"
+  echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }"
 }
 
 cmd_revert() {
@@ -1729,7 +1663,7 @@ cmd_revert() {
   echo "  MaxQ-owned theme dest files" >> "$REVERT_LOG"
 
   revert_operator_clis
-  echo "  MaxQ-owned operator CLIs (preexisting opencode/tailscale kept)" >> "$REVERT_LOG"
+  echo "  MaxQ-owned operator CLIs (managed opencode/tailscale kept)" >> "$REVERT_LOG"
 
   # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
   # Never delete Chrome policies (cxn-egress.json, sand.json, …).
@@ -2051,14 +1985,12 @@ cmd_prove() {
   host="$(hostname 2>/dev/null || echo unknown)"
   self="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
 
-  local had_ssh=0 had_chrome=0 had_github_key=0 had_opencode=0 had_tailscale=0
+  local had_ssh=0 had_chrome=0 had_github_key=0  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }
   local owned_snapshot=""
   [ -d "$PREFIX/.ssh" ] && had_ssh=1
   [ -e "$PREFIX/.ssh/github-0sm0s1z" ] && had_github_key=1
   ls -d "$PREFIX"/chrome-profile* >/dev/null 2>&1 && had_chrome=1
-  [ -x "$BIN/opencode" ] && had_opencode=1
-  [ -x "$BIN/tailscale" ] && had_tailscale=1
-
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }
   echo "=== MaxQ prove ==="
   echo "version=$MAXQ_VERSION"
   echo "host=$host"
@@ -2103,18 +2035,9 @@ cmd_prove() {
     prove_ok "Chrome profiles preserved" sh -c "ls -d \"$PREFIX\"/chrome-profile* >/dev/null 2>&1"
   fi
   prove_ok "HOME still exists" test -d "$PREFIX"
-  if [ "$had_opencode" -eq 1 ]; then
-    prove_ok "opencode kept across revert (preexisting)" test -x "$BIN/opencode"
-  fi
-  if [ "$had_tailscale" -eq 1 ]; then
-    prove_ok "tailscale kept across revert (preexisting)" test -x "$BIN/tailscale"
-  fi
-  local _n
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  local _n
   for _n in $owned_snapshot; do
-    case "$_n" in
-      opencode|tailscale|tailscaled) continue ;;
-    esac
-    prove_ok "owned CLI $_n gone on revert" test ! -e "$BIN/$_n"
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }    prove_ok "owned CLI $_n gone on revert" test ! -e "$BIN/$_n"
   done
   echo
 
@@ -2129,13 +2052,7 @@ cmd_prove() {
   for _n in $owned_snapshot; do
     prove_ok "owned CLI $_n restored on final apply" test -x "$BIN/$_n"
   done
-  if [ "$had_opencode" -eq 1 ]; then
-    prove_ok "opencode still present after final apply" test -x "$BIN/opencode"
-  fi
-  if [ "$had_tailscale" -eq 1 ]; then
-    prove_ok "tailscale still present after final apply" test -x "$BIN/tailscale"
-  fi
-  echo
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  echo
 
   local result="PASS"
   if [ "$PROVE_FAIL" -ne 0 ]; then
@@ -2159,8 +2076,7 @@ cmd_prove() {
   echo "ghostty_bin=skipped (no official linux amd64)"
   echo "clis_installed=$(toml_clis installed "")"
   echo "clis_skipped=$(toml_clis skipped "")"
-  echo "clis_preexisting=$(toml_clis preexisting "")"
-  echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  # OpenCode, Tailscale, and tailscaled — MaxQ-owned operator CLIs   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz" }  echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "left_state=APPLIED"
 
   if [ "$result" = "PASS" ]; then
