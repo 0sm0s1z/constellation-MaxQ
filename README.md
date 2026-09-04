@@ -8,6 +8,8 @@ One command turns the stock computer into a fully-equipped agent workstation.
 curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash
 ```
 
+Site (Vite + TypeScript, Catppuccin Mocha, terminal chrome): [`web/`](web/). Point Vercel Root Directory at `web/`.
+
 From a checkout:
 
 ```bash

@@ -1,0 +1,131 @@
+/* Apply-slide flame path override.
+   Geometry is locked to the current 1503x1047 plate and the existing rocket-lift transform.
+   The flame is a fixed final-state layer; only its mask is revealed as the rocket travels. */
+
+@property --trail-reveal {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 40%;
+}
+
+.rocket-stage .rocket-flame {
+  --trail-reveal: 40%;
+  left: 9.9411% !important;
+  top: 7.6703% !important;
+  width: 53.7554% !important;
+  max-width: none !important;
+  height: auto !important;
+  transform-origin: 0 0 !important;
+  transform: rotate(-11.305deg) !important;
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: plus-lighter;
+  filter:
+    saturate(1.08)
+    drop-shadow(0 0 9px rgba(250, 179, 135, .42))
+    drop-shadow(0 0 20px rgba(255, 236, 214, .18));
+  -webkit-mask-image: linear-gradient(
+    to top right,
+    #000 0%,
+    #000 var(--trail-reveal),
+    rgba(0, 0, 0, .78) calc(var(--trail-reveal) + 3%),
+    transparent calc(var(--trail-reveal) + 8%)
+  ) !important;
+  mask-image: linear-gradient(
+    to top right,
+    #000 0%,
+    #000 var(--trail-reveal),
+    rgba(0, 0, 0, .78) calc(var(--trail-reveal) + 3%),
+    transparent calc(var(--trail-reveal) + 8%)
+  ) !important;
+  animation: rocket-flame-path-reveal 5.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes rocket-flame-path-reveal {
+  0%, 10% {
+    opacity: 0;
+    --trail-reveal: 40%;
+  }
+  20% {
+    opacity: .56;
+    --trail-reveal: 44%;
+  }
+  56% {
+    opacity: .84;
+    --trail-reveal: 65%;
+  }
+  100% {
+    opacity: .98;
+    --trail-reveal: 88%;
+  }
+}
+
+/* Short nozzle stitch: this rides inside .rocket-fly, so it inherits the exact
+   existing rocket trajectory and overlaps the fixed trail reveal. It is not a
+   second beam; it only eliminates the visual seam at the nozzle. */
+.rocket-fly::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 44.78% !important;
+  top: 44.80% !important;
+  width: 3.7% !important;
+  height: 10.5% !important;
+  aspect-ratio: auto !important;
+  transform-origin: 50% 0 !important;
+  transform: translate(-50%, 0) rotate(31deg) scaleY(.45) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  opacity: 0;
+  mix-blend-mode: plus-lighter;
+  background:
+    radial-gradient(
+      ellipse at 50% 4%,
+      rgba(255, 255, 248, 1) 0%,
+      rgba(255, 239, 216, .96) 22%,
+      rgba(250, 179, 135, .70) 42%,
+      rgba(245, 194, 231, .18) 64%,
+      transparent 82%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(255, 249, 239, .96) 0%,
+      rgba(255, 229, 199, .88) 20%,
+      rgba(250, 179, 135, .56) 48%,
+      rgba(245, 194, 231, .15) 70%,
+      transparent 100%
+    ) !important;
+  filter:
+    blur(2.2px)
+    drop-shadow(0 0 7px rgba(250, 179, 135, .78))
+    drop-shadow(0 0 14px rgba(255, 239, 219, .18)) !important;
+  animation: rocket-nozzle-stitch 5.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes rocket-nozzle-stitch {
+  0%, 10% {
+    opacity: 0;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.38);
+  }
+  20% {
+    opacity: .62;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.72);
+  }
+  56% {
+    opacity: .84;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.96);
+  }
+  100% {
+    opacity: .94;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocket-stage .rocket-flame,
+  .rocket-fly::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
