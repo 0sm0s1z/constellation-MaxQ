@@ -124,10 +124,10 @@ function mountRenderedHero(root: HTMLElement) {
   stage.innerHTML = `
     <img
       class="rocket-render-poster"
-      src="/art/rocket-layers/plate.webp"
+      src="/art/hero-launch-poster.webp"
       alt="Pastel MaxQ workstation launch plate"
-      width="1503"
-      height="1047"
+      width="660"
+      height="460"
     />
     <video
       class="rocket-render-video"
