@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import math
 from pathlib import Path
 
-import cairosvg
 import numpy as np
 from PIL import Image, ImageFilter
 
@@ -29,8 +27,8 @@ ROCKET_W = 61
 
 PAD_PLUME_SIZE = (210, 104)
 SHAFT_SIZE = (56, 320)
-PAD_PLUME_SHA256 = "e8b364ab96a450f548b6bac3bfb0367e26463b22be39bb3c3b70f214eb8c87d7"
-SHAFT_SHA256 = "ff29907269ecd3132f51d3946928097bf0601b3f98f677dfac532ff0be6c87be"
+PAD_PLUME_SHA256 = "eed8c269e3e1889d025f6a13c059440b8e6077b96c518c9436f5a3cb58022f4f"
+SHAFT_SHA256 = "5b49c9b8c97f8fc54593833089edbc2ca4e47fa9b46a6a4ddff95b0009da469d"
 NOZZLE_OVERLAP = 10.0
 
 
@@ -82,16 +80,17 @@ def radial_blob(
     canvas.alpha_composite(blob, (round(center[0] - size / 2), round(center[1] - size / 2)))
 
 
-def rasterize_svg(path: Path, expected_size: tuple[int, int], expected_sha256: str) -> Image.Image:
+def load_authored_raster(path: Path, expected_size: tuple[int, int], expected_sha256: str) -> Image.Image:
     raw = path.read_bytes()
     actual_sha = hashlib.sha256(raw).hexdigest()
     if actual_sha != expected_sha256:
         raise RuntimeError(f"{path.name}: sha256 mismatch: {actual_sha}")
 
-    png = cairosvg.svg2png(bytestring=raw)
-    im = Image.open(io.BytesIO(png)).convert("RGBA")
+    im = Image.open(path).convert("RGBA")
     if im.size != expected_size:
         raise RuntimeError(f"{path.name}: expected {expected_size}, got {im.size}")
+    if im.getchannel("A").getextrema()[0] == 255:
+        raise RuntimeError(f"{path.name}: expected transparent alpha")
     return im
 
 
@@ -107,8 +106,8 @@ def load_assets() -> tuple[Image.Image, Image.Image, Image.Image, Image.Image]:
     rocket_h = round(rocket.height * ROCKET_W / rocket.width)
     rocket = rocket.resize((ROCKET_W, rocket_h), Image.Resampling.LANCZOS)
 
-    pad_plume = rasterize_svg(OUT / "hero-pad-plume.svg", PAD_PLUME_SIZE, PAD_PLUME_SHA256)
-    shaft = rasterize_svg(OUT / "hero-exhaust-shaft.svg", SHAFT_SIZE, SHAFT_SHA256)
+    pad_plume = load_authored_raster(OUT / "hero-pad-plume.webp", PAD_PLUME_SIZE, PAD_PLUME_SHA256)
+    shaft = load_authored_raster(OUT / "hero-exhaust-shaft.webp", SHAFT_SIZE, SHAFT_SHA256)
     return plate, rocket, pad_plume, shaft
 
 
@@ -117,7 +116,7 @@ def oriented_shaft(
     pad: np.ndarray,
     nozzle: np.ndarray,
 ) -> tuple[Image.Image, tuple[int, int]]:
-    """Reveal a constant-width shaft by cropping source pixels only."""
+    """Reveal a fixed-profile shaft by cropping source pixels only; never resize/warp it."""
     vector = nozzle - pad
     distance = float(np.hypot(vector[0], vector[1]))
     if distance <= 1.0:
@@ -158,22 +157,20 @@ def render() -> None:
         frame = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         frame.alpha_composite(plate, (PLATE_X, PLATE_Y))
 
-        # John's correction: fixed keyboard plume, present from frame 1.
-        # It never stretches, warps, scales, or grows.
+        # CEO SoT: dense keyboard-level plume exists from frame 1 and never changes geometry.
         frame.alpha_composite(pad_plume, PAD_PLUME_XY)
 
         rocket_xy = ROCKET_START + (ROCKET_END - ROCKET_START) * p
         nozzle = rocket_xy + nozzle_rel
 
-        # Only visible shaft length changes. The authored shaft is cropped and
-        # rotated onto the path; it is never resized or warped.
+        # CEO SoT: only the shaft's visible length grows. Width/profile stay authored and fixed.
         trail, trail_xy = oriented_shaft(shaft, PAD, nozzle)
-        frame.alpha_composite(glow_layer(trail, 8, 0.22), trail_xy)
+        frame.alpha_composite(glow_layer(trail, 6, 0.17), trail_xy)
         frame.alpha_composite(trail, trail_xy)
 
         stitch = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        radial_blob(stitch, tuple(nozzle), 11, 96, (250, 179, 135))
-        radial_blob(stitch, tuple(nozzle), 5, 205, (255, 247, 220))
+        radial_blob(stitch, tuple(nozzle), 9, 78, (250, 179, 135))
+        radial_blob(stitch, tuple(nozzle), 4, 188, (255, 247, 220))
         frame.alpha_composite(stitch)
 
         frame.alpha_composite(

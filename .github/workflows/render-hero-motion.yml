@@ -3,12 +3,12 @@ name: Render hero motion
 on:
   push:
     branches:
-      - web/static-pad-narrow-shaft
+      - web/hero-art-match-sot
     paths:
       - tools/render_hero_motion.py
       - .github/workflows/render-hero-motion.yml
-      - web/public/art/hero-pad-plume.svg
-      - web/public/art/hero-exhaust-shaft.svg
+      - web/public/art/hero-pad-plume.webp
+      - web/public/art/hero-exhaust-shaft.webp
       - web/public/art/rocket-layers/**
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: web/static-pad-narrow-shaft
+          ref: web/hero-art-match-sot
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -31,30 +31,32 @@ jobs:
       - name: Install compositor dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pillow numpy cairosvg
+          pip install pillow numpy
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Render corrected source frames and poster
         run: python tools/render_hero_motion.py
 
-      - name: Validate corrected geometry
+      - name: Validate SoT art and geometry
         run: |
           python - <<'PY'
           from pathlib import Path
-          import cairosvg
           from PIL import Image
-          import io
 
           root = Path("web/public/art")
-          pad = Image.open(io.BytesIO(cairosvg.svg2png(url=str(root / "hero-pad-plume.svg"))))
-          shaft = Image.open(io.BytesIO(cairosvg.svg2png(url=str(root / "hero-exhaust-shaft.svg"))))
+          pad = Image.open(root / "hero-pad-plume.webp").convert("RGBA")
+          shaft = Image.open(root / "hero-exhaust-shaft.webp").convert("RGBA")
           assert pad.size == (210, 104), pad.size
           assert shaft.size == (56, 320), shaft.size
-          assert (Path(".hero-motion-frames") / "f0000.png").is_file()
-          assert (Path(".hero-motion-frames") / "f0072.png").is_file()
-          assert (Path(".hero-motion-frames") / "f0144.png").is_file()
-          print("PASS: static pad plume + constant-width crop-revealed shaft")
+          assert pad.getchannel("A").getextrema()[0] < 255
+          assert shaft.getchannel("A").getextrema()[0] < 255
+          frames = Path(".hero-motion-frames")
+          assert (frames / "f0000.png").is_file()
+          assert (frames / "f0045.png").is_file()
+          assert (frames / "f0072.png").is_file()
+          assert (frames / "f0144.png").is_file()
+          print("PASS: dense static pad plume + fixed-profile crop-revealed shaft")
           PY
 
       - name: Encode transparent VP9 WebM
@@ -89,5 +91,5 @@ jobs:
             echo "Rendered assets unchanged"
             exit 0
           fi
-          git commit -m "fix(web): render static pad + narrow shaft hero"
-          git push origin HEAD:web/static-pad-narrow-shaft
+          git commit -m "fix(web): render hero art matched to SoT"
+          git push origin HEAD:web/hero-art-match-sot
