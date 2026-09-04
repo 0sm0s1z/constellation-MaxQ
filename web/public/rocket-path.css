@@ -234,6 +234,37 @@
 
 /* Pad puffs are intentionally absent here: their fixed first-frame values live in styles.css. */
 
+/* Layout containment only. Do not change the animation clocks above.
+   The full-stage .rocket-fly transform must never create document overflow or paint over hero copy. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 5;
+  min-width: 0;
+}
+
+.hero-visual,
+.carousel,
+.slides,
+.slide,
+.rocket-slide {
+  min-width: 0;
+}
+
+.hero-visual {
+  z-index: 1;
+}
+
+.rocket-stage {
+  overflow: hidden !important;
+  overflow: clip !important;
+  contain: paint;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rocket-fly {
     animation: none !important;
