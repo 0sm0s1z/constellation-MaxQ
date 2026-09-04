@@ -3,12 +3,10 @@ name: Render hero motion
 on:
   push:
     branches:
-      - web/hero-art-match-sot
+      - web/original-layered-flame-reveal
     paths:
       - tools/render_hero_motion.py
       - .github/workflows/render-hero-motion.yml
-      - web/public/art/hero-pad-plume.webp
-      - web/public/art/hero-exhaust-shaft.webp
       - web/public/art/rocket-layers/**
   workflow_dispatch:
 
@@ -21,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: web/hero-art-match-sot
+          ref: web/original-layered-flame-reveal
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -35,28 +33,47 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Render corrected source frames and poster
+      - name: Render original-layer hero frames and poster
         run: python tools/render_hero_motion.py
 
-      - name: Validate SoT art and geometry
+      - name: Validate CEO last-chance architecture
         run: |
           python - <<'PY'
           from pathlib import Path
           from PIL import Image
 
-          root = Path("web/public/art")
-          pad = Image.open(root / "hero-pad-plume.webp").convert("RGBA")
-          shaft = Image.open(root / "hero-exhaust-shaft.webp").convert("RGBA")
-          assert pad.size == (210, 104), pad.size
-          assert shaft.size == (56, 320), shaft.size
-          assert pad.getchannel("A").getextrema()[0] < 255
-          assert shaft.getchannel("A").getextrema()[0] < 255
+          art = Path("web/public/art/rocket-layers")
+          required = [
+              "plate.webp",
+              "rocket-trim.webp",
+              "flame-trail.webp",
+              "smoke-puff-01.webp",
+              "smoke-puff-02.webp",
+              "smoke-puff-03.webp",
+              "smoke-puff-04.webp",
+          ]
+          for name in required:
+              path = art / name
+              assert path.is_file(), path
+              Image.open(path).verify()
+
+          script = Path("tools/render_hero_motion.py").read_text()
+          for banned in (
+              "hero-pad-plume",
+              "hero-exhaust-shaft",
+              "warpAffine",
+              "getAffineTransform",
+              "rocket-frames",
+          ):
+              assert banned not in script, banned
+          assert 'flame-trail.webp' in script
+          assert 'smoke-puff-' in script
+
           frames = Path(".hero-motion-frames")
-          assert (frames / "f0000.png").is_file()
-          assert (frames / "f0045.png").is_file()
-          assert (frames / "f0072.png").is_file()
-          assert (frames / "f0144.png").is_file()
-          print("PASS: dense static pad plume + fixed-profile crop-revealed shaft")
+          for frame in ("f0000.png", "f0045.png", "f0072.png", "f0144.png"):
+              assert (frames / frame).is_file(), frame
+
+          print("PASS: original static puffs + original flame-trail crop/reveal + rocket lift")
           PY
 
       - name: Encode transparent VP9 WebM
@@ -91,5 +108,5 @@ jobs:
             echo "Rendered assets unchanged"
             exit 0
           fi
-          git commit -m "fix(web): render hero art matched to SoT"
-          git push origin HEAD:web/hero-art-match-sot
+          git commit -m "fix(web): render original plume + flame-trail hero"
+          git push origin HEAD:web/original-layered-flame-reveal

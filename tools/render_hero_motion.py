@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import hashlib
 import math
 from pathlib import Path
 
@@ -18,18 +17,21 @@ FPS = 24
 FRAME_COUNT = 145
 PLATE_X, PLATE_Y = 60, 68
 
+# Keep the #48 stage/trajectory lock.
 PAD = np.float32([318.0, 319.0])
-PAD_PLUME_XY = (213, 235)
-
 ROCKET_START = np.float32([325.0, 175.0])
 ROCKET_END = np.float32([394.0, 56.0])
 ROCKET_W = 61
+NOZZLE_OVERLAP = 9.0
+FLAME_CANONICAL_HEIGHT = 250
 
-PAD_PLUME_SIZE = (210, 104)
-SHAFT_SIZE = (56, 320)
-PAD_PLUME_SHA256 = "eed8c269e3e1889d025f6a13c059440b8e6077b96c518c9436f5a3cb58022f4f"
-SHAFT_SHA256 = "5b49c9b8c97f8fc54593833089edbc2ca4e47fa9b46a6a4ddff95b0009da469d"
-NOZZLE_OVERLAP = 10.0
+# Original puffs only. These are fixed from frame one and never animate.
+PAD_PUFF_SPECS = (
+    (0, 96, (-38, -26), 0.74),
+    (1, 112, (-12, -38), 0.82),
+    (2, 98, (24, -29), 0.76),
+    (3, 86, (8, -55), 0.66),
+)
 
 
 def alpha_scale(im: Image.Image, factor: float) -> Image.Image:
@@ -52,6 +54,7 @@ def ease(t: float) -> float:
 
 
 def progress(t: float) -> float:
+    # Seamless loop: short hold -> rise -> hold -> return -> hold.
     if t < 0.08:
         return 0.0
     if t < 0.50:
@@ -80,54 +83,103 @@ def radial_blob(
     canvas.alpha_composite(blob, (round(center[0] - size / 2), round(center[1] - size / 2)))
 
 
-def load_authored_raster(path: Path, expected_size: tuple[int, int], expected_sha256: str) -> Image.Image:
-    raw = path.read_bytes()
-    actual_sha = hashlib.sha256(raw).hexdigest()
-    if actual_sha != expected_sha256:
-        raise RuntimeError(f"{path.name}: sha256 mismatch: {actual_sha}")
-
-    im = Image.open(path).convert("RGBA")
-    if im.size != expected_size:
-        raise RuntimeError(f"{path.name}: expected {expected_size}, got {im.size}")
-    if im.getchannel("A").getextrema()[0] == 255:
-        raise RuntimeError(f"{path.name}: expected transparent alpha")
-    return im
+def trim_alpha(im: Image.Image, threshold: int = 6) -> Image.Image:
+    alpha = np.asarray(im.getchannel("A"))
+    ys, xs = np.nonzero(alpha > threshold)
+    if len(xs) == 0:
+        raise RuntimeError("asset has no visible alpha")
+    return im.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
 
 
-def load_assets() -> tuple[Image.Image, Image.Image, Image.Image, Image.Image]:
-    plate = Image.open(ART / "plate.png").convert("RGBA").resize((540, 376), Image.Resampling.LANCZOS)
+def fit_max_dimension(im: Image.Image, target: int) -> Image.Image:
+    scale = target / max(im.width, im.height)
+    size = (max(1, round(im.width * scale)), max(1, round(im.height * scale)))
+    return im.resize(size, Image.Resampling.LANCZOS)
 
-    yy, xx = np.mgrid[0:376, 0:540]
-    r = np.sqrt(((xx - 270) / 300) ** 2 + ((yy - 190) / 220) ** 2)
-    matte = (np.clip((1.08 - r) / 0.22, 0.0, 1.0) * 255).astype(np.uint8)
-    plate.putalpha(Image.fromarray(matte, "L"))
 
-    rocket = Image.open(ART / "rocket-trim.png").convert("RGBA")
+def canonicalize_flame(im: Image.Image) -> Image.Image:
+    """Normalize the original flame-trail once; per-frame geometry is crop + rotation only."""
+    src = trim_alpha(im, 10)
+    alpha = np.asarray(src.getchannel("A"), dtype=np.float32)
+    ys, xs = np.nonzero(alpha > 36)
+    if len(xs) < 16:
+        raise RuntimeError("flame-trail alpha is too sparse")
+
+    weights = alpha[ys, xs]
+    coords = np.column_stack((xs.astype(np.float64), ys.astype(np.float64)))
+    center = np.average(coords, axis=0, weights=weights)
+    centered = coords - center
+    cov = (centered * weights[:, None]).T @ centered / weights.sum()
+    _, vecs = np.linalg.eigh(cov)
+    axis = vecs[:, -1]
+    axis_angle = math.degrees(math.atan2(float(axis[1]), float(axis[0])))
+
+    # PIL/image coordinates make rotation sign easy to get wrong. Try both vertical
+    # alignments and keep the one with the strongest vertical aspect ratio.
+    candidates: list[Image.Image] = []
+    for angle in (90.0 - axis_angle, axis_angle - 90.0, -90.0 - axis_angle, axis_angle + 90.0):
+        q = trim_alpha(src.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True), 8)
+        candidates.append(q)
+    flame = max(candidates, key=lambda q: q.height / max(1, q.width))
+
+    # The authored trail tapers toward the nozzle. Make the broader end the pad end.
+    a = np.asarray(flame.getchannel("A"))
+    band = max(1, flame.height // 5)
+    top_width = np.count_nonzero(a[:band] > 24, axis=1).mean()
+    bottom_width = np.count_nonzero(a[-band:] > 24, axis=1).mean()
+    if top_width > bottom_width:
+        flame = flame.rotate(180, resample=Image.Resampling.BICUBIC, expand=False)
+
+    flame = trim_alpha(flame, 6)
+    scale = FLAME_CANONICAL_HEIGHT / flame.height
+    size = (max(1, round(flame.width * scale)), FLAME_CANONICAL_HEIGHT)
+    return flame.resize(size, Image.Resampling.LANCZOS)
+
+
+def load_assets() -> tuple[Image.Image, Image.Image, list[Image.Image], Image.Image]:
+    # Original layered art only. No generated plume/shaft substitutes.
+    plate = Image.open(ART / "plate.webp").convert("RGBA").resize((540, 376), Image.Resampling.LANCZOS)
+    rocket = Image.open(ART / "rocket-trim.webp").convert("RGBA")
     rocket_h = round(rocket.height * ROCKET_W / rocket.width)
     rocket = rocket.resize((ROCKET_W, rocket_h), Image.Resampling.LANCZOS)
 
-    pad_plume = load_authored_raster(OUT / "hero-pad-plume.webp", PAD_PLUME_SIZE, PAD_PLUME_SHA256)
-    shaft = load_authored_raster(OUT / "hero-exhaust-shaft.webp", SHAFT_SIZE, SHAFT_SHA256)
-    return plate, rocket, pad_plume, shaft
+    puffs = [
+        Image.open(ART / f"smoke-puff-{i:02d}.webp").convert("RGBA")
+        for i in range(1, 5)
+    ]
+    flame = canonicalize_flame(Image.open(ART / "flame-trail.webp").convert("RGBA"))
+    return plate, rocket, puffs, flame
 
 
-def oriented_shaft(
-    shaft: Image.Image,
+def build_static_pad(puffs: list[Image.Image]) -> Image.Image:
+    """Dense original-style pad cloud, fixed in stage coordinates from frame one."""
+    pad = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    for puff_index, target, offset, opacity in PAD_PUFF_SPECS:
+        puff = trim_alpha(puffs[puff_index], 6)
+        puff = fit_max_dimension(puff, target)
+        puff = alpha_scale(puff, opacity)
+        x = round(float(PAD[0]) + offset[0] - puff.width / 2)
+        y = round(float(PAD[1]) + offset[1] - puff.height / 2)
+        pad.alpha_composite(puff, (x, y))
+    return pad
+
+
+def oriented_flame(
+    flame: Image.Image,
     pad: np.ndarray,
     nozzle: np.ndarray,
 ) -> tuple[Image.Image, tuple[int, int]]:
-    """Reveal a fixed-profile shaft by cropping source pixels only; never resize/warp it."""
+    """AE-style reveal: crop authored flame length, then rotate; never warp or resize per frame."""
     vector = nozzle - pad
     distance = float(np.hypot(vector[0], vector[1]))
     if distance <= 1.0:
         return Image.new("RGBA", (1, 1), (0, 0, 0, 0)), (round(pad[0]), round(pad[1]))
 
     unit = vector / distance
-    visible = min(shaft.height, max(1, round(distance + NOZZLE_OVERLAP)))
-    segment = shaft.crop((0, shaft.height - visible, shaft.width, shaft.height))
-
-    if segment.width != SHAFT_SIZE[0]:
-        raise RuntimeError("exhaust shaft width changed during reveal")
+    visible = min(flame.height, max(1, round(distance + NOZZLE_OVERLAP)))
+    segment = flame.crop((0, flame.height - visible, flame.width, flame.height))
+    if segment.width != flame.width:
+        raise RuntimeError("flame-trail width changed during reveal")
 
     angle = -math.degrees(math.atan2(float(vector[0]), float(-vector[1])))
     rotated = segment.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
@@ -142,7 +194,8 @@ def oriented_shaft(
 
 
 def render() -> None:
-    plate, rocket, pad_plume, shaft = load_assets()
+    plate, rocket, puffs, flame = load_assets()
+    static_pad = build_static_pad(puffs)
     rocket_h = rocket.height
     nozzle_rel = np.float32([ROCKET_W * 0.49, rocket_h * 0.82])
 
@@ -153,36 +206,34 @@ def render() -> None:
     for index in range(FRAME_COUNT):
         t = index / (FRAME_COUNT - 1)
         p = progress(t)
+        rocket_xy = ROCKET_START + (ROCKET_END - ROCKET_START) * p
+        nozzle = rocket_xy + nozzle_rel
 
         frame = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         frame.alpha_composite(plate, (PLATE_X, PLATE_Y))
 
-        # CEO SoT: dense keyboard-level plume exists from frame 1 and never changes geometry.
-        frame.alpha_composite(pad_plume, PAD_PLUME_XY)
+        # Only the original flame-trail reveal changes length with ascent.
+        trail, trail_xy = oriented_flame(flame, PAD, nozzle)
+        frame.alpha_composite(glow_layer(trail, 7, 0.18), trail_xy)
+        frame.alpha_composite(alpha_scale(trail, 0.94), trail_xy)
 
-        rocket_xy = ROCKET_START + (ROCKET_END - ROCKET_START) * p
-        nozzle = rocket_xy + nozzle_rel
+        # Original smoke puffs sit over the flame base and never move/change.
+        frame.alpha_composite(static_pad)
 
-        # CEO SoT: only the shaft's visible length grows. Width/profile stay authored and fixed.
-        trail, trail_xy = oriented_shaft(shaft, PAD, nozzle)
-        frame.alpha_composite(glow_layer(trail, 6, 0.17), trail_xy)
-        frame.alpha_composite(trail, trail_xy)
-
+        # Small continuity stitch only; not a replacement exhaust effect.
         stitch = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        radial_blob(stitch, tuple(nozzle), 9, 78, (250, 179, 135))
-        radial_blob(stitch, tuple(nozzle), 4, 188, (255, 247, 220))
+        radial_blob(stitch, tuple(nozzle), 8, 68, (250, 179, 135))
+        radial_blob(stitch, tuple(nozzle), 4, 178, (255, 247, 220))
         frame.alpha_composite(stitch)
 
         frame.alpha_composite(
-            glow_layer(rocket, 8, 0.48),
+            glow_layer(rocket, 8, 0.46),
             (round(rocket_xy[0]), round(rocket_xy[1])),
         )
-        frame.alpha_composite(
-            rocket,
-            (round(rocket_xy[0]), round(rocket_xy[1])),
-        )
+        frame.alpha_composite(rocket, (round(rocket_xy[0]), round(rocket_xy[1])))
         frame.save(FRAMES / f"f{index:04d}.png")
 
+    # Reduced-motion poster is exactly the first composited frame.
     Image.open(FRAMES / "f0000.png").save(
         OUT / "hero-launch-poster.webp",
         "WEBP",
