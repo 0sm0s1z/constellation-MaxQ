@@ -625,3 +625,10 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .nav { display: none; }
   .hero { padding-top: 1.4rem; }
 }
+
+/* Static SoT hero plate — animation abandoned */
+.rocket-slide .hero-static-plate {
+  display: block;
+  width: 100%;
+  height: auto;
+}
