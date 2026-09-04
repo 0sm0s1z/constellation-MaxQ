@@ -1,6 +1,6 @@
 // MaxQ control API — loopback only, stdlib HTTP, tiny.
-// GET /status  POST /apply  POST /revert  POST /proxy
-// Static settings sheet at /. Never writes Chrome proxy policy.
+// GET /status /resources /triggers; POST settings/actions below.
+// Static Catppuccin Mocha settings sheet at /. Never writes Chrome proxy policy.
 package main
 
 import (
@@ -46,25 +46,33 @@ type apiInfo struct {
 }
 
 type statusResp struct {
-	State string   `json:"state"`
-	Theme string   `json:"theme"`
-	Gost  gostInfo `json:"gost"`
-	Clis  clisInfo `json:"clis"`
-	API   apiInfo  `json:"api"`
+	State        string           `json:"state"`
+	Theme        string           `json:"theme"`
+	Gost         gostInfo         `json:"gost"`
+	Clis         clisInfo         `json:"clis"`
+	API          apiInfo          `json:"api"`
+	ListenPolicy listenPolicyInfo `json:"listen_policy"`
+	Vault        stubInfo         `json:"vault"`
+	OAuth        stubInfo         `json:"oauth"`
+	Skills       skillsInfo       `json:"skills"`
 }
 
 type proxyReq struct {
-	Enabled  *bool   `json:"enabled"`
-	Upstream *string `json:"upstream"`
-	Iface    *string `json:"iface"`
+	Enabled   *bool   `json:"enabled"`
+	Listen    *string `json:"listen"`
+	Upstream  *string `json:"upstream"`
+	Iface     *string `json:"iface"`
+	Intercept *bool   `json:"intercept"`
 }
 
 type server struct {
-	prefix  string
-	config  string
-	listen  string
-	maxqBin string
-	mu      sync.Mutex
+	prefix    string
+	config    string
+	listen    string
+	maxqBin   string
+	mu        sync.Mutex
+	chromeMu  sync.Mutex
+	triggerMu sync.Mutex
 }
 
 func main() {
@@ -171,9 +179,16 @@ func (s *server) serve() error {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /status", s.handleStatus)
+	mux.HandleFunc("GET /resources", s.handleResources)
+	mux.HandleFunc("GET /triggers", s.handleTriggers)
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
+	mux.HandleFunc("POST /resources/chrome", s.handleChromeAction)
+	mux.HandleFunc("POST /triggers/webhook", s.handleWebhook)
+	mux.HandleFunc("POST /triggers/add", s.handleTriggerAdd)
+	mux.HandleFunc("POST /triggers/enable", s.handleTriggerEnable)
+	mux.HandleFunc("POST /triggers/test", s.handleTriggerTest)
 	mux.Handle("/", http.FileServer(http.FS(ui)))
 
 	ln, err := net.Listen("tcp", s.listen)
@@ -181,6 +196,7 @@ func (s *server) serve() error {
 		return err
 	}
 	fmt.Fprintf(os.Stderr, "maxq-api listen %s (loopback, no Chrome proxy)\n", s.listen)
+	go s.runTriggerLoop()
 	srv := &http.Server{
 		Handler:           s.onlyLocal(mux),
 		ReadHeaderTimeout: 5 * time.Second,
@@ -226,35 +242,78 @@ func (s *server) handleProxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if req.Enabled != nil {
-		if *req.Enabled {
-			if err := s.runMaxq("proxy", "on"); err != nil {
+
+	before := s.status()
+	listenChanged := false
+	runtimeTouched := false
+	if req.Listen != nil {
+		listen, err := sanitizeProxyListen(*req.Listen)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		if listen != before.Gost.Listen {
+			if err := setTomlSectionString(filepath.Join(s.config, "maxq.toml"), "gost", "listen", listen); err != nil {
 				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
 				return
 			}
-		} else {
-			if err := s.runMaxq("proxy", "off"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
+			listenChanged = true
 		}
 	}
 	if req.Upstream != nil {
 		up := strings.TrimSpace(*req.Upstream)
-		if up == "" {
-			up = "none"
-		}
-		if err := s.runMaxq("proxy", "upstream", up); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-			return
+		if up != before.Gost.Upstream {
+			if up == "" {
+				up = "none"
+			}
+			if err := s.runMaxq("proxy", "upstream", up); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+				return
+			}
+			runtimeTouched = true
 		}
 	}
 	if req.Iface != nil {
 		iface := strings.TrimSpace(*req.Iface)
-		if iface == "" {
-			iface = "none"
+		if iface != before.Gost.Iface {
+			if iface == "" {
+				iface = "none"
+			}
+			if err := s.runMaxq("proxy", "iface", iface); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+				return
+			}
+			runtimeTouched = true
 		}
-		if err := s.runMaxq("proxy", "iface", iface); err != nil {
+	}
+	if req.Intercept != nil && *req.Intercept != before.Gost.Intercept {
+		arg := "off"
+		if *req.Intercept {
+			arg = "on"
+		}
+		if err := s.runMaxq("proxy", "intercept", arg); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		runtimeTouched = true
+	}
+	if req.Enabled != nil && *req.Enabled != before.Gost.Enabled {
+		arg := "off"
+		if *req.Enabled {
+			arg = "on"
+		}
+		if err := s.runMaxq("proxy", arg); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		runtimeTouched = true
+	}
+	if listenChanged && before.Gost.Enabled && !runtimeTouched {
+		if err := s.runMaxq("proxy", "off"); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		if err := s.runMaxq("proxy", "on"); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
 			return
 		}
@@ -280,6 +339,7 @@ func (s *server) status() statusResp {
 		theme = "mocha"
 	}
 	gostPID := filepath.Join(s.config, "gost.pid")
+	listenPolicy, vault, oauth, skills := settingsSurfaces(s.prefix, s.listen)
 	return statusResp{
 		State: state,
 		Theme: theme,
@@ -296,7 +356,11 @@ func (s *server) status() statusResp {
 			Skipped:     sec(toml, "clis", "skipped"),
 			Preexisting: sec(toml, "clis", "preexisting"),
 		},
-		API: apiInfo{Listen: s.listen},
+		API:          apiInfo{Listen: s.listen},
+		ListenPolicy: listenPolicy,
+		Vault:        vault,
+		OAuth:        oauth,
+		Skills:       skills,
 	}
 }
 
