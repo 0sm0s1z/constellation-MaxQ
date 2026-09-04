@@ -18,19 +18,21 @@ FRAME_COUNT = 145
 PLATE_X, PLATE_Y = 60, 68
 
 # Keep the #48 stage/trajectory lock.
-PAD = np.float32([318.0, 319.0])
-ROCKET_START = np.float32([325.0, 175.0])
-ROCKET_END = np.float32([394.0, 56.0])
-ROCKET_W = 61
-NOZZLE_OVERLAP = 9.0
+# Laptop body center on stage ~254x; keep launch seated on keyboard/screen axis (not right spill).
+PAD = np.float32([245.0, 312.0])
+ROCKET_START = np.float32([252.0, 212.0])
+ROCKET_END = np.float32([430.0, 22.0])
+ROCKET_W = 62
+NOZZLE_OVERLAP = 22.0
 FLAME_CANONICAL_HEIGHT = 250
+FLAME_CHANNEL_WIDTH = 34
 
-# Original puffs only. These are fixed from frame one and never animate.
+# Original puffs only. Tighter/flatter so mass stays over laptop center, not past the right bezel.
 PAD_PUFF_SPECS = (
-    (0, 96, (-38, -26), 0.74),
-    (1, 112, (-12, -38), 0.82),
-    (2, 98, (24, -29), 0.76),
-    (3, 86, (8, -55), 0.66),
+    (0, 58, (-18, -14), 0.68),
+    (1, 66, (-2, -24), 0.74),
+    (2, 60, (14, -16), 0.68),
+    (3, 52, (4, -34), 0.58),
 )
 
 
@@ -42,10 +44,15 @@ def alpha_scale(im: Image.Image, factor: float) -> Image.Image:
 
 
 def glow_layer(im: Image.Image, radius: float, opacity: float) -> Image.Image:
-    a = np.asarray(im.getchannel("A").filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
-    a = np.clip(a * opacity, 0, 255).astype(np.uint8)
-    out = Image.new("RGBA", im.size, (255, 190, 145, 0))
-    out.putalpha(Image.fromarray(a, "L"))
+    """Soft glow from the sprite's own RGB — never a flat peach fill (avoids rectangular halo)."""
+    blurred = im.filter(ImageFilter.GaussianBlur(radius))
+    rgb = np.asarray(blurred.convert("RGB"), dtype=np.float32)
+    a = np.asarray(blurred.getchannel("A"), dtype=np.float32) * opacity
+    a = np.clip(a, 0, 255)
+    # crush near-zero alpha so rotated canvas edges cannot show a box
+    a[a < 4] = 0
+    out = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+    out.putalpha(Image.fromarray(a.astype(np.uint8), "L"))
     return out
 
 
@@ -133,7 +140,13 @@ def canonicalize_flame(im: Image.Image) -> Image.Image:
     flame = trim_alpha(flame, 6)
     scale = FLAME_CANONICAL_HEIGHT / flame.height
     size = (max(1, round(flame.width * scale)), FLAME_CANONICAL_HEIGHT)
-    return flame.resize(size, Image.Resampling.LANCZOS)
+    flame = flame.resize(size, Image.Resampling.LANCZOS)
+
+    # Keep the authored length and profile, but center-crop its visible channel once.
+    # Per-frame reveal below only crops this fixed-width strip; it never stretches it.
+    channel_width = min(FLAME_CHANNEL_WIDTH, flame.width)
+    left = max(0, (flame.width - channel_width) // 2)
+    return flame.crop((left, 0, left + channel_width, flame.height))
 
 
 def load_assets() -> tuple[Image.Image, Image.Image, list[Image.Image], Image.Image]:
@@ -214,7 +227,7 @@ def render() -> None:
 
         # Only the original flame-trail reveal changes length with ascent.
         trail, trail_xy = oriented_flame(flame, PAD, nozzle)
-        frame.alpha_composite(glow_layer(trail, 7, 0.18), trail_xy)
+        frame.alpha_composite(glow_layer(trail, 5, 0.10), trail_xy)
         frame.alpha_composite(alpha_scale(trail, 0.94), trail_xy)
 
         # Original smoke puffs sit over the flame base and never move/change.
@@ -222,12 +235,12 @@ def render() -> None:
 
         # Small continuity stitch only; not a replacement exhaust effect.
         stitch = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        radial_blob(stitch, tuple(nozzle), 8, 68, (250, 179, 135))
-        radial_blob(stitch, tuple(nozzle), 4, 178, (255, 247, 220))
+        radial_blob(stitch, tuple(nozzle), 3, 26, (250, 179, 135))
+        radial_blob(stitch, tuple(nozzle), 2, 72, (255, 247, 220))
         frame.alpha_composite(stitch)
 
         frame.alpha_composite(
-            glow_layer(rocket, 8, 0.46),
+            glow_layer(rocket, 5, 0.18),
             (round(rocket_xy[0]), round(rocket_xy[1])),
         )
         frame.alpha_composite(rocket, (round(rocket_xy[0]), round(rocket_xy[1])))
