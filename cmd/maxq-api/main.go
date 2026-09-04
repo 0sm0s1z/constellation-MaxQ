@@ -313,13 +313,8 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 	// do not call our own HTTP endpoint: that would recurse when this API is also
 	// listed as a connection by another MaxQ instance.
 	if r.Header.Get("X-MaxQ-Aggregate") == "1" {
-		items, err := s.localDesktops()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
-			return
-		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"desktops":     items,
+			"desktops":     s.localDesktopMaps(),
 			"box_identity": s.boxIdentity(),
 		})
 		return
@@ -333,17 +328,13 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 	local := []map[string]any{}
 	hasSelf := false
 	for _, c := range connections {
-		if s.isSelfConnection(c) {
+		if isLocalBaseURL(c.BaseURL) {
 			hasSelf = true
 			break
 		}
 	}
 	if !hasSelf {
-		local, err = s.localDesktops()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
-			return
-		}
+		local = s.localDesktopMaps()
 	}
 	type result struct {
 		index int
@@ -667,12 +658,8 @@ func setAuth(req *http.Request, auth string) {
 func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string]any, error) {
 	// Any loopback base URL is local to this box. Use the provider directly
 	// instead of making an HTTP request back through a local API.
-	if s.isSelfConnection(c) {
-		local, err := s.localDesktops()
-		if err != nil {
-			return nil, err
-		}
-		return s.enrichDesktopMaps(c, s.boxIdentity(), local), nil
+	if isLocalBaseURL(c.BaseURL) {
+		return s.enrichDesktopMaps(c, s.boxIdentity(), s.localDesktopMaps()), nil
 	}
 	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second)
 	defer cancel()
@@ -716,21 +703,6 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 	return s.enrichDesktopValues(c, identity, values), nil
 }
 
-func (s *server) isSelfConnection(c connection) bool {
-	if !isLocalBaseURL(c.BaseURL) {
-		return false
-	}
-	u, err := url.Parse(strings.TrimSpace(c.BaseURL))
-	if err != nil {
-		return false
-	}
-	listen := strings.TrimSpace(s.listen)
-	if listen == "" {
-		listen = defaultListen
-	}
-	_, port, err := net.SplitHostPort(listen)
-	return err == nil && u.Port() == port
-}
 
 func isLocalBaseURL(raw string) bool {
 	u, err := url.Parse(strings.TrimSpace(raw))
