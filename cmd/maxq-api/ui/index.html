@@ -1,56 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaxQ</title>
-  <link rel="stylesheet" href="/mocha.css">
-</head>
-<body>
-  <main class="sheet">
-    <header>
-      <div>
-        <h1>MaxQ</h1>
-        <p class="tag">Take your Grok Bot to MaxQ.</p>
-      </div>
-      <span id="pill" class="pill">…</span>
-    </header>
-
-    <section id="status-card" class="card">
-      <h2>status</h2>
-      <dl>
-        <dt>state</dt><dd id="st-state">—</dd>
-        <dt>theme</dt><dd id="st-theme">—</dd>
-        <dt>gost</dt><dd id="st-gost">—</dd>
-        <dt>clis</dt><dd id="st-clis">—</dd>
-        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
-      </dl>
-    </section>
-
-    <section class="card">
-      <h2>desired state</h2>
-      <div class="row">
-        <button type="button" id="btn-apply">Apply</button>
-        <button type="button" id="btn-revert" class="danger">Revert</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
-      <div class="row">
-        <button type="button" id="btn-proxy-on">On</button>
-        <button type="button" id="btn-proxy-off">Off</button>
-      </div>
-    </section>
-
-    <nav class="soon">
-      <span title="later">vault</span>
-      <span title="later">oauth</span>
-      <span title="later">skills</span>
-    </nav>
-    <p id="msg" class="msg" hidden></p>
-  </main>
-  <script src="/sheet.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MaxQ · Operator</title><link rel="stylesheet" href="/operator.css"></head><body>
+<header class="operator-topbar"><div class="operator-topbar-inner"><a class="operator-brand" href="/"><strong>MaxQ</strong><span class="slash">/</span><span class="operator-word">OPERATOR</span></a><div class="operator-right"><span class="box-identity">EVA</span><span id="connection-chip" class="connection-chip">connecting</span></div></div></header>
+<main class="app"><div class="proof-strip"><span id="proof-state">state=—</span><span id="proof-intercept">intercept=—</span><span id="proof-scope">$HOME only</span><span id="proof-prove">prove —</span></div>
+<section class="page-head"><div class="eyebrow">OPERATOR GLASS</div><h1>Co-pilot the bot box.</h1><p>Open the surface you need. Machine maintenance stays in Box.</p></section>
+<section class="launchpad" aria-label="MaxQ applications">
+<a class="app-tile" href="/desktops"><span class="tile-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><h2>Desktops</h2><p>View, control, and switch the bot’s live desktops.</p><span id="desktops-footer" class="tile-footer">loading desktops…</span></a>
+<a class="app-tile" href="/processes"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="12" r="2"/><circle cx="15" cy="18" r="2"/></svg></span><h2>Processes</h2><p>Inspect running processes and stop what should not be running.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/files"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg></span><h2>Files</h2><p>Move files into and out of the bot box.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/sessions"><span class="tile-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20c1-4 3.5-6 7-6s6 2 7 6"/></svg></span><h2>Sessions</h2><p>Manage OAuth and computer-use logins.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/handoff"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M4 12h12M12 7l5 5-5 5"/><path d="M20 5v14"/></svg></span><h2>Handoff</h2><p>Securely hand an authentication step back to the operator.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/vault"><span class="tile-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M12 9v6"/></svg></span><h2>Vault</h2><p>Manage credentials and bot secrets.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/ai"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M6 4h12v6H6zM4 14h7v6H4zM13 14h7v6h-7z"/></svg></span><h2>AI defaults</h2><p>Set primary, secondary, and tertiary browser, search, and chat services.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile" href="/skills"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="3"/></svg></span><h2>Skills</h2><p>Manage shared skills and pre-appended agent context.</p><span class="tile-footer">v1 stub</span></a>
+<a class="app-tile utility" href="/box"><span class="tile-icon"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4zM4 7v10l8 4 8-4V7M12 11v10"/></svg></span><h2>Box</h2><p>Apply, revert, proxy, listen policy, defaults, and software inventory.</p><span id="box-footer" class="tile-footer">loading box…</span></a>
+</section></main><script src="/operator.js"></script></body></html>

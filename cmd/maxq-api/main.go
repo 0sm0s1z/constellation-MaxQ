@@ -1,9 +1,9 @@
-// MaxQ control API — loopback only, stdlib HTTP, tiny.
-// GET /status  POST /apply  POST /revert  POST /proxy
-// Static settings sheet at /. Never writes Chrome proxy policy.
+// MaxQ control API and Operator Glass. stdlib HTTP, persist-safe under $HOME.
+// GET /status /desktop /defaults /sbom /desktops; POST operator actions below.
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,14 +17,12 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"embed"
 )
 
-//go:embed ui/index.html ui/mocha.css ui/sheet.js
+//go:embed ui/index.html ui/operator.css ui/operator.js ui/box.html ui/box.js ui/stub.html ui/desktops.html ui/desktops.css ui/desktops.js
 var uiEmbed embed.FS
 
-const defaultListen = "127.0.0.1:7432"
+const defaultListen = "0.0.0.0:7432"
 
 type gostInfo struct {
 	Enabled   bool   `json:"enabled"`
@@ -42,15 +40,22 @@ type clisInfo struct {
 }
 
 type apiInfo struct {
-	Listen string `json:"listen"`
+	Listen           string `json:"listen"`
+	ConfiguredListen string `json:"configured_listen"`
+	APIPublic        bool   `json:"api_public"`
+	UIPublic         bool   `json:"ui_public"`
 }
 
 type statusResp struct {
-	State string   `json:"state"`
-	Theme string   `json:"theme"`
-	Gost  gostInfo `json:"gost"`
-	Clis  clisInfo `json:"clis"`
-	API   apiInfo  `json:"api"`
+	State    string       `json:"state"`
+	Theme    string       `json:"theme"`
+	Ghostty  ghosttyInfo  `json:"ghostty"`
+	Launcher launcherInfo `json:"launcher"`
+	Gost     gostInfo     `json:"gost"`
+	Clis     clisInfo     `json:"clis"`
+	API      apiInfo      `json:"api"`
+	Scope    string       `json:"scope"`
+	Prove    string       `json:"prove"`
 }
 
 type proxyReq struct {
@@ -93,22 +98,8 @@ func (s *server) loadListen() string {
 		return v
 	}
 	p := filepath.Join(s.config, "api.toml")
-	if b, err := os.ReadFile(p); err == nil {
-		for _, line := range strings.Split(string(b), "\n") {
-			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "[") {
-				if strings.HasPrefix(line, "[") {
-					break
-				}
-				continue
-			}
-			if strings.HasPrefix(line, "listen") {
-				_, rest, ok := strings.Cut(line, "=")
-				if ok {
-					return unquote(strings.TrimSpace(rest))
-				}
-			}
-		}
+	if v := top(p, "listen"); v != "" {
+		return v
 	}
 	return defaultListen
 }
@@ -127,15 +118,17 @@ func sanitizeListen(v string) string {
 		return defaultListen
 	}
 	host, port, err := net.SplitHostPort(v)
-	if err != nil {
+	if err != nil || port == "" {
 		return defaultListen
 	}
 	if host == "localhost" {
 		host = "127.0.0.1"
 	}
+	if host == "" {
+		host = "0.0.0.0"
+	}
 	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsLoopback() {
-		fmt.Fprintf(os.Stderr, "maxq-api: refusing non-loopback listen %q; using %s\n", v, defaultListen)
+	if ip == nil {
 		return defaultListen
 	}
 	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 10 && ip4[1] == 0 {
@@ -145,44 +138,35 @@ func sanitizeListen(v string) string {
 	return net.JoinHostPort(host, port)
 }
 
-func isLoopbackAddr(addr string) bool {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		host = addr
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
-
-func (s *server) onlyLocal(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isLoopbackAddr(r.RemoteAddr) {
-			http.Error(w, "local only", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (s *server) serve() error {
 	ui, err := fs.Sub(uiEmbed, "ui")
 	if err != nil {
 		return err
 	}
+	uiFS := http.FS(ui)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /status", s.handleStatus)
+	mux.HandleFunc("GET /desktop", s.handleDesktop)
+	mux.HandleFunc("GET /defaults", s.handleGetDefaults)
+	mux.HandleFunc("POST /defaults", s.handleSetDefaults)
+	mux.HandleFunc("GET /sbom", s.handleSBOM)
+	mux.HandleFunc("POST /listen", s.handleListen)
+	mux.HandleFunc("GET /desktops", func(w http.ResponseWriter, r *http.Request) { s.handleDesktops(w, r, uiFS) })
+	mux.HandleFunc("POST /desktops/preferences", s.handleDesktopPreferences)
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
-	mux.Handle("/", http.FileServer(http.FS(ui)))
+
+	s.registerOperatorUI(mux, uiFS)
 
 	ln, err := net.Listen("tcp", s.listen)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "maxq-api listen %s (loopback, no Chrome proxy)\n", s.listen)
+	policy := s.surfacePolicy()
+	fmt.Fprintf(os.Stderr, "maxq-api listen %s (api_public=%t ui_public=%t; no Chrome proxy)\n", s.listen, policy.APIPublic, policy.UIPublic)
 	srv := &http.Server{
-		Handler:           s.onlyLocal(mux),
+		Handler:           s.surfaceGate(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return srv.Serve(ln)
@@ -204,7 +188,6 @@ func (s *server) handleApply(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleRevert(w http.ResponseWriter, r *http.Request) {
-	// Flush 200 first: maxq revert stops this process via pidfile.
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "state": "reverted"})
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
@@ -227,16 +210,13 @@ func (s *server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.Enabled != nil {
+		arg := "off"
 		if *req.Enabled {
-			if err := s.runMaxq("proxy", "on"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
-		} else {
-			if err := s.runMaxq("proxy", "off"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
+			arg = "on"
+		}
+		if err := s.runMaxq("proxy", arg); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+			return
 		}
 	}
 	if req.Upstream != nil {
@@ -259,8 +239,7 @@ func (s *server) handleProxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	st := s.status()
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": st})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": s.status()})
 }
 
 func (s *server) status() statusResp {
@@ -281,8 +260,10 @@ func (s *server) status() statusResp {
 	}
 	gostPID := filepath.Join(s.config, "gost.pid")
 	return statusResp{
-		State: state,
-		Theme: theme,
+		State:    state,
+		Theme:    theme,
+		Ghostty:  s.ghostty(),
+		Launcher: s.launcher(),
 		Gost: gostInfo{
 			Enabled:   asBool(sec(toml, "gost", "enabled")),
 			Running:   pidRunning(gostPID),
@@ -296,7 +277,9 @@ func (s *server) status() statusResp {
 			Skipped:     sec(toml, "clis", "skipped"),
 			Preexisting: sec(toml, "clis", "preexisting"),
 		},
-		API: apiInfo{Listen: s.listen},
+		API:   s.apiInfo(),
+		Scope: "$HOME only",
+		Prove: proveState(state),
 	}
 }
 
@@ -363,13 +346,8 @@ func orDefault(v, d string) string {
 	return v
 }
 
-func top(path, key string) string {
-	return tomlGet(path, "", key)
-}
-
-func sec(path, section, key string) string {
-	return tomlGet(path, section, key)
-}
+func top(path, key string) string          { return tomlGet(path, "", key) }
+func sec(path, section, key string) string { return tomlGet(path, section, key) }
 
 func tomlGet(path, section, key string) string {
 	b, err := os.ReadFile(path)
@@ -391,10 +369,7 @@ func tomlGet(path, section, key string) string {
 			continue
 		}
 		name, rest, ok := strings.Cut(trim, "=")
-		if !ok {
-			continue
-		}
-		if strings.TrimSpace(name) == key {
+		if ok && strings.TrimSpace(name) == key {
 			return unquote(strings.TrimSpace(rest))
 		}
 	}
