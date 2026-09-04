@@ -717,7 +717,19 @@ func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string
 }
 
 func (s *server) isSelfConnection(c connection) bool {
-	return isLocalBaseURL(c.BaseURL)
+	if !isLocalBaseURL(c.BaseURL) {
+		return false
+	}
+	u, err := url.Parse(strings.TrimSpace(c.BaseURL))
+	if err != nil {
+		return false
+	}
+	listen := strings.TrimSpace(s.listen)
+	if listen == "" {
+		listen = defaultListen
+	}
+	_, port, err := net.SplitHostPort(listen)
+	return err == nil && u.Port() == port
 }
 
 func isLocalBaseURL(raw string) bool {
