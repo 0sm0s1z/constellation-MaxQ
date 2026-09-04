@@ -1,22 +1,24 @@
 /* Apply-slide flame path override.
-   Geometry is locked to the current 1503x1047 plate and the existing rocket-lift transform.
-   The flame is a fixed final-state layer; only its mask is revealed as the rocket travels. */
+   Geometry locked to 1503x1047 plate + rocket-lift.
+   Flame = fixed final-state still; mask reveals tip→pad (AE-style).
+   START gate: tip registers under nozzle — no orphan pad-cloud first. */
 
 @property --trail-reveal {
   syntax: "<percentage>";
   inherits: false;
-  initial-value: 40%;
+  initial-value: 20%;
 }
 
 .rocket-stage .rocket-flame {
-  --trail-reveal: 40%;
-  left: 9.9411% !important;
-  top: 7.6703% !important;
-  width: 53.7554% !important;
+  --trail-reveal: 20%;
+  /* Tip of flame-trail.webp (upper-right) under rest nozzle (~44%/46%). */
+  left: 2% !important;
+  top: 28% !important;
+  width: 46% !important;
   max-width: none !important;
   height: auto !important;
   transform-origin: 0 0 !important;
-  transform: rotate(-11.305deg) !important;
+  transform: rotate(-9.5deg) !important;
   opacity: 0;
   z-index: 2;
   pointer-events: none;
@@ -26,59 +28,81 @@
     saturate(1.08)
     drop-shadow(0 0 9px rgba(250, 179, 135, .42))
     drop-shadow(0 0 20px rgba(255, 236, 214, .18));
-  -webkit-mask-image: linear-gradient(
-    to top right,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0, 0, 0, .78) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 8%)
-  ) !important;
-  mask-image: linear-gradient(
-    to top right,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0, 0, 0, .78) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 8%)
-  ) !important;
+  /* Tip-first reveal (to bottom-left) ∩ soft bottom fade (kills hard art clip). */
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom left,
+      #000 0%,
+      #000 var(--trail-reveal),
+      rgba(0, 0, 0, .75) calc(var(--trail-reveal) + 3%),
+      transparent calc(var(--trail-reveal) + 10%)
+    ),
+    linear-gradient(
+      to top,
+      transparent 0%,
+      rgba(0, 0, 0, .35) 7%,
+      #000 18%,
+      #000 100%
+    ) !important;
+  mask-image:
+    linear-gradient(
+      to bottom left,
+      #000 0%,
+      #000 var(--trail-reveal),
+      rgba(0, 0, 0, .75) calc(var(--trail-reveal) + 3%),
+      transparent calc(var(--trail-reveal) + 10%)
+    ),
+    linear-gradient(
+      to top,
+      transparent 0%,
+      rgba(0, 0, 0, .35) 7%,
+      #000 18%,
+      #000 100%
+    ) !important;
+  -webkit-mask-composite: source-in !important;
+  mask-composite: intersect !important;
   animation: rocket-flame-path-reveal 5.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes rocket-flame-path-reveal {
-  0%, 8% {
-    opacity: 0;
-    --trail-reveal: 36%;
+  /* 0–~300ms: tip under nozzle only */
+  0%, 5% {
+    opacity: .62;
+    --trail-reveal: 18%;
+  }
+  8% {
+    opacity: .78;
+    --trail-reveal: 26%;
   }
   16% {
-    opacity: .72;
-    --trail-reveal: 48%;
+    opacity: .88;
+    --trail-reveal: 40%;
   }
   36% {
-    opacity: .9;
-    --trail-reveal: 62%;
+    opacity: .94;
+    --trail-reveal: 58%;
   }
   56% {
-    opacity: .96;
-    --trail-reveal: 76%;
+    opacity: .97;
+    --trail-reveal: 74%;
   }
   100% {
     opacity: 1;
-    --trail-reveal: 96%;
+    --trail-reveal: 94%;
   }
 }
 
-/* Short nozzle stitch: this rides inside .rocket-fly, so it inherits the exact
-   existing rocket trajectory and overlaps the fixed trail reveal. It is not a
-   second beam; it only eliminates the visual seam at the nozzle. */
+/* Nozzle stitch rides .rocket-fly — inherits rocket trajectory. */
 .rocket-fly::after {
   content: "" !important;
   position: absolute !important;
-  left: 44.78% !important;
-  top: 44.80% !important;
-  width: 3.7% !important;
-  height: 10.5% !important;
+  left: 44.5% !important;
+  top: 44.2% !important;
+  width: 2.6% !important;
+  height: 7% !important;
   aspect-ratio: auto !important;
   transform-origin: 50% 0 !important;
-  transform: translate(-50%, 0) rotate(31deg) scaleY(.45) !important;
+  transform: translate(-50%, 0) rotate(31deg) scaleY(.7) !important;
   z-index: 1 !important;
   pointer-events: none !important;
   opacity: 0;
@@ -101,28 +125,32 @@
       transparent 100%
     ) !important;
   filter:
-    blur(2.2px)
-    drop-shadow(0 0 7px rgba(250, 179, 135, .78))
-    drop-shadow(0 0 14px rgba(255, 239, 219, .18)) !important;
+    blur(2px)
+    drop-shadow(0 0 6px rgba(250, 179, 135, .78))
+    drop-shadow(0 0 12px rgba(255, 239, 219, .16)) !important;
   animation: rocket-nozzle-stitch 5.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes rocket-nozzle-stitch {
-  0%, 8% {
-    opacity: 0;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(.38);
+  0%, 5% {
+    opacity: .72;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.65);
+  }
+  8% {
+    opacity: .82;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.85);
   }
   16% {
-    opacity: .78;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(.82);
+    opacity: .88;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(.95);
   }
   36% {
-    opacity: .9;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(1);
+    opacity: .92;
+    transform: translate(-50%, 0) rotate(31deg) scaleY(1.05);
   }
   56% {
     opacity: .95;
-    transform: translate(-50%, 0) rotate(31deg) scaleY(1.08);
+    transform: translate(-50%, 0) rotate(31deg) scaleY(1.1);
   }
   100% {
     opacity: 1;
