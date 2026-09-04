@@ -28,6 +28,24 @@
     </section>
 
     <section class="card">
+      <h2>connections</h2>
+      <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
+      <form id="connection-form" class="connection-form">
+        <label>Name <input id="connection-name" required maxlength="120" placeholder="maxq-tester"></label>
+        <label>Base URL <input id="connection-url" required type="url" placeholder="http://100.96.0.5:7432"></label>
+        <label>Auth <input id="connection-auth" type="password" autocomplete="off" placeholder="Bearer token (optional)"></label>
+        <button type="submit">Add API</button>
+      </form>
+      <ul id="connections" class="connections" aria-live="polite"></ul>
+    </section>
+
+    <section class="card">
+      <h2>desktops</h2>
+      <p class="hint">Aggregated from every connected API and labeled by box identity.</p>
+      <div id="desktops" class="desktops" aria-live="polite"><p class="muted">Loading…</p></div>
+    </section>
+
+    <section class="card">
       <h2>desired state</h2>
       <div class="row">
         <button type="button" id="btn-apply">Apply</button>
@@ -43,7 +61,6 @@
         <button type="button" id="btn-proxy-off">Off</button>
       </div>
     </section>
-
     <nav class="soon">
       <span title="later">vault</span>
       <span title="later">oauth</span>

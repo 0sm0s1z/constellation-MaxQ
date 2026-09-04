@@ -27,7 +27,7 @@ body {
   padding: 2.5rem 1rem;
 }
 .sheet {
-  width: min(28rem, 100%);
+  width: min(42rem, 100%);
 }
 header {
   display: flex;
@@ -100,3 +100,15 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .soon span { cursor: default; }
 .msg { margin-top: 0.75rem; color: var(--red); font-size: 0.85rem; }
+
+.connection-form { display: grid; gap: 0.45rem; margin-bottom: 0.75rem; }
+.connection-form label { display: grid; gap: 0.2rem; color: var(--sub); font-size: 0.8rem; }
+input { width: 100%; border: 1px solid var(--surface); border-radius: 7px; padding: 0.4rem 0.55rem; background: var(--mantle); color: var(--text); font: inherit; }
+.connections, .desktops { display: grid; gap: 0.45rem; padding: 0; margin: 0; list-style: none; }
+.connection, .desktop { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0.65rem; border: 1px solid var(--overlay); border-radius: 8px; background: var(--mantle); }
+.connection div, .desktop { min-width: 0; }
+.connection strong, .desktop strong, .connection small, .desktop small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.connection small, .desktop small { color: var(--sub); font-size: 0.75rem; }
+.connection button, .desktop button { flex: 0 0 auto; padding: 0.25rem 0.55rem; font-size: 0.8rem; }
+.remove:hover { border-color: var(--red); color: var(--red); }
+.muted { color: var(--sub); font-size: 0.82rem; margin: 0; }
