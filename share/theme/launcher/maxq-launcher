@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# MaxQ launcher backend order: rofi, fuzzel, wofi, dmenu.
+if command -v rofi >/dev/null 2>&1; then exec rofi -show drun; fi
+if command -v fuzzel >/dev/null 2>&1; then exec fuzzel; fi
+if command -v wofi >/dev/null 2>&1; then exec wofi --show drun; fi
+if command -v dmenu_run >/dev/null 2>&1; then exec dmenu_run; fi
+printf '%s\n' 'MaxQ App Launcher: install rofi, fuzzel, wofi, or dmenu-run.' >&2
+exit 1
