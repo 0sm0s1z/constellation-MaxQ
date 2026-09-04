@@ -631,7 +631,6 @@ api_src_candidates() {
 }
 
 seed_api_src() {
-  mkdir -p "$API_SRC"
   local cand
   while IFS= read -r cand; do
     [ -n "$cand" ] || continue
@@ -639,6 +638,16 @@ seed_api_src() {
     if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then
       continue
     fi
+
+    # Keep api-src as a mirror of the selected source tree. Previous versions
+    # only copied changed files, leaving deleted upstream files behind. Those
+    # stale files can become part of the Go package and break builds.
+    #
+    # API_SRC itself is managed state under $HOME/.config/maxq. Remove only
+    # its contents; never remove the directory and never follow unrelated
+    # paths outside it.
+    mkdir -p "$API_SRC"
+    find "$API_SRC" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
     cp -a "$cand"/. "$API_SRC"/
     return 0
   done < <(api_src_candidates)
@@ -2073,6 +2082,41 @@ assert_chrome_theme_live_reverted() {
   done < <(chrome_profile_dirs)
 }
 
+prove_api_src_mirror() {
+  local orphan="$API_SRC/orphan-stale.go"
+
+  # Skip when api-src was never seeded (no go / no source available).
+  [ -f "$API_SRC/main.go" ] || return 0
+
+  cat > "$orphan" <<'EOF'
+package main
+
+func staleOrphanShouldDisappear() {}
+EOF
+
+  prove_ok "api-src orphan planted" test -f "$orphan"
+
+  seed_api_src
+
+  # Fail-closed: orphan must not survive mirror seed.
+  if [ -e "$orphan" ]; then
+    die "api-src orphan survived mirror seed"
+  fi
+  prove_ok "api-src orphan purged by mirror seed" true
+
+  if command -v go >/dev/null 2>&1; then
+    if (
+      cd "$API_SRC"
+      CGO_ENABLED=0 go build -trimpath -o /tmp/maxq-api-prove .
+    ); then
+      rm -f /tmp/maxq-api-prove
+      prove_ok "maxq-api builds after api-src mirror seed" true
+    else
+      prove_ok "maxq-api builds after api-src mirror seed" false
+    fi
+  fi
+}
+
 assert_applied_tree() {
   prove_ok "persist \$HOME/bin exists" test -d "$BIN"
   prove_ok "persist \$HOME/.config/maxq exists" test -d "$CONFIG"
@@ -2245,6 +2289,8 @@ cmd_prove() {
   echo "owned_clis=${owned_snapshot}"
   echo "-- assert applied --"
   assert_applied_tree
+  echo "-- api-src mirror / orphan purge --"
+  prove_api_src_mirror
   echo
 
   echo "-- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --"
