@@ -40,14 +40,11 @@ func TestConnectionManagerAggregatesAndRoutesActions(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer remote.Close()
+	remoteBase := strings.Replace(remote.URL, "127.0.0.1", "0.0.0.0", 1)
 
-	s := &server{
-		config: t.TempDir(),
-		// Isolate remote aggregation from the fifteen local X11 slots.
-		localInventory: func() ([]map[string]any, error) { return nil, nil },
-	}
+	s := &server{config: t.TempDir(), localInventory: func() ([]map[string]any, error) { return nil, nil }}
 	add := httptest.NewRecorder()
-	s.handleAddConnection(add, httptest.NewRequest(http.MethodPost, "/connections", strings.NewReader(`{"name":"tester","base_url":"`+remote.URL+`/","auth":"secret"}`)))
+	s.handleAddConnection(add, httptest.NewRequest(http.MethodPost, "/connections", strings.NewReader(`{"name":"tester","base_url":"`+remoteBase+`/","auth":"secret"}`)))
 	if add.Code != http.StatusCreated {
 		t.Fatalf("add status = %d, body=%s", add.Code, add.Body.String())
 	}
@@ -167,6 +164,7 @@ func TestAggregateIncludesSavedSelfConnectionWithoutHTTPRecursion(t *testing.T) 
 		_, _ = w.Write([]byte(`{"box_identity":"remote-box","desktops":[{"id":"remote-1"}]}`))
 	}))
 	defer remote.Close()
+	remoteBase := strings.Replace(remote.URL, "127.0.0.1", "0.0.0.0", 1)
 
 	s := &server{
 		config: t.TempDir(),
@@ -177,7 +175,7 @@ func TestAggregateIncludesSavedSelfConnectionWithoutHTTPRecursion(t *testing.T) 
 	}
 	if err := s.saveConnectionsLocked([]connection{
 		{ID: "local", Name: "local", BaseURL: "http://127.0.0.1:19099"},
-		{ID: "remote", Name: "remote", BaseURL: remote.URL},
+		{ID: "remote", Name: "remote", BaseURL: remoteBase},
 	}); err != nil {
 		t.Fatal(err)
 	}
