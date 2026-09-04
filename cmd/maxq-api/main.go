@@ -1,9 +1,10 @@
 // MaxQ control API — loopback only, stdlib HTTP, tiny.
-// GET /status  POST /apply  POST /revert  POST /proxy
-// Static settings sheet at /. Never writes Chrome proxy policy.
+// GET /status /desktops; POST /apply /revert /proxy /desktops/preferences.
+// Static settings sheet at / and operator desktop workspace at /desktops.
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,11 +18,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"embed"
 )
 
-//go:embed ui/index.html ui/mocha.css ui/sheet.js
+//go:embed ui/index.html ui/mocha.css ui/sheet.js ui/desktops.html ui/desktops.css ui/desktops.js
 var uiEmbed embed.FS
 
 const defaultListen = "127.0.0.1:7432"
@@ -169,12 +168,17 @@ func (s *server) serve() error {
 	if err != nil {
 		return err
 	}
+	uiFS := http.FS(ui)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /status", s.handleStatus)
+	mux.HandleFunc("GET /desktops", func(w http.ResponseWriter, r *http.Request) {
+		s.handleDesktops(w, r, uiFS)
+	})
+	mux.HandleFunc("POST /desktops/preferences", s.handleDesktopPreferences)
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
-	mux.Handle("/", http.FileServer(http.FS(ui)))
+	mux.Handle("/", http.FileServer(uiFS))
 
 	ln, err := net.Listen("tcp", s.listen)
 	if err != nil {
