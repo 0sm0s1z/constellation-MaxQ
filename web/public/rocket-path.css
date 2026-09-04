@@ -83,6 +83,7 @@
 }
 
 @keyframes rocket-flame-path-reveal {
+  /* START LOCK: intentionally unchanged from #41/#42. */
   0%, 10% {
     opacity: .58;
     --trail-reveal: 18%;
@@ -91,48 +92,51 @@
       drop-shadow(0 0 7px rgba(250, 179, 135, .34))
       drop-shadow(0 0 14px rgba(255, 236, 214, .14));
   }
+  /* Mid-path begins densifying only after the locked start window. */
   24% {
-    opacity: .78;
-    --trail-reveal: 34%;
+    opacity: .86;
+    --trail-reveal: 42%;
     filter:
-      saturate(1.10) contrast(1.03) brightness(1.02)
-      drop-shadow(0 0 9px rgba(250, 179, 135, .44))
-      drop-shadow(0 0 18px rgba(255, 236, 214, .20));
+      saturate(1.16) contrast(1.05) brightness(1.08)
+      drop-shadow(0 0 11px rgba(255, 198, 145, .58))
+      drop-shadow(0 0 22px rgba(255, 241, 220, .30))
+      drop-shadow(0 0 34px rgba(250, 179, 135, .16));
   }
   36% {
-    opacity: .9;
-    --trail-reveal: 54%;
+    opacity: .98;
+    --trail-reveal: 66%;
     filter:
-      saturate(1.14) contrast(1.04) brightness(1.05)
-      drop-shadow(0 0 11px rgba(250, 179, 135, .54))
-      drop-shadow(0 0 24px rgba(255, 236, 214, .27));
+      saturate(1.24) contrast(1.07) brightness(1.16)
+      drop-shadow(0 0 14px rgba(255, 196, 137, .72))
+      drop-shadow(0 0 28px rgba(255, 244, 226, .42))
+      drop-shadow(0 0 44px rgba(250, 179, 135, .22));
   }
   56% {
-    opacity: .97;
-    --trail-reveal: 74%;
+    opacity: 1;
+    --trail-reveal: 86%;
     filter:
-      saturate(1.18) contrast(1.05) brightness(1.08)
-      drop-shadow(0 0 13px rgba(250, 179, 135, .62))
-      drop-shadow(0 0 28px rgba(255, 236, 214, .32))
-      drop-shadow(0 0 42px rgba(250, 179, 135, .14));
+      saturate(1.30) contrast(1.09) brightness(1.23)
+      drop-shadow(0 0 17px rgba(255, 190, 126, .82))
+      drop-shadow(0 0 34px rgba(255, 247, 232, .54))
+      drop-shadow(0 0 54px rgba(250, 179, 135, .28));
   }
   72% {
     opacity: 1;
-    --trail-reveal: 91%;
+    --trail-reveal: 98%;
     filter:
-      saturate(1.22) contrast(1.06) brightness(1.11)
-      drop-shadow(0 0 15px rgba(250, 179, 135, .70))
-      drop-shadow(0 0 32px rgba(255, 236, 214, .38))
-      drop-shadow(0 0 48px rgba(250, 179, 135, .18));
+      saturate(1.34) contrast(1.10) brightness(1.30)
+      drop-shadow(0 0 20px rgba(255, 185, 116, .90))
+      drop-shadow(0 0 40px rgba(255, 249, 237, .68))
+      drop-shadow(0 0 62px rgba(250, 179, 135, .34));
   }
   100% {
     opacity: 1;
     --trail-reveal: 100%;
     filter:
-      saturate(1.24) contrast(1.06) brightness(1.12)
-      drop-shadow(0 0 16px rgba(250, 179, 135, .74))
-      drop-shadow(0 0 34px rgba(255, 236, 214, .40))
-      drop-shadow(0 0 52px rgba(250, 179, 135, .20));
+      saturate(1.36) contrast(1.11) brightness(1.32)
+      drop-shadow(0 0 21px rgba(255, 184, 112, .92))
+      drop-shadow(0 0 42px rgba(255, 250, 240, .70))
+      drop-shadow(0 0 66px rgba(250, 179, 135, .36));
   }
 }
 
@@ -177,29 +181,54 @@
 }
 
 @keyframes rocket-nozzle-stitch {
+  /* START LOCK: intentionally unchanged from #41/#42. */
   0%, 10% {
     opacity: .66;
     transform: translate(-50%, -6%) rotate(31deg) scaleY(.56);
+    filter:
+      blur(2.1px)
+      drop-shadow(0 0 7px rgba(250, 179, 135, .82))
+      drop-shadow(0 0 14px rgba(255, 239, 219, .24));
   }
   24% {
-    opacity: .8;
-    transform: translate(-50%, -6%) rotate(31deg) scaleY(.78);
+    opacity: .86;
+    transform: translate(-50%, -6%) rotate(31deg) scaleX(1.08) scaleY(.88);
+    filter:
+      blur(2.2px)
+      drop-shadow(0 0 9px rgba(255, 196, 138, .90))
+      drop-shadow(0 0 18px rgba(255, 243, 225, .34));
   }
   36% {
-    opacity: .88;
-    transform: translate(-50%, -6%) rotate(31deg) scaleY(.98);
+    opacity: .94;
+    transform: translate(-50%, -6%) rotate(31deg) scaleX(1.18) scaleY(1.12);
+    filter:
+      blur(2.3px)
+      drop-shadow(0 0 11px rgba(255, 190, 126, .96))
+      drop-shadow(0 0 22px rgba(255, 247, 233, .44));
   }
   56% {
-    opacity: .94;
-    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.18);
+    opacity: .98;
+    transform: translate(-50%, -6%) rotate(31deg) scaleX(1.30) scaleY(1.38);
+    filter:
+      blur(2.4px)
+      drop-shadow(0 0 13px rgba(255, 187, 119, 1))
+      drop-shadow(0 0 26px rgba(255, 249, 238, .54));
   }
   72% {
-    opacity: .98;
-    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.34);
+    opacity: 1;
+    transform: translate(-50%, -6%) rotate(31deg) scaleX(1.40) scaleY(1.58);
+    filter:
+      blur(2.5px)
+      drop-shadow(0 0 15px rgba(255, 184, 112, 1))
+      drop-shadow(0 0 30px rgba(255, 251, 242, .62));
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -6%) rotate(31deg) scaleY(1.46);
+    transform: translate(-50%, -6%) rotate(31deg) scaleX(1.46) scaleY(1.68);
+    filter:
+      blur(2.6px)
+      drop-shadow(0 0 16px rgba(255, 184, 112, 1))
+      drop-shadow(0 0 32px rgba(255, 251, 243, .66));
   }
 }
 
