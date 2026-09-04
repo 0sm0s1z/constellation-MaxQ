@@ -489,16 +489,20 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
     --trail-reveal: 18%;
   }
   16% {
-    opacity: .82;
-    --trail-reveal: 40%;
+    opacity: .9;
+    --trail-reveal: 48%;
   }
-  56% {
-    opacity: .92;
+  36% {
+    opacity: .98;
     --trail-reveal: 72%;
   }
+  56% {
+    opacity: 1;
+    --trail-reveal: 88%;
+  }
   100% {
-    opacity: .98;
-    --trail-reveal: 94%;
+    opacity: 1;
+    --trail-reveal: 100%;
   }
 }
 
@@ -535,8 +539,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 
 @keyframes rocket-body-glow {
   0%, 8% { opacity: 0; }
-  28% { opacity: .18; }
-  100% { opacity: .48; }
+  28% { opacity: .22; }
+  100% { opacity: .58; }
 }
 
 
@@ -545,8 +549,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   position: absolute;
   /* Sit on keyboard under nozzle — not mid-air orphan puff. */
   left: 44.5%;
-  top: 56.5%;
-  width: 22%;
+  top: 55.5%;
+  width: 30%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   pointer-events: none;
@@ -567,8 +571,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
     saturate(1.1)
     blur(.55px)
     drop-shadow(0 0 12px rgba(250,179,135,.28));
-  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 42%, transparent 78%);
-  mask-image: radial-gradient(ellipse at 50% 55%, #000 42%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
+  mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
   animation: rocket-pad-cloud 5.5s ease-in-out infinite alternate;
 }
 .rocket-pad-fx .pad-puff-b {
@@ -593,26 +597,26 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   filter: saturate(1.06) blur(.7px);
 }
 @keyframes rocket-pad-cloud {
-  /* After tip lock (~300ms); soft bloom only — no hard sprite edge. */
+  /* After tip lock (~300ms); denser soft bloom — no hard sprite edge. */
   0%, 8% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(.32);
   }
   14% {
-    opacity: .28;
-    transform: translate(-50%, -50%) scale(.5);
+    opacity: .42;
+    transform: translate(-50%, -50%) scale(.62);
   }
   28% {
-    opacity: .55;
-    transform: translate(-50%, -50%) scale(.72);
+    opacity: .72;
+    transform: translate(-50%, -50%) scale(.92);
   }
   56% {
-    opacity: .72;
-    transform: translate(-50%, -50%) scale(.9);
+    opacity: .9;
+    transform: translate(-50%, -50%) scale(1.12);
   }
   100% {
-    opacity: .82;
-    transform: translate(-50%, -50%) scale(1.02);
+    opacity: .96;
+    transform: translate(-50%, -50%) scale(1.28);
   }
 }
 
