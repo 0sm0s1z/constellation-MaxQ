@@ -544,10 +544,9 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 }
 
 
-/* Base launch cloud at the keyboard/pad — restored from apply-slide smoke assets. */
+/* Base launch cloud at the keyboard/pad — static from the first frame. */
 .rocket-pad-fx {
   position: absolute;
-  /* Sit on keyboard under nozzle — not mid-air orphan puff. */
   left: 44.5%;
   top: 55.5%;
   width: 30%;
@@ -563,10 +562,9 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   top: 50%;
   width: 100%;
   height: auto;
-  transform: translate(-50%, -50%) scale(.42);
-  opacity: 0;
+  opacity: .78;
+  transform: translate(-50%, -50%) scale(1.05);
   mix-blend-mode: normal;
-  /* Soft edges — no hard sprite clip look. */
   filter:
     saturate(1.1)
     blur(.55px)
@@ -574,53 +572,30 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
   mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
   animation: none;
-  opacity: .78;
-  transform: translate(-50%, -50%) scale(1.05);
 }
 .rocket-pad-fx .pad-puff-b {
   width: 78%;
   left: 62%;
   top: 44%;
-  animation-delay: 0s;
-  opacity: .7;
+  opacity: .70;
+  transform: translate(-50%, -50%) scale(.92);
   filter: saturate(1.08) blur(.35px) drop-shadow(0 0 10px rgba(245,194,231,.22));
 }
 .rocket-pad-fx .pad-puff-c {
   width: 92%;
   left: 38%;
   top: 58%;
-  animation-delay: .05s;
+  opacity: .74;
+  transform: translate(-50%, -50%) scale(1);
   filter: saturate(1.1) blur(.55px) drop-shadow(0 0 12px rgba(203,166,247,.2));
 }
 .rocket-pad-fx .pad-puff-d {
   width: 68%;
   left: 54%;
   top: 62%;
-  animation-delay: .18s;
+  opacity: .66;
+  transform: translate(-50%, -50%) scale(.88);
   filter: saturate(1.06) blur(.7px);
-}
-@keyframes rocket-pad-cloud {
-  /* After tip lock (~300ms); denser soft bloom — no hard sprite edge. */
-  0%, 8% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(.32);
-  }
-  14% {
-    opacity: .42;
-    transform: translate(-50%, -50%) scale(.62);
-  }
-  28% {
-    opacity: .72;
-    transform: translate(-50%, -50%) scale(.92);
-  }
-  56% {
-    opacity: .9;
-    transform: translate(-50%, -50%) scale(1.12);
-  }
-  100% {
-    opacity: .96;
-    transform: translate(-50%, -50%) scale(1.28);
-  }
 }
 
 .dots {
@@ -641,7 +616,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .rocket-stage .rocket-glow,
   .rocket-stage .rocket-flame,
   .rocket-fly::after { animation: none; opacity: 0; }
-  .rocket-pad-fx .pad-puff { animation: none; opacity: .55; transform: translate(-50%, -50%) scale(.85); }
+  .rocket-pad-fx .pad-puff { animation: none; opacity: 0; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
