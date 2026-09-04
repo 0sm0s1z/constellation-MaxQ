@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="320" viewBox="0 0 56 320">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7df" stop-opacity=".92"/>
+      <stop offset=".08" stop-color="#fff0c8" stop-opacity=".98"/>
+      <stop offset=".88" stop-color="#ffd1a1" stop-opacity=".96"/>
+      <stop offset="1" stop-color="#fab387" stop-opacity=".26"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".96"/>
+      <stop offset=".5" stop-color="#fff7df" stop-opacity=".98"/>
+      <stop offset="1" stop-color="#ffe0b0" stop-opacity=".55"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fab387" stop-opacity="0"/>
+      <stop offset=".35" stop-color="#fab387" stop-opacity=".42"/>
+      <stop offset=".5" stop-color="#ffd9af" stop-opacity=".54"/>
+      <stop offset=".65" stop-color="#fab387" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#fab387" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="0" width="48" height="320" rx="24" fill="url(#edge)" opacity=".46"/>
+  <rect x="12" y="0" width="32" height="320" rx="16" fill="url(#edge)" opacity=".58"/>
+  <rect x="20" y="0" width="16" height="320" rx="8" fill="url(#fade)" opacity=".94"/>
+  <rect x="25" y="0" width="6" height="320" rx="3" fill="url(#core)"/>
+  <g fill="#ffd6a6">
+    <circle cx="9" cy="70" r="1.2" opacity=".55"/>
+    <circle cx="47" cy="108" r="1.1" opacity=".62"/>
+    <circle cx="8" cy="160" r="1" opacity=".5"/>
+    <circle cx="46" cy="213" r="1.3" opacity=".58"/>
+    <circle cx="13" cy="252" r="1" opacity=".48"/>
+  </g>
+</svg>
