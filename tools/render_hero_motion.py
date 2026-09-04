@@ -18,20 +18,21 @@ FRAME_COUNT = 145
 PLATE_X, PLATE_Y = 60, 68
 
 # Keep the #48 stage/trajectory lock.
-PAD = np.float32([276.0, 320.0])
-ROCKET_START = np.float32([292.0, 204.0])
-ROCKET_END = np.float32([438.0, 28.0])
-ROCKET_W = 64
-NOZZLE_OVERLAP = 18.0
+# Laptop body center on stage ~254x; keep launch seated on keyboard/screen axis (not right spill).
+PAD = np.float32([245.0, 312.0])
+ROCKET_START = np.float32([252.0, 212.0])
+ROCKET_END = np.float32([430.0, 22.0])
+ROCKET_W = 62
+NOZZLE_OVERLAP = 22.0
 FLAME_CANONICAL_HEIGHT = 250
-FLAME_CHANNEL_WIDTH = 44
+FLAME_CHANNEL_WIDTH = 34
 
-# Original puffs only. These are fixed from frame one and never animate.
+# Original puffs only. Tighter/flatter so mass stays over laptop center, not past the right bezel.
 PAD_PUFF_SPECS = (
-    (0, 74, (-28, -20), 0.70),
-    (1, 88, (-8, -31), 0.76),
-    (2, 78, (20, -23), 0.70),
-    (3, 68, (4, -44), 0.62),
+    (0, 58, (-18, -14), 0.68),
+    (1, 66, (-2, -24), 0.74),
+    (2, 60, (14, -16), 0.68),
+    (3, 52, (4, -34), 0.58),
 )
 
 
@@ -43,10 +44,15 @@ def alpha_scale(im: Image.Image, factor: float) -> Image.Image:
 
 
 def glow_layer(im: Image.Image, radius: float, opacity: float) -> Image.Image:
-    a = np.asarray(im.getchannel("A").filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
-    a = np.clip(a * opacity, 0, 255).astype(np.uint8)
-    out = Image.new("RGBA", im.size, (255, 190, 145, 0))
-    out.putalpha(Image.fromarray(a, "L"))
+    """Soft glow from the sprite's own RGB — never a flat peach fill (avoids rectangular halo)."""
+    blurred = im.filter(ImageFilter.GaussianBlur(radius))
+    rgb = np.asarray(blurred.convert("RGB"), dtype=np.float32)
+    a = np.asarray(blurred.getchannel("A"), dtype=np.float32) * opacity
+    a = np.clip(a, 0, 255)
+    # crush near-zero alpha so rotated canvas edges cannot show a box
+    a[a < 4] = 0
+    out = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+    out.putalpha(Image.fromarray(a.astype(np.uint8), "L"))
     return out
 
 
@@ -221,7 +227,7 @@ def render() -> None:
 
         # Only the original flame-trail reveal changes length with ascent.
         trail, trail_xy = oriented_flame(flame, PAD, nozzle)
-        frame.alpha_composite(glow_layer(trail, 6, 0.12), trail_xy)
+        frame.alpha_composite(glow_layer(trail, 5, 0.10), trail_xy)
         frame.alpha_composite(alpha_scale(trail, 0.94), trail_xy)
 
         # Original smoke puffs sit over the flame base and never move/change.
@@ -234,7 +240,7 @@ def render() -> None:
         frame.alpha_composite(stitch)
 
         frame.alpha_composite(
-            glow_layer(rocket, 6, 0.24),
+            glow_layer(rocket, 5, 0.18),
             (round(rocket_xy[0]), round(rocket_xy[1])),
         )
         frame.alpha_composite(rocket, (round(rocket_xy[0]), round(rocket_xy[1])))
