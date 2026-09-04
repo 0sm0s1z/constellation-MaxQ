@@ -77,7 +77,6 @@ function bindTabs(root: HTMLElement) {
   });
 }
 
-
 function bindCarousel(root: HTMLElement) {
   const box = root.querySelector<HTMLElement>("[data-carousel]");
   if (!box) return;
@@ -116,6 +115,55 @@ function bindCarousel(root: HTMLElement) {
   show(0);
 }
 
+function mountRenderedHero(root: HTMLElement) {
+  const stage = root.querySelector<HTMLElement>("[data-rocket-stage]");
+  if (!stage) return;
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  stage.classList.add("rocket-stage--rendered");
+  stage.innerHTML = `
+    <img
+      class="rocket-render-poster"
+      src="/art/rocket-layers/plate.webp"
+      alt="Pastel MaxQ workstation launch plate"
+      width="1503"
+      height="1047"
+    />
+    <video
+      class="rocket-render-video"
+      muted
+      loop
+      playsinline
+      preload="auto"
+      aria-label="Pastel MaxQ rocket launching from the workstation"
+    >
+      <source src="/art/hero-launch.webm" type="video/webm" />
+    </video>`;
+
+  const video = stage.querySelector<HTMLVideoElement>(".rocket-render-video");
+  if (!video || reduced) {
+    stage.classList.add("is-static");
+    video?.remove();
+    return;
+  }
+
+  const ready = () => {
+    stage.classList.add("is-video-ready");
+    void video.play().catch(() => {
+      stage.classList.remove("is-video-ready");
+      stage.classList.add("is-static");
+    });
+  };
+
+  video.addEventListener("canplay", ready, { once: true });
+  video.addEventListener("error", () => {
+    stage.classList.remove("is-video-ready");
+    stage.classList.add("is-static");
+  }, { once: true });
+
+  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) ready();
+}
+
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -124,6 +172,7 @@ function draw() {
   bindCopy(app);
   bindTabs(app);
   bindCarousel(app);
+  mountRenderedHero(app);
 }
 
 function dismissLoader() {
