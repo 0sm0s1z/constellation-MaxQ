@@ -25,9 +25,11 @@
   user-select: none;
   mix-blend-mode: plus-lighter;
   filter:
-    saturate(1.08)
-    drop-shadow(0 0 9px rgba(250, 179, 135, .42))
-    drop-shadow(0 0 20px rgba(255, 236, 214, .18));
+    saturate(1.16)
+    contrast(1.04)
+    drop-shadow(0 0 10px rgba(250, 179, 135, .52))
+    drop-shadow(0 0 22px rgba(255, 236, 214, .28))
+    drop-shadow(0 0 36px rgba(250, 179, 135, .16));
   /* Tip-first reveal (to bottom-left) ∩ soft bottom fade (kills hard art clip). */
   -webkit-mask-image:
     linear-gradient(
@@ -40,8 +42,8 @@
     linear-gradient(
       to top,
       transparent 0%,
-      rgba(0, 0, 0, .35) 7%,
-      #000 18%,
+      rgba(0, 0, 0, .4) 4%,
+      #000 12%,
       #000 100%
     ) !important;
   mask-image:
@@ -55,8 +57,8 @@
     linear-gradient(
       to top,
       transparent 0%,
-      rgba(0, 0, 0, .35) 7%,
-      #000 18%,
+      rgba(0, 0, 0, .4) 4%,
+      #000 12%,
       #000 100%
     ) !important;
   -webkit-mask-composite: source-in !important;
@@ -65,30 +67,31 @@
 }
 
 @keyframes rocket-flame-path-reveal {
-  /* 0–~300ms: tip under nozzle only */
+  /* 0–~300ms LOCKED: tip under nozzle only (PR #37 gate) */
   0%, 5% {
     opacity: .62;
     --trail-reveal: 18%;
   }
   8% {
-    opacity: .78;
-    --trail-reveal: 26%;
+    opacity: .8;
+    --trail-reveal: 28%;
   }
   16% {
-    opacity: .88;
-    --trail-reveal: 40%;
+    opacity: .9;
+    --trail-reveal: 48%;
   }
+  /* mid: denser continuous trail */
   36% {
-    opacity: .94;
-    --trail-reveal: 58%;
+    opacity: .98;
+    --trail-reveal: 72%;
   }
   56% {
-    opacity: .97;
-    --trail-reveal: 74%;
+    opacity: 1;
+    --trail-reveal: 88%;
   }
   100% {
     opacity: 1;
-    --trail-reveal: 94%;
+    --trail-reveal: 100%;
   }
 }
 
