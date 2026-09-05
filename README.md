@@ -24,7 +24,9 @@ maxq proxy upstream <url>
 maxq proxy iface <name>
 ```
 
-Control API listens on loopback only (`http://127.0.0.1:7432/`). `maxq apply` starts `$HOME/bin/maxq-api` (pidfile); `maxq revert` stops it. The API serves a thin Catppuccin Mocha settings sheet (status, apply/revert, proxy on/off). Vault/OAuth/skills are placeholders. It never writes Chrome proxy policy.
+Control API listens on loopback only (`http://127.0.0.1:7432/`). `maxq apply` starts `$HOME/bin/maxq-api` (pidfile); `maxq revert` stops it. The API serves a thin Catppuccin Mocha settings sheet (status, approvals, apply/revert, proxy on/off). Vault/OAuth/skills are placeholders. It never writes Chrome proxy policy.
+
+Approvals default **Off** for Constellation boxes. The settings master switch persists `$HOME/.config/maxq/policy.toml` as `[approvals] mode = "off"` / `always_allow = true`. That file is the approval source of truth: host/browser tooling must skip host Auto-review for always-allow actions when policy is Off, including `browserUse` social/external outbound. MaxQ does not try to force the host-owned `sand-data/settings.json` Auto-review bit off because that write can self-protect and deadlock; the policy decision happens before Auto-review instead. See [docs/API.md](docs/API.md).
 
 Persist under `$HOME` (`bin`, `.config/maxq`, `.local`). Theme default is Catppuccin Mocha (`theme = "mocha"` in `maxq.toml`; latte is a future flag only).
 
