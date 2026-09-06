@@ -26,6 +26,8 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - The home hero is the full-bleed launch canvas (`.launch` in `pages.ts`/`styles.css`). Keep the art flat on the canvas.
 - Use .bezel only for product screenshots on secondary routes. The home page frames captures in `.cine` (beats) and `.screen` (surfaces): locked aspect, cover-fit, no window chrome. Pastel art goes in `.plate` (blended, feathered, no frame). See `docs/BRAND.md` "Home, below the fold".
 - Home stills are cropped through Cue (`capturectl`) into `public/shots/*-cine.webp`; re-cut there, do not drop a raw screenshot with its own title bar into a frame.
+- The home page is the product explanation, not just the hero. `#how` steps, `#kit` tiles (`KIT`), `#trust` (`OWNS` / `REFUSES` / `PROOF`) must match `README.md` and `docs/*.md`. Change the docs first, then the page. Do not invent tools or claims.
+- Work on the web from `web/launch-canvas` (or a branch off it) and push before deploying. `origin/main` is behind the site; do not rebuild the home page from `main`.
 - Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` on Chromium/Firefox (played once and held). Safari/iOS use `public/art/maxq-launch.safari.mov` (premultiplied HEVC with alpha). GIF fallback if video fails, still for reduced motion. Wordmark is `public/namelogo.svg` as a CSS mask. See `docs/BRAND.md`.
 - Keep public/art/ops.webp for now.
 - Record the commit and deployment proof.

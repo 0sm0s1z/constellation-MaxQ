@@ -38,6 +38,7 @@
   initial-value: 0%;
 }
 html, body { margin: 0; min-height: 100%; overflow-x: clip; }
+html { scroll-padding-top: 4.75rem; } /* anchors clear the sticky topbar */
 html {
   background: var(--crust);
   color: var(--text);
@@ -591,6 +592,105 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 }
 .steps h3 { margin: 0 0 .25rem; font-size: 1.05rem; font-weight: 600; }
 .steps p { margin: 0; color: var(--sub); font-size: .95rem; }
+.how .lede { margin-bottom: 1.4rem; }
+.how .display { margin-bottom: .9rem; }
+
+/* The command strip under the steps: the whole CLI, five chips, mono. */
+.cmds { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.1rem 0 0; }
+.cmds code {
+  font-size: 12px; padding: .3rem .6rem; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--glass); color: var(--sky);
+}
+
+/* ---- The kit -------------------------------------------------------------------------
+   The inventory `maxq apply` lands. Three groups (desk / bench / side door), each a list of
+   tiles: a mark, a name, a role, an optional tag. Tiles are rows on hairlines, not cards. */
+.kit { padding: 4.5rem 0 1.5rem; }
+.kit-head { display: grid; gap: 1rem 3rem; align-items: end; margin-bottom: 2.2rem; }
+.kit-head .display { margin-bottom: 0; }
+.kit-head .lede { margin-bottom: 0; max-width: none; }
+@media (min-width: 900px) { .kit-head { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } }
+.kit-grid { display: grid; gap: 2.5rem 2.5rem; }
+@media (min-width: 900px) { .kit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.kit-group h3 { margin: .1rem 0 .3rem; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; }
+.kit-note { margin: 0 0 1rem; color: var(--sub); font-size: .92rem; }
+.kit-group[data-kit="desk"] .eyebrow { color: var(--peach); }
+.kit-group[data-kit="bench"] .eyebrow { color: var(--sky); }
+.kit-group[data-kit="door"] .eyebrow { color: var(--mauve); }
+.kit-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.kit-tile {
+  display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  align-items: center; column-gap: .85rem; row-gap: .05rem;
+  padding: .72rem 0; border-bottom: 1px solid var(--rule);
+}
+.kit-tile .kit-mark { grid-row: 1 / 3; }
+.kit-tile .kit-tag { grid-column: 3; grid-row: 1; align-self: center; }
+.kit-tile .kit-text { display: contents; }
+.kit-tile .kit-text strong { grid-column: 2; grid-row: 1; }
+.kit-tile .kit-text span { grid-column: 2 / 4; grid-row: 2; }
+.kit-mark {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 8px;
+  background: var(--glass); border: 1px solid var(--rule); color: var(--text);
+}
+.kit-mark svg { width: 1.05rem; height: 1.05rem; display: block; }
+.kit-mark b { font: 600 13px/1 IBM Plex Mono, ui-monospace, monospace; color: var(--sub); }
+.kit-mark.is-swatch { display: grid; grid-template-columns: 1fr 1fr; place-items: stretch; gap: 2px; padding: 5px; }
+.kit-mark.is-swatch i { border-radius: 2px; }
+.kit-mark.is-swatch i:nth-child(1) { background: var(--mauve); }
+.kit-mark.is-swatch i:nth-child(2) { background: var(--peach); }
+.kit-mark.is-swatch i:nth-child(3) { background: var(--sky); }
+.kit-mark.is-swatch i:nth-child(4) { background: var(--green); }
+.kit-group[data-kit="desk"] .kit-mark { color: var(--rosewater); }
+.kit-group[data-kit="bench"] .kit-mark { color: var(--sky); }
+.kit-group[data-kit="door"] .kit-mark { color: var(--lavender); }
+.kit-text strong { font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.kit-text span { color: var(--overlay1); font-size: .8rem; line-height: 1.3; font-family: IBM Plex Mono, ui-monospace, monospace; letter-spacing: .01em; }
+.kit-tag {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--overlay1); white-space: nowrap;
+}
+
+/* ---- Invariants + proof ----------------------------------------------------------------
+   Owns / refuses as two dl columns; the real `maxq prove` report set as live type beside it. */
+.trust { position: relative; display: grid; gap: 2.5rem; align-items: center; padding: 4.5rem 0 2rem; }
+@media (min-width: 960px) { .trust { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 4rem; } }
+.trust .display { margin-bottom: .9rem; }
+.trust .lede { max-width: none; margin-bottom: 1.6rem; }
+.owns { display: grid; gap: 1.5rem 2rem; }
+@media (min-width: 640px) { .owns { grid-template-columns: 1fr 1fr; } }
+.owns dl { margin: 0; }
+.owns dt {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  padding-bottom: .5rem; border-bottom: 1px solid var(--rule); margin-bottom: .2rem;
+}
+.owns dt.ok { color: var(--green); }
+.owns dt.no { color: var(--peach); }
+.owns div { display: grid; gap: .1rem; padding: .6rem 0; border-bottom: 1px solid var(--rule); }
+.owns code { font-size: .82rem; color: var(--text); }
+.owns span { font-size: .84rem; color: var(--sub); line-height: 1.4; }
+.proof {
+  margin: 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--rule); background: var(--glass);
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .85);
+}
+.proof-bar, .proof figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .9rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em; color: var(--overlay1);
+}
+.proof-bar { border-bottom: 1px solid var(--rule); }
+.proof-bar span:first-child { color: var(--sky); }
+.proof figcaption { border-top: 1px solid var(--rule); }
+.proof figcaption span:last-child { color: var(--green); }
+.proof pre { margin: 0; padding: .9rem 1rem; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12.5px; line-height: 1.65; overflow-x: auto; }
+.proof code { font: inherit; color: var(--overlay0); }
+.proof .pk { color: var(--overlay1); }
+.proof .pv { color: var(--sub); }
+.proof .pv.ok { color: var(--green); text-shadow: 0 0 12px color-mix(in srgb, var(--green) 45%, transparent); }
+
+/* Closing call. */
+.start { padding: 3rem 0 4.5rem; max-width: 46rem; }
+.start .display { margin-bottom: .6rem; }
+.start .term { margin: 1.2rem 0 1rem; }
 
 .surfaces { padding: 2rem 0 3rem; }
 .section-head { margin-bottom: 1.5rem; }
@@ -827,4 +927,13 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .panel { gap: 1.25rem; }
   .panel-copy .lede { margin-bottom: .9rem; }
   .screen-frame { border-radius: 6px; }
+
+  .kit { padding: 3rem 0 .5rem; }
+  .kit-head { margin-bottom: 1.4rem; }
+  .kit-grid { gap: 1.8rem; }
+  .kit-tile { padding: .6rem 0; }
+  .trust { padding: 3rem 0 1rem; gap: 1.6rem; }
+  .owns { gap: 1.2rem; }
+  .proof pre { font-size: 11.5px; }
+  .start { padding: 2.5rem 0 3rem; }
 }

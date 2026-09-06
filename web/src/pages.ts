@@ -1,9 +1,16 @@
+import markChrome from "./logos/googlechrome.svg?raw";
+import markGhostty from "./logos/ghostty.svg?raw";
+import markClaude from "./logos/claude.svg?raw";
+import markOpencode from "./logos/opencode.svg?raw";
+import markVercel from "./logos/vercel.svg?raw";
+import markTailscale from "./logos/tailscale.svg?raw";
+
 export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
 
-const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "surfaces"]);
+const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "trust", "surfaces", "start"]);
 
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
@@ -98,6 +105,91 @@ const cine = (src: string, alt: string, w: number, h: number, left: string, righ
 /* Art plate: pastel isometric art flat on the canvas, feathered into the crust. No chrome. */
 const plate = (src: string, alt: string, kind: string) => `
   <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
+
+/* The kit. What `maxq apply` actually puts on the box, grouped the way the box is used.
+   Marks are Simple Icons (CC0) inlined so they take the tile colour; tools without a public mark
+   get a mono monogram. Facts follow README + docs/CLIS.md + docs/THEME.md + docs/API.md. */
+type KitItem = { name: string; role: string; tag?: string; mark?: string; mono?: string; swatch?: true };
+type KitGroup = { id: string; eyebrow: string; title: string; note: string; items: KitItem[] };
+const KIT: KitGroup[] = [
+  {
+    id: "desk", eyebrow: "The desk", title: "The bot's tools",
+    note: "Theme, launcher, terminal, browser. Set once, the same on every box.",
+    items: [
+      { name: "Catppuccin Mocha", role: "wallpaper · GTK · cursors", tag: "theme", swatch: true },
+      { name: "Chrome", role: "official Mocha theme, per profile", tag: "$HOME only", mark: markChrome },
+      { name: "Ghostty", role: "Mocha config block + theme", tag: "config-only", mark: markGhostty },
+      { name: "rofi", role: "app launcher on Super + Space", tag: "launcher", mono: "⌘" },
+    ],
+  },
+  {
+    id: "bench", eyebrow: "The bench", title: "Operator CLIs in $HOME/bin",
+    note: "Official linux amd64 builds, MaxQ-marked so revert knows what it owns.",
+    items: [
+      { name: "herdr", role: "session mux for coding agents", mono: "h" },
+      { name: "Grok CLI", role: "grok", mono: "G" },
+      { name: "Codex", role: "codex", mono: "C" },
+      { name: "Claude Code", role: "claude", mark: markClaude },
+      { name: "OpenCode", role: "opencode", mark: markOpencode },
+      { name: "Vercel fx", role: "fx", mark: markVercel },
+      { name: "Tailscale", role: "tailscale · tailscaled", mark: markTailscale },
+    ],
+  },
+  {
+    id: "door", eyebrow: "The side door", title: "Your controls, on loopback",
+    note: "A thin local control surface. Not an admin suite.",
+    items: [
+      { name: "maxq-api", role: "127.0.0.1:7432 · status · apply · revert", tag: "loopback", mono: "◎" },
+      { name: "Desktops", role: "every X display · VNC / noVNC", tag: "live", mono: "▦" },
+      { name: "Resources", role: "RAM · CPU · agent profiles · kill", tag: "telemetry", mono: "∿" },
+      { name: "GOST", role: "local CONNECT proxy · no MITM", tag: "off by default", mono: "⇄" },
+    ],
+  },
+];
+
+/* What `maxq prove` printed on the box (2026-09-02). Live type, not a raster. */
+const PROOF: [string, string][] = [
+  ["result", "PASS"],
+  ["passed", "173"],
+  ["failed", "0"],
+  ["final_status", "applied"],
+  ["final_theme", "mocha"],
+  ["api_listen", "127.0.0.1:7432"],
+  ["intercept", "false"],
+  ["chrome_proxy_policy", "never"],
+  ["clis_installed", "herdr fx grok codex claude"],
+  ["left_state", "APPLIED"],
+];
+
+const OWNS = [
+  ["$HOME/bin", "maxq, maxq-api, the MaxQ-marked CLIs"],
+  ["$HOME/.config/maxq", "maxq.toml, pidfiles, CLI cache, the persist CA"],
+  ["$HOME/.local/share", "Mocha wallpaper, GTK theme, cursors, Chrome theme files"],
+  ["$HOME/.config/ghostty", "one marked MaxQ block; your config around it stays"],
+];
+const REFUSES = [
+  ["/usr, /etc, PID 1", "nothing outside $HOME, no systemd units"],
+  ["your keys and logins", "~/.ssh, Chrome cookies, Chrome managed policy"],
+  ["the network", "binds 127.0.0.1 only; refuses 0.0.0.0 and ::"],
+  ["your TLS", "intercept=false until you flip it; the CA is documented, not auto-trusted"],
+];
+
+const kitTile = (it: KitItem) => `
+  <li class="kit-tile">
+    <span class="kit-mark${it.swatch ? " is-swatch" : ""}">${
+      it.swatch ? "<i></i><i></i><i></i><i></i>" : it.mark ?? `<b>${it.mono ?? it.name[0]}</b>`
+    }</span>
+    <span class="kit-text"><strong>${it.name}</strong><span>${it.role}</span></span>
+    ${it.tag ? `<span class="kit-tag">${it.tag}</span>` : ""}
+  </li>`;
+
+const kitGroup = (g: KitGroup) => `
+  <div class="kit-group" data-kit="${g.id}">
+    <p class="eyebrow">${g.eyebrow}</p>
+    <h3>${g.title}</h3>
+    <p class="kit-note">${g.note}</p>
+    <ul class="kit-list">${g.items.map(kitTile).join("")}</ul>
+  </div>`;
 
 /* Launch canvas. The Cue export is the clock: ignition 0.5s, apogee 3.5s, hold to 6s.
    Copy, sparks, and telemetry are staggered against that clock in styles.css (.r1–.r7).
@@ -280,12 +372,14 @@ export function renderHome(): string {
       <div class="how-copy">
         <p class="eyebrow">How it works</p>
         <h2 class="display">One box. Two operators.</h2>
+        <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. One command turns a stock Linux box into the bot's workstation, and gives you a side door into it.</p>
         <ol class="steps">
-          <li><span class="step-num">01</span><div><h3>Install</h3><p>One command on the bot's computer. The stock box becomes a workstation built around the bot.</p></div></li>
-          <li><span class="step-num">02</span><div><h3>The desk</h3><p>Terminal, browser, desktops, theme, skills. In place before the first task.</p></div></li>
-          <li><span class="step-num">03</span><div><h3>The side door</h3><p>Settings, telemetry, every desktop. On loopback. You steer without taking the box hostage.</p></div></li>
-          <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code> changes. Revert leaves the machine alone. Prove leaves it <code>APPLIED</code>.</p></div></li>
+          <li><span class="step-num">01</span><div><h3>Install</h3><p>The installer drops <code>maxq</code> into <code>$HOME/bin</code> and runs <code>apply</code>. Apply is idempotent: run it twice, the second run changes nothing.</p></div></li>
+          <li><span class="step-num">02</span><div><h3>Apply builds the desk</h3><p>Mocha theme across wallpaper, GTK, cursors, Chrome, and Ghostty. A launcher on Super + Space. herdr, grok, codex, claude, opencode, fx, tailscale in <code>$HOME/bin</code>. Then <code>maxq-api</code> starts on loopback.</p></div></li>
+          <li><span class="step-num">03</span><div><h3>You use the side door</h3><p><code>127.0.0.1:7432</code>: status, settings, resources, triggers, the proxy, and every desktop on the box. You steer without taking the box hostage.</p></div></li>
+          <li><span class="step-num">04</span><div><h3>Prove or revert</h3><p><code>maxq prove</code> runs revert → apply → assert and leaves the box <code>APPLIED</code>. <code>maxq revert</code> removes what MaxQ owns and nothing else.</p></div></li>
         </ol>
+        <p class="cmds"><code>maxq apply</code><code>maxq status</code><code>maxq prove</code><code>maxq revert</code><code>maxq proxy on|off</code></p>
       </div>
       ${plate("/art/hero-laptop.webp", "The box: a laptop with the bot's editor and telemetry on the glass", "plate-box")}
     </section>
@@ -313,6 +407,17 @@ export function renderHome(): string {
       ${cine("/shots/bots-desk-cine.webp", "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot", 1079, 490, "maxq · the bot's desk", "box@grokbot")}
     </section>
 
+    <section class="kit" id="kit">
+      <div class="section-head kit-head">
+        <div>
+          <p class="eyebrow">What lands on the box</p>
+          <h2 class="display">Everything the bot needs. Nothing it shouldn't have.</h2>
+        </div>
+        <p class="lede">This is the inventory <code>maxq apply</code> puts in place. All of it under <code>$HOME</code>. A tool with no official linux amd64 build is skipped and recorded in <code>clis.txt</code>, not faked.</p>
+      </div>
+      <div class="kit-grid">${KIT.map(kitGroup).join("")}</div>
+    </section>
+
     <section class="beat beat-door" id="door">
       <div class="beat-head has-plate">
         ${plate("/art/ops.webp", "The operator deck: three desktops stacked above one control panel", "plate-deck")}
@@ -335,6 +440,29 @@ export function renderHome(): string {
       ${cine("/shots/desktops-eva-cine.webp", "MaxQ operator desktops: nine live sessions and the STREAM sidebar", 1600, 727, "maxq · the side door", "14 / 22 live")}
     </section>
 
+    <section class="trust" id="trust">
+      <div class="trust-copy">
+        <p class="eyebrow">Invariants</p>
+        <h2 class="display">What MaxQ owns. What it refuses to own.</h2>
+        <p class="lede">A bot's computer is still your computer. MaxQ draws the line at <code>$HOME</code> and proves it every time you ask.</p>
+        <div class="owns">
+          <dl>
+            <dt class="ok">owns</dt>
+            ${OWNS.map(([k, v]) => `<div><code>${k}</code><span>${v}</span></div>`).join("")}
+          </dl>
+          <dl>
+            <dt class="no">refuses</dt>
+            ${REFUSES.map(([k, v]) => `<div><code>${k}</code><span>${v}</span></div>`).join("")}
+          </dl>
+        </div>
+      </div>
+      <figure class="proof">
+        <div class="proof-bar"><span>maxq prove</span><span>box@grokbot</span></div>
+        <pre><code>${PROOF.map(([k, v]) => `<span class="pk">${k}</span>=<span class="pv${v === "PASS" || v === "APPLIED" ? " ok" : ""}">${v}</span>`).join("\n")}</code></pre>
+        <figcaption><span>revert → apply → assert</span><span>leaves APPLIED</span></figcaption>
+      </figure>
+    </section>
+
     <section class="surfaces" id="surfaces">
       <div class="section-head">
         <p class="eyebrow">Constellation</p>
@@ -342,6 +470,17 @@ export function renderHome(): string {
       </div>
       <div class="tabs" role="tablist">${tabs}</div>
       <div class="panels">${panels}</div>
+    </section>
+
+    <section class="start" id="start">
+      <p class="eyebrow">Ready</p>
+      <h2 class="display">Install MaxQ on the stock box.</h2>
+      <p class="lede">Apply the workstation. Keep the side door. Prove or revert whenever you need to.</p>
+      ${installLine()}
+      <div class="cta-row">
+        <a class="btn-solid" href="#install">Install guide</a>
+        <a class="btn-ghost" href="${GITHUB}">GitHub</a>
+      </div>
     </section>`;
 }
 

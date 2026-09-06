@@ -80,6 +80,25 @@ copy in operator register.
   The MaxQ surface uses its own native 2:1 cut (`desktops-eva-wide.webp` 1600×800, y −100) so
   the header text is never cover-cropped.
 
+### The informative layer
+
+The pretty page has to also answer "what do I get". Home order: launch → install → `#how`
+(the real lifecycle: install, apply builds the desk, side door, prove or revert, plus the five
+`maxq` commands as chips) → `#desk` → `#kit` → `#door` → `#trust` → `#surfaces` → `#start`.
+
+- **Kit** (`#kit`, `KIT` in `pages.ts`): the inventory `maxq apply` lands, in three groups —
+  the desk (theme, Chrome, Ghostty, rofi), the bench (CLIs in `$HOME/bin`), the side door
+  (`maxq-api`, desktops, resources, GOST). Tiles are hairline rows: mark, name, mono role, tag.
+  Marks are Simple Icons (CC0) inlined from `src/logos/*.svg` with `fill="currentColor"`; tools
+  without a public mark get a mono monogram; Catppuccin gets a four-swatch. Facts come from
+  `README.md`, `docs/CLIS.md`, `docs/THEME.md`, `docs/API.md` — update those first, then the tiles.
+  Tags are honest: Ghostty is `config-only`, GOST is `off by default`.
+- **Trust** (`#trust`): owns / refuses as two `dl` columns beside the real `maxq prove` report
+  (`PROOF`) set as live type in a `.proof` terminal — never a raster of the terminal.
+- **Start** (`#start`): the closing call, install line and two buttons. Same `.term` as the bar.
+
+Anchors clear the sticky topbar via `html { scroll-padding-top }`.
+
 ## Phone (≤720px)
 
 One column. The hero reads title → rocket → claim and CTAs → split → glass; `.launch-copy` is
