@@ -32,11 +32,14 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 `.is-held`).
 
 - Rocket right, copy left; the rocket plays once and holds at the top (no `loop`).
-- The late block is a duo: stacked `The bot gets` / `You get` rows on the left,
-  landscape glass (2.35:1) on the right. Square Cue stills are cropped, not
-  letterboxed. Captions sit under the well (`01 the bot's desk` / `02 the side
-  door` / `03 more tokens`). Clicking the well follows `GLASS[].href`
-  (`#desk`, `#door`, `#frontier`). Chip + split copy ripple (~220ms). No typewriter.
+- The left column is four blocks: title; claim + CTAs; split (`The bot gets` /
+  `You get` as two columns); glass (one landscape shot, captions under it).
+  Title and claim ride the flight; split and glass land after apogee (`.late`).
+- The glass well is a locked 2.75:1 frame. Stills of different pixel sizes are
+  `object-fit: cover` inside it — the frame must not resize between slides.
+  Captions stay on one line (`01 the bot's desk` / `02 the side door` /
+  `03 more tokens`). Clicking the well follows `GLASS[].href` (`#desk`, `#door`,
+  `#frontier`). Chip + split copy ripple (~220ms). No typewriter.
 - Split copy is per-slide. Labels stay `The bot gets` / `You get`. Charge the
   speech from `docs/VISION.md`.
 - Eyebrow: `Constellation · one box. two operators.` Do not say "first product."

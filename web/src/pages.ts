@@ -203,24 +203,22 @@ function renderLaunch(): string {
               <a class="btn-ghost" href="#how">See how it works</a>
             </div>
           </div>
-          <div class="blk duo late l1" data-glass>
-            <dl class="split" data-split>
-              <div>
-                <dt>The bot gets</dt>
-                <dd data-split-bot>${g0.bot}</dd>
-              </div>
-              <div>
-                <dt>You get</dt>
-                <dd data-split-you>${g0.you}</dd>
-              </div>
-            </dl>
-            <div class="glass">
-              <a class="glass-well" data-glass-link href="${g0.href}">
-                ${glassFrames}
-                <span class="glass-chip" data-glass-chip>${g0.chip}</span>
-              </a>
-              <div class="glass-caps" role="tablist">${glassCaps}</div>
+          <dl class="blk split late l1" data-split>
+            <div>
+              <dt>The bot gets</dt>
+              <dd data-split-bot>${g0.bot}</dd>
             </div>
+            <div>
+              <dt>You get</dt>
+              <dd data-split-you>${g0.you}</dd>
+            </div>
+          </dl>
+          <div class="blk glass late l2" data-glass>
+            <a class="glass-well" data-glass-link href="${g0.href}">
+              ${glassFrames}
+              <span class="glass-chip" data-glass-chip>${g0.chip}</span>
+            </a>
+            <div class="glass-caps" role="tablist">${glassCaps}</div>
           </div>
         </div>
         <div class="launch-stage">
