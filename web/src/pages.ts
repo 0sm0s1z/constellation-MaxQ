@@ -62,10 +62,10 @@ const surfaces = [
     title: "Native glass. Not an Electron fork.",
     lede: "Swift/SwiftUI chat-and-steer for macOS. iOS still landing.",
     src: "/shots/cue-macos.webp",
-    alt: "Cue macOS: Messages, MuxBot chat, Multiplexer assigns computers",
+    alt: "Cue macOS: MaxQ launch region on the canvas, inspector and filmstrip",
     cap: "cue · macOS",
-    w: 1006,
-    h: 670,
+    w: 1100,
+    h: 682,
     href: "#cue",
   },
   {
@@ -327,7 +327,7 @@ export function renderStack(): string {
     <div class="device-row">
       ${bezel("/shots/router-dashboard.webp", "Constellation Router dashboard", "router · seats", "laptop", 1100, 535)}
       ${bezel("/shots/settings.webp", "MaxQ settings applied", "maxq · settings", "laptop", 1000, 624)}
-      ${bezel("/shots/cue-macos.webp", "Cue chat-and-steer on macOS", "cue · macOS", "laptop", 1006, 670)}
+      ${bezel("/shots/cue-macos.webp", "Cue macOS: MaxQ launch region on the canvas", "cue · macOS", "laptop", 1100, 682)}
     </div>`;
 }
 
@@ -355,7 +355,7 @@ export function renderCue(): string {
       <p class="lede">Swift/SwiftUI chat-and-steer for macOS. iOS still landing.</p>
     </article>
     <div class="device-row one">
-      ${bezel("/shots/cue-macos.webp", "Cue macOS: Messages, MuxBot chat, Multiplexer assigns computers", "cue · macOS", "laptop", 1006, 612)}
+      ${bezel("/shots/cue-macos.webp", "Cue macOS: MaxQ launch region on the canvas, inspector and filmstrip", "cue · macOS", "laptop", 1100, 682)}
     </div>
     <div class="device-row one">
       ${bezel("/shots/cue-macos-2.webp", "Cue macOS 3-pane, MuxBot Hello world, Multiplexer host and agents", "cue · macOS", "laptop", 1006, 635)}
