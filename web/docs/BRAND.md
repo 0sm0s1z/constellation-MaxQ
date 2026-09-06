@@ -24,22 +24,28 @@ Values come from `src/styles.css`.
 
 Fonts: IBM Plex Sans and IBM Plex Mono.
 
-## Hero
+## Hero: the launch canvas
 
-The carousel has three slides. Every slide sits flat on the canvas.
+The first screen is one full-bleed moving canvas (`.launch`), not a copy column plus a
+carousel. The Cue export is the clock: ignition at 0.5s, apogee at 3.5s, hold. Everything
+else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-apogee`,
+`.is-held`).
 
-- No border.
-- No radius card.
-- No box shadow.
-- No window chrome.
-- No `.bezel` around hero art.
-- `.bezel` is for product screenshots only.
-
-Flattened CSS already shipped live: `.slide { margin: 0; }` with no box.
+- Rocket right, copy left; the rocket plays once and holds at the top (no `loop`).
+- Wordmark is `public/namelogo.svg` used as a CSS mask so `.pastel-flow` paints the letters.
+- Four-point sparks (`.spark`) are placed by hand in `pages.ts` (`SPARKS`) and twinkle/rotate
+  like the Cue star tracks.
+- Telemetry (`state`, `intercept`, `persist`, `prove`) lights at apogee. It replaced the proof strip.
+- Scene two: `.how::before` bleeds `public/art/hero-orbit.webp` behind the steps.
+- No border, radius card, box shadow, or window chrome on the art. `.bezel` is for product
+  screenshots only.
 
 ## Art and motion
 
-- Hero launch uses Cue-exported `public/art/maxq-launch.webm` (GIF fallback, still for reduced motion).
+- Hero launch uses Cue-exported `public/art/maxq-launch.webm` (1024×1180, 24fps, alpha VP9;
+  GIF fallback if the video errors, still for reduced motion).
+- Re-export from `~/Desktop/MaxQ/MaxQ-Baseline.cue` with
+  `capturectl export --format webm --scale 1 --fps 24`.
 - Replace `public/art/desk.webp`; it was taken from the Catppuccin website.
 - Keep `public/art/ops.webp` for now.
 - New generated art belongs under `public/art/` and must be committed.

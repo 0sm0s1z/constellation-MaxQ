@@ -114,22 +114,51 @@ function bindCarousel(root: HTMLElement) {
     io.observe(box);
   }
   show(0);
-  bindRocketHero(box);
 }
 
-function bindRocketHero(root: HTMLElement) {
-  const video = root.querySelector<HTMLVideoElement>("video.rocket-hero-anim");
-  const gif = root.querySelector<HTMLImageElement>("img.rocket-hero-gif");
-  if (!video || !gif) return;
-  const showGif = () => {
-    const src = gif.dataset.src;
-    if (src && gif.getAttribute("src") !== src) gif.src = src;
-    gif.hidden = false;
-    video.remove();
+/* The launch video is the master clock. Copy reveals key off `playing`; telemetry lights at
+   apogee (3.5s in the Cue composition); the video is not looped so the rocket holds at the top. */
+const APOGEE_S = 3.5;
+function bindLaunch(root: HTMLElement) {
+  const launch = root.querySelector<HTMLElement>("[data-launch]");
+  if (!launch || launch.classList.contains("is-live")) return;
+  const video = launch.querySelector<HTMLVideoElement>("video.launch-video");
+  const gif = launch.querySelector<HTMLImageElement>("img.launch-gif");
+  let apogeeTimer = 0;
+  const live = () => {
+    if (launch.classList.contains("is-live")) return;
+    launch.classList.add("is-live");
+    apogeeTimer = window.setTimeout(() => launch.classList.add("is-apogee"), APOGEE_S * 1000);
   };
+  const held = () => launch.classList.add("is-apogee", "is-held");
+  if (!video) { live(); held(); return; }
+  const showGif = () => {
+    if (gif) {
+      const src = gif.dataset.src;
+      if (src && gif.getAttribute("src") !== src) gif.src = src;
+      gif.hidden = false;
+    }
+    video.remove();
+    live();
+  };
+  video.addEventListener("playing", live, { once: true });
+  video.addEventListener("timeupdate", () => {
+    if (video.currentTime >= APOGEE_S) {
+      window.clearTimeout(apogeeTimer);
+      launch.classList.add("is-apogee");
+    }
+  });
+  video.addEventListener("ended", held, { once: true });
   video.addEventListener("error", showGif);
-  const source = video.querySelector("source");
-  source?.addEventListener("error", showGif);
+  video.querySelector("source")?.addEventListener("error", showGif);
+  // Autoplay refused (data saver, policy): show the copy anyway and hold the poster frame.
+  window.setTimeout(() => {
+    if (!launch.classList.contains("is-live")) {
+      video.play().catch(() => undefined);
+      live();
+      if (video.paused) held();
+    }
+  }, 900);
 }
 
 function draw() {
@@ -140,6 +169,7 @@ function draw() {
   bindCopy(app);
   bindTabs(app);
   bindCarousel(app);
+  bindLaunch(app);
 }
 
 function dismissLoader() {

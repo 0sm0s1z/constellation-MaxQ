@@ -22,9 +22,6 @@ const bezel = (src: string, alt: string, caption: string, kind: "laptop" | "phon
     <figcaption>${caption}</figcaption>
   </figure>`;
 
-const nameLogo = (cls: string) =>
-  `<img class="${cls}" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" />`;
-
 const surfaces = [
   {
     id: "router",
@@ -80,6 +77,78 @@ const surfaces = [
   },
 ];
 
+/* Launch canvas. The Cue export is the clock: ignition 0.5s, apogee 3.5s, hold to 6s.
+   Copy, sparks, and telemetry are staggered against that clock in styles.css (.r1–.r7).
+   Sparks are the four-point stars from the Cue composition, placed by hand across the canvas. */
+const SPARK_PATH = "M12 0C12.7 7.1 16.9 11.3 24 12C16.9 12.7 12.7 16.9 12 24C11.3 16.9 7.1 12.7 0 12C7.1 11.3 11.3 7.1 12 0Z";
+type Spark = { x: string; y: string; size: number; tint: "mauve" | "peach" | "sky" | "lavender" | "pink"; dur: number; delay: number; spin: 1 | -1 };
+const SPARKS: Spark[] = [
+  { x: "6%",  y: "14%", size: 22, tint: "mauve",    dur: 5.2, delay: -1.1, spin: 1 },
+  { x: "22%", y: "8%",  size: 12, tint: "sky",      dur: 4.1, delay: -2.6, spin: -1 },
+  { x: "38%", y: "18%", size: 16, tint: "peach",    dur: 6.0, delay: -0.4, spin: 1 },
+  { x: "49%", y: "6%",  size: 10, tint: "lavender", dur: 4.6, delay: -3.3, spin: -1 },
+  { x: "9%",  y: "62%", size: 14, tint: "pink",     dur: 5.6, delay: -2.0, spin: 1 },
+  { x: "31%", y: "76%", size: 20, tint: "sky",      dur: 4.9, delay: -1.7, spin: -1 },
+  { x: "58%", y: "88%", size: 12, tint: "mauve",    dur: 5.9, delay: -0.9, spin: 1 },
+  { x: "84%", y: "12%", size: 18, tint: "peach",    dur: 4.4, delay: -2.2, spin: -1 },
+  { x: "94%", y: "40%", size: 12, tint: "lavender", dur: 6.3, delay: -3.8, spin: 1 },
+  { x: "90%", y: "78%", size: 24, tint: "mauve",    dur: 5.0, delay: -1.4, spin: -1 },
+  { x: "70%", y: "4%",  size: 10, tint: "pink",     dur: 4.2, delay: -0.2, spin: 1 },
+];
+const TELEMETRY: [string, string, boolean][] = [
+  ["state", "applied", true],
+  ["intercept", "false", false],
+  ["persist", "$HOME only", false],
+  ["prove", "PASS", true],
+];
+
+function renderLaunch(): string {
+  const reduceMotion =
+    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const alt = "MaxQ launch: a rocket lifting off a laptop";
+  const still = `<img class="launch-still" src="/art/maxq-launch-still.webp" alt="${alt}" width="1024" height="1180" />`;
+  const stage = reduceMotion
+    ? still
+    : `
+        <video class="launch-video" autoplay muted playsinline width="1024" height="1180" poster="/art/maxq-launch-still.webp" aria-label="${alt}">
+          <source src="/art/maxq-launch.webm" type="video/webm" />
+        </video>
+        <img class="launch-gif" data-src="/art/maxq-launch.gif" alt="${alt}" width="614" height="708" hidden />
+        ${still}`;
+  const sparks = SPARKS.map(
+    (s, i) =>
+      `<svg class="spark ${s.tint}" viewBox="0 0 24 24" aria-hidden="true" style="left:${s.x};top:${s.y};width:${s.size}px;height:${s.size}px;--dur:${s.dur}s;--delay:${s.delay}s;--spin:${s.spin};--i:${i}"><path d="${SPARK_PATH}"/></svg>`
+  ).join("");
+  const telemetry = TELEMETRY.map(
+    ([k, v, ok], i) =>
+      `<li style="--i:${i}"><span class="tk">${k}</span><span class="tv${ok ? " ok" : ""}">${v}</span></li>`
+  ).join("");
+  return `
+    <section class="launch${reduceMotion ? " is-live is-apogee is-held" : ""}" data-launch>
+      <div class="launch-sky" aria-hidden="true">${sparks}</div>
+      <div class="launch-grid">
+        <div class="launch-copy">
+          <p class="eyebrow reveal r1">Constellation · first product</p>
+          <h1 class="launch-title">
+            <span class="launch-line reveal r2">Take Grok Bot to</span>
+            <span class="wordmark reveal r3" role="img" aria-label="MaxQ"><span class="wordmark-ink pastel-flow"></span></span>
+          </h1>
+          <p class="lede reveal r4">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
+          <div class="cta-row reveal r5">
+            <a class="btn-solid" href="#install">Install</a>
+            <a class="btn-ghost" href="#how">See how it works</a>
+          </div>
+        </div>
+        <div class="launch-stage">
+          <span class="ignition" aria-hidden="true"></span>
+          ${stage}
+        </div>
+      </div>
+      <ul class="telemetry" aria-label="MaxQ state">${telemetry}</ul>
+      <a class="scroll-cue reveal r7" href="#how" aria-label="Scroll to how it works"><span></span></a>
+    </section>`;
+}
+
 export function renderHome(): string {
   const tabs = surfaces
     .map(
@@ -103,84 +172,9 @@ export function renderHome(): string {
       </div>`
     )
     .join("");
-  const reduceMotion =
-    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const launchAlt = "MaxQ launch: a rocket lifting off a laptop";
-  const launchStill = `
-            <img
-              class="rocket-hero-still"
-              src="/art/maxq-launch-still.webp"
-              alt="${launchAlt}"
-              width="614"
-              height="708"
-            />`;
-  const launchGraphic = reduceMotion
-    ? launchStill
-    : `
-            <video
-              class="rocket-hero-anim"
-              autoplay
-              muted
-              loop
-              playsinline
-              width="614"
-              height="708"
-              poster="/art/maxq-launch-still.webp"
-            >
-              <source src="/art/maxq-launch.webm" type="video/webm" />
-            </video>
-            <img
-              class="rocket-hero-gif"
-              data-src="/art/maxq-launch.gif"
-              alt="${launchAlt}"
-              width="614"
-              height="708"
-              hidden
-            />
-            ${launchStill}`;
   return `
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Constellation · first product</p>
-        <h1>
-          <span class="words pastel-flow">Take Grok Bot to</span>
-          ${nameLogo("hero-logo")}
-        </h1>
-        <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
-        <div class="cta-row">
-          <a class="btn-solid" href="#install">Install</a>
-          <a class="btn-ghost" href="#how">See how it works</a>
-        </div>
-      </div>
-      <div class="hero-visual carousel" data-carousel data-carousel-lock>
-        <div class="slides">
-          <figure class="slide is-on rocket-slide" data-slide="0">
-            ${launchGraphic}
-            <figcaption>01 · apply. install.sh takes the box to MaxQ.</figcaption>
-          </figure>
-          <figure class="slide" data-slide="1" hidden>
-            <img src="/art/desk.webp" alt="Isometric agent workstation, code on the glass" width="1280" height="853" />
-            <figcaption>02 · the computer the bot actually lives on.</figcaption>
-          </figure>
-          <figure class="slide" data-slide="2" hidden>
-            <img src="/art/ops.webp" alt="Operator stack: three desktops, one control deck" width="1280" height="853" />
-            <figcaption>03 · side door. telemetry, processes, every desktop.</figcaption>
-          </figure>
-        </div>
-        <div class="dots" role="tablist">
-          <button type="button" class="dot is-on" data-dot="0" aria-label="Slide 1"></button>
-          <button type="button" class="dot" data-dot="1" aria-label="Slide 2"></button>
-          <button type="button" class="dot" data-dot="2" aria-label="Slide 3"></button>
-        </div>
-      </div>
-    </section>
+    ${renderLaunch()}
     <div class="install-bar">${installLine()}</div>
-    <div class="proof">
-      <span>state=applied</span>
-      <span>intercept=false</span>
-      <span>$HOME only</span>
-      <span>prove PASS</span>
-    </div>
     <section class="how" id="how">
       <div class="how-copy">
         <p class="eyebrow">How it works</p>

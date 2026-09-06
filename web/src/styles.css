@@ -157,36 +157,184 @@ a { color: inherit; }
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 
-.hero {
-  display: grid; gap: 2.5rem; align-items: center;
-  padding: 2.5rem 0 3rem;
+/* ---- Launch canvas ------------------------------------------------------------------
+   Full-bleed first screen. The Cue export is the clock: ignition .5s, apogee 3.5s, hold.
+   .is-live   → video started; copy staggers in (.r1–.r7)
+   .is-apogee → rocket at the top; telemetry lights
+   .is-held   → video ended; rocket holds, ignition glow settles
+   No card, border, shadow, or chrome on the art (AGENTS.md). */
+.launch {
+  --bleed: calc(50% - 50vw);
+  --gutter: max(1.5rem, calc(50vw - var(--wrap) / 2));
+  --clock: 0s;
+  position: relative;
+  margin: 0 var(--bleed);
+  padding: 1rem var(--gutter) 0;
+  min-height: calc(100svh - 4.6rem);
+  display: flex; flex-direction: column;
+  overflow: clip;
+  isolation: isolate;
 }
-@media (min-width: 960px) {
-  .hero { grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); padding: 3.5rem 0 4rem; }
+.launch-sky { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.spark {
+  position: absolute; display: block; opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg);
+  filter: drop-shadow(0 0 6px currentColor);
 }
-.hero h1 {
-  margin: 0 0 .85rem; font-weight: 900; letter-spacing: -.045em;
-  font-size: clamp(1.55rem, 2.5vw, 2.35rem); line-height: 1;
-  color: var(--text);
-  display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center;
-  gap: .15em .3em; white-space: nowrap;
+.spark path { fill: currentColor; }
+.spark.mauve { color: var(--mauve); }
+.spark.peach { color: var(--peach); }
+.spark.sky { color: var(--sky); }
+.spark.lavender { color: var(--lavender); }
+.spark.pink { color: var(--pink); }
+.launch.is-live .spark {
+  animation:
+    spark-in .9s cubic-bezier(.2,0,0,1) calc(.35s + var(--i) * .12s) both,
+    spark-twinkle var(--dur) ease-in-out calc(1.3s + var(--delay)) infinite;
 }
-.hero h1 .words {
-  display: inline; min-width: 0;
-  color: transparent;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+@keyframes spark-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(-40deg); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
-.hero h1 .hero-logo {
-  display: block; flex: 0 0 auto; height: 0.88em; width: auto;
-  max-height: none; object-fit: contain; object-position: left center;
-}
-@media (max-width: 959px) {
-  .hero h1 { flex-wrap: wrap; white-space: normal; }
+@keyframes spark-twinkle {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  38%      { opacity: .18; transform: translate(-50%, -50%) scale(.72) rotate(calc(var(--spin) * 26deg)); }
+  62%      { opacity: .95; transform: translate(-50%, -50%) scale(1.04) rotate(calc(var(--spin) * 40deg)); }
+  80%      { opacity: .4; transform: translate(-50%, -50%) scale(.85) rotate(calc(var(--spin) * 48deg)); }
 }
 
-.hero-copy .lede { font-size: 1.08rem; }
+.launch-grid {
+  position: relative; z-index: 1; flex: 1;
+  display: grid; gap: 1.5rem 2rem; align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .launch-grid { grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); }
+}
+.launch-copy { max-width: 36rem; }
+.launch-copy .eyebrow { margin-bottom: 1.2rem; }
+.launch-title { margin: 0 0 1.25rem; display: grid; gap: .55rem; }
+.launch-line {
+  display: block; font-weight: 900; letter-spacing: -.045em; line-height: .98;
+  font-size: clamp(2.1rem, 4.3vw, 3.7rem); color: var(--text);
+}
+/* Wordmark: traced SVG used as a mask so the shared pastel clock paints through the letters. */
+.wordmark {
+  display: block; width: min(100%, 27rem); aspect-ratio: 1319 / 318;
+  position: relative;
+}
+.wordmark-ink {
+  position: absolute; inset: 0;
+  -webkit-mask: url(/namelogo.svg) no-repeat left center / contain;
+  mask: url(/namelogo.svg) no-repeat left center / contain;
+  background-size: 300% 100%;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--mauve) 35%, transparent));
+}
+.launch-copy .lede { font-size: 1.1rem; max-width: 32rem; }
 .cta-row { display: flex; flex-wrap: wrap; gap: .65rem; margin: 0; }
-.install-bar { margin: 0 0 1.4rem; }
+
+.launch-stage {
+  position: relative; display: flex; justify-content: center; align-items: flex-end;
+  min-height: 46svh;
+}
+@media (min-width: 900px) { .launch-stage { justify-content: flex-end; min-height: 0; } }
+.launch-video, .launch-gif, .launch-still {
+  display: block; width: auto; max-width: 100%;
+  height: min(82svh, 880px); background: transparent;
+  position: relative; z-index: 1;
+}
+.launch-gif[hidden] { display: none; }
+.launch-video { opacity: 0; transition: opacity .4s ease; }
+.launch.is-live .launch-video { opacity: 1; }
+.launch-still { display: none; }
+.ignition {
+  position: absolute; left: 50%; bottom: 3%; width: 70%; aspect-ratio: 1.6;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--peach) 55%, transparent), color-mix(in srgb, var(--mauve) 22%, transparent) 45%, transparent 72%);
+  opacity: 0; filter: blur(22px); pointer-events: none; z-index: 0;
+}
+@media (min-width: 900px) { .ignition { left: auto; right: 6%; transform: none; width: 60%; } }
+.launch.is-live .ignition { animation: ignite 6s cubic-bezier(.2,0,0,1) .35s both; }
+.launch.is-held .ignition { opacity: .32; animation: none; }
+@keyframes ignite {
+  0% { opacity: 0; transform: translateX(var(--ig-x, -50%)) scale(.5); }
+  12% { opacity: 1; transform: translateX(var(--ig-x, -50%)) scale(1.15); }
+  40% { opacity: .55; }
+  100% { opacity: .32; transform: translateX(var(--ig-x, -50%)) scale(1); }
+}
+@media (min-width: 900px) { .ignition { --ig-x: 0; } }
+
+/* Reveal clock. Every .rN is a delay against the video's `playing`. */
+.reveal { opacity: 0; }
+.launch.is-live .reveal { animation: rise .8s cubic-bezier(.2,0,0,1) both; animation-delay: var(--at, 0s); }
+.r1 { --at: .05s; }
+.r2 { --at: .25s; }
+.r3 { --at: .55s; }
+.r4 { --at: 1.15s; }
+.r5 { --at: 1.55s; }
+.r7 { --at: 4.2s; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The wordmark wipes on with the climb rather than rising. */
+.launch.is-live .wordmark.reveal {
+  animation: wipe 1.6s cubic-bezier(.3,0,.1,1) .6s both;
+}
+@keyframes wipe {
+  from { opacity: 1; clip-path: inset(-20% 100% -20% 0); }
+  to   { opacity: 1; clip-path: inset(-20% 0% -20% 0); }
+}
+
+/* Telemetry: the proof strip, now a HUD readout that lights at apogee. */
+.telemetry {
+  position: relative; z-index: 1;
+  list-style: none; margin: 1.5rem 0 0; padding: 1rem 0 1.1rem;
+  display: flex; flex-wrap: wrap; gap: .5rem 2.2rem;
+  border-top: 1px solid var(--rule);
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; letter-spacing: .04em;
+}
+.telemetry li { display: inline-flex; gap: .55rem; opacity: 0; transform: translateY(6px); }
+.telemetry .tk { color: var(--overlay0); }
+.telemetry .tk::after { content: "="; margin-left: .55rem; color: var(--surface0); }
+.telemetry .tv { color: var(--sub); }
+.telemetry .tv.ok { color: var(--green); }
+.launch.is-apogee .telemetry li {
+  animation: tele-in .5s cubic-bezier(.2,0,0,1) calc(var(--i) * .14s) both;
+}
+@keyframes tele-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  55% { opacity: 1; color: var(--rosewater); }
+  100% { opacity: 1; transform: none; }
+}
+.launch.is-apogee .telemetry { border-top-color: color-mix(in srgb, var(--peach) 35%, transparent); transition: border-color .8s ease; }
+
+.scroll-cue {
+  position: absolute; left: 50%; bottom: 4.4rem; transform: translateX(-50%);
+  width: 22px; height: 36px; border-radius: 11px; z-index: 1;
+  border: 1.5px solid color-mix(in srgb, var(--text) 22%, transparent);
+}
+.scroll-cue span {
+  position: absolute; left: 50%; top: 6px; width: 3px; height: 7px; margin-left: -1.5px;
+  border-radius: 2px; background: var(--peach);
+  animation: cue-drop 1.8s ease-in-out infinite;
+}
+@keyframes cue-drop { 0%, 100% { transform: translateY(0); opacity: 1; } 60% { transform: translateY(12px); opacity: 0; } 61% { transform: translateY(0); opacity: 0; } }
+@media (max-width: 899px) { .scroll-cue { display: none; } }
+
+/* Scroll-driven exit: the first screen recedes into scene two where supported. */
+@supports (animation-timeline: view()) {
+  .launch-grid {
+    animation: launch-exit linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 70%;
+  }
+  @keyframes launch-exit {
+    to { transform: translateY(-48px) scale(.985); opacity: .15; }
+  }
+}
+
+.install-bar { margin: 1.4rem 0 1.4rem; }
 .install-bar .term { width: 100%; }
 .hero-visual { position: relative; min-height: 280px; }
 .float-shot {
@@ -241,17 +389,31 @@ button.copy {
 }
 button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--green); }
 
-.proof {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: .55rem 1.75rem;
-  padding: 1.1rem 0 2.4rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
-  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; color: var(--overlay1);
-  letter-spacing: .04em;
-}
-.proof span:first-child { color: var(--green); }
-
+/* Scene two. The orbit rings art becomes the backdrop the launch canvas bleeds into. */
 .how {
+  position: relative;
   display: grid; gap: 2.5rem; align-items: start;
-  padding: 4.5rem 0 3rem;
+  padding: 5rem 0 4rem;
+}
+.how::before {
+  content: ""; position: absolute; inset: -6rem calc(50% - 50vw) -3rem; z-index: -1;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--crust) 78%, transparent), color-mix(in srgb, var(--crust) 30%, transparent) 48%, transparent 72%),
+    url(/art/hero-orbit.webp) right 62% / cover no-repeat;
+  opacity: .55; pointer-events: none;
+  -webkit-mask: linear-gradient(180deg, transparent, #000 28%, #000 70%, transparent);
+  mask: linear-gradient(180deg, transparent, #000 28%, #000 70%, transparent);
+}
+@supports (animation-timeline: view()) {
+  .how::before {
+    animation: orbit-drift linear both;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+  @keyframes orbit-drift {
+    from { background-position: right 70%; transform: scale(1.06); }
+    to   { background-position: right 50%; transform: scale(1); }
+  }
 }
 @media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
 .how .display { margin-bottom: 1.6rem; }
@@ -389,12 +551,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .carousel { position: relative; overflow: visible; }
 .slides { margin: 0; overflow: visible; }
 .slide { margin: 0; overflow: visible; }
-.rocket-slide { overflow: visible; }
 .slide img, .slide video { display: block; width: 100%; height: auto; }
-.rocket-hero-anim, .rocket-hero-gif {
-  display: block; margin: 0; background: transparent;
-}
-.rocket-hero-still { display: none; width: 100%; height: auto; background: transparent; }
 .slide figcaption {
   padding-top: .55rem;
   font-family: IBM Plex Mono, ui-monospace, monospace;
@@ -415,13 +572,22 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
-  .rocket-hero-anim { display: none !important; }
-  .rocket-hero-still { display: block; }
+  .launch-video, .launch-gif { display: none !important; }
+  .launch-still { display: block; }
+  .launch .reveal, .launch .telemetry li, .launch .ignition, .launch-grid, .how::before {
+    animation: none !important; opacity: 1; transform: none; clip-path: none;
+  }
+  .launch .spark { animation: none !important; opacity: .7; }
+  .launch .ignition { opacity: .3; }
+  .scroll-cue span { animation: none; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
 
 @media (max-width: 720px) {
   .nav { display: none; }
-  .hero { padding-top: 1.4rem; }
+  .launch { min-height: auto; padding-top: .5rem; }
+  .launch-video, .launch-gif, .launch-still { height: min(56svh, 620px); }
+  .launch-stage { order: -1; align-items: center; }
+  .launch-copy .lede { font-size: 1rem; }
 }
