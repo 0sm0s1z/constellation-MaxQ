@@ -102,6 +102,27 @@ const cine = (src: string, alt: string, w: number, h: number, left: string, righ
     <figcaption><span>${left}</span><span>${right}</span></figcaption>
   </figure>`;
 
+/* The bot's desk is a 16:9 screen, not a cinema crop: wallpaper + windows, a Mocha menubar,
+   and the real Plank dock sliding up so the still reads as a computer. */
+const DESK_WALL = { src: "/shots/bots-desk-wall.webp", w: 1093, h: 670 };
+const DESK_DOCK = { src: "/shots/bots-desk-dock.webp", w: 1093, h: 76 };
+const deskBar = () => `
+  <div class="desk-menubar" aria-hidden="true">
+    <span class="desk-brand">MaxQ</span>
+    <span class="desk-mod">mocha</span>
+    <span class="desk-host">box@grokbot</span>
+  </div>`;
+const deskStage = (left: string, right: string) => `
+  <figure class="desk">
+    <div class="desk-screen" data-desk>
+      ${deskBar()}
+      <img class="desk-wall" src="${DESK_WALL.src}" alt="The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot" width="${DESK_WALL.w}" height="${DESK_WALL.h}" loading="lazy" />
+      <img class="desk-dock" src="${DESK_DOCK.src}" alt="" width="${DESK_DOCK.w}" height="${DESK_DOCK.h}" />
+      <span class="desk-hint"><kbd>Super</kbd><span>+</span><kbd>Space</kbd> launcher</span>
+    </div>
+    <figcaption><span>${left}</span><span>${right}</span></figcaption>
+  </figure>`;
+
 /* Art plate: pastel isometric art flat on the canvas, feathered into the crust. No chrome. */
 const plate = (src: string, alt: string, kind: string) => `
   <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
@@ -223,12 +244,12 @@ type GlassSlide = {
 };
 const GLASS: GlassSlide[] = [
   {
-    src: "/shots/bots-desk-cine.webp", w: 1079, h: 490,
+    src: DESK_WALL.src, w: DESK_WALL.w, h: DESK_WALL.h,
     alt: "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot",
     num: "01", cap: "the bot's desk", tele: "state", href: "#desk",
     bot: "A computer tailored for it. Terminal, browser, desktops, theme, and the skills to use them before the first task.",
     you: "An assistant that doesn't need onboarding. The desk is on your network. You can watch the herdr session.",
-    chip: "box@grokbot", pos: "50% 40%",
+    chip: "box@grokbot", pos: "50% 18%",
   },
   {
     src: "/shots/desktops-eva-cine.webp", w: 1600, h: 727,
@@ -285,7 +306,7 @@ function renderLaunch(): string {
   ).join("");
   const glassFrames = GLASS.map(
     (g, i) =>
-      `<img class="${i === 0 ? "is-on" : ""}" src="${g.src}" alt="${g.alt}" width="${g.w}" height="${g.h}" loading="${i === 0 ? "eager" : "lazy"}" data-tele="${g.tele}" data-href="${g.href}" data-bot="${escapeAttr(g.bot)}" data-you="${escapeAttr(g.you)}" data-chip="${escapeAttr(g.chip)}" style="object-position:${g.pos}" />`
+      `<img class="glass-frame ${i === 0 ? "is-on" : ""}" src="${g.src}" alt="${g.alt}" width="${g.w}" height="${g.h}" loading="${i === 0 ? "eager" : "lazy"}" data-tele="${g.tele}" data-href="${g.href}" data-bot="${escapeAttr(g.bot)}" data-you="${escapeAttr(g.you)}" data-chip="${escapeAttr(g.chip)}" style="object-position:${g.pos}" />`
   ).join("");
   const glassCaps = GLASS.map(
     (g, i) =>
@@ -323,8 +344,10 @@ function renderLaunch(): string {
             </div>
           </dl>
           <div class="blk glass late l2" data-glass>
-            <a class="glass-well" data-glass-link href="${g0.href}">
+            <a class="glass-well is-desk" data-glass-link href="${g0.href}">
               ${glassFrames}
+              ${deskBar()}
+              <img class="desk-dock" src="${DESK_DOCK.src}" alt="" width="${DESK_DOCK.w}" height="${DESK_DOCK.h}" data-desk-dock />
               <span class="glass-chip" data-glass-chip>${g0.chip}</span>
             </a>
             <div class="glass-caps" role="tablist">${glassCaps}</div>
@@ -404,7 +427,7 @@ export function renderHome(): string {
           </dl>
         </div>
       </div>
-      ${cine("/shots/bots-desk-cine.webp", "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot", 1079, 490, "maxq · the bot's desk", "box@grokbot")}
+      ${deskStage("maxq · the bot's desk", "box@grokbot")}
     </section>
 
     <section class="kit" id="kit">

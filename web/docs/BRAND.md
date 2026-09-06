@@ -69,11 +69,15 @@ copy in operator register.
 - **Art plates** (`.plate`): `public/art/hero-laptop.webp` in `#how`, `public/art/ops.webp` in
   `#door`. The art's dark field is blended out (`mix-blend-mode: lighten`) and radially feathered;
   a soft pastel pool sits under it. No frame, no chrome.
-- **Cinema stills** (`.cine`): one full-width 2.2:1 frame per beat, cover-fit, hairline, 8px
-  radius, mono caption (`maxq · the bot's desk` / `box@grokbot`). The stills are cropped in Cue
-  from the real captures — window chrome and VNC borders removed — and saved as
-  `public/shots/*-cine.webp` (`bots-desk-cine.webp` 1079×490, `desktops-eva-cine.webp` 1600×727).
-  The hero glass uses the same crops. Do not put a raw screenshot with its own title bar in a frame.
+- **Cinema stills** (`.cine`): locked 2.2:1 for captures that are already a surface
+  (`desktops-eva-cine.webp` 1600×727). Cover-fit, hairline, 8px radius, mono caption.
+- **The bot's desk** (`.desk`): not a cinema crop. A 16:9 screen (`.desk-screen`) with a Mocha
+  menubar, the wallpaper/windows still (`bots-desk-wall.webp`, host chrome and VNC edges trimmed),
+  and the real Plank dock as a separate asset (`bots-desk-dock.webp`, top-feathered) that slides
+  up on view. The hero glass uses the same wall + dock overlay on slide 01. Do not cover-crop
+  the dock off; that is what makes the still a computer. Host chrome ("Teach a task", the
+  operator name bar) stays out.
+
 - **Beats**: eyebrow + display headline in one column, lede + `The bot gets` / `You get` in the
   other, still beneath. `#door` puts the ops plate where the headline column would be.
 - **Surfaces** (`.screen`): locked 2:1 frame, cover-fit, no traffic lights; panels crossfade.

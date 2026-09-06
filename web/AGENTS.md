@@ -24,10 +24,10 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - Commit source and all required `public/` assets before shipping.
 - Run the package build script before reporting a ship.
 - The home hero is the full-bleed launch canvas (`.launch` in `pages.ts`/`styles.css`). Keep the art flat on the canvas.
-- Use .bezel only for product screenshots on secondary routes. The home page frames captures in `.cine` (beats) and `.screen` (surfaces): locked aspect, cover-fit, no window chrome. Pastel art goes in `.plate` (blended, feathered, no frame). See `docs/BRAND.md` "Home, below the fold".
-- Home stills are cropped through Cue (`capturectl`) into `public/shots/*-cine.webp`; re-cut there, do not drop a raw screenshot with its own title bar into a frame.
+- Use .bezel only for product screenshots on secondary routes. The home page frames captures in `.cine` (landscape stills), `.desk` (the bot's desk: 16:9 screen + menubar + Plank dock), and `.screen` (surfaces). Pastel art goes in `.plate`. See `docs/BRAND.md` "Home, below the fold".
+- Home stills: EVA is a Cue cinema crop (`*-cine.webp`). The bot's desk is `bots-desk-wall.webp` + `bots-desk-dock.webp` (host chrome trimmed, dock kept). Do not cover-crop the dock off the desk.
 - The home page is the product explanation, not just the hero. `#how` steps, `#kit` tiles (`KIT`), `#trust` (`OWNS` / `REFUSES` / `PROOF`) must match `README.md` and `docs/*.md`. Change the docs first, then the page. Do not invent tools or claims.
-- Work on the web from `web/launch-canvas` (or a branch off it) and push before deploying. `origin/main` is behind the site; do not rebuild the home page from `main`.
+- Work the site on `main` now that the launch-canvas branch is merged. Push before deploying; Vercel Git deploys `main` to production. Re-point `maxq-pied.vercel.app` if the alias did not follow.
 - Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` on Chromium/Firefox (played once and held). Safari/iOS use `public/art/maxq-launch.safari.mov` (premultiplied HEVC with alpha). GIF fallback if video fails, still for reduced motion. Wordmark is `public/namelogo.svg` as a CSS mask. See `docs/BRAND.md`.
 - Keep public/art/ops.webp for now.
 - Record the commit and deployment proof.

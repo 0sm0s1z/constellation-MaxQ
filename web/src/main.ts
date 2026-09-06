@@ -179,7 +179,7 @@ const GLASS_PERIOD_MS = 6500;
 function bindGlass(launch: HTMLElement) {
   const glass = launch.querySelector<HTMLElement>("[data-glass]");
   if (!glass) return;
-  const frames = [...glass.querySelectorAll<HTMLImageElement>(".glass-well img")];
+  const frames = [...glass.querySelectorAll<HTMLImageElement>(".glass-frame")];
   const caps = [...glass.querySelectorAll<HTMLButtonElement>("[data-glass-to]")];
   const tele = [...launch.querySelectorAll<HTMLElement>(".telemetry li[data-key]")];
   const split = launch.querySelector<HTMLElement>("[data-split]");
@@ -212,6 +212,12 @@ function bindGlass(launch: HTMLElement) {
     if (you && frame.dataset.you) you.textContent = frame.dataset.you;
     if (chip && frame.dataset.chip) chip.textContent = frame.dataset.chip;
     if (link && frame.dataset.href) link.href = frame.dataset.href;
+    const well = glass.querySelector<HTMLElement>(".glass-well");
+    if (well) {
+      const desk = i === 0;
+      well.classList.toggle("is-desk", desk);
+      well.classList.toggle("is-live", desk);
+    }
     ripple(split);
     ripple(chip);
   };
@@ -243,6 +249,23 @@ function bindGlass(launch: HTMLElement) {
   }
 }
 
+function bindDesk(root: HTMLElement) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  root.querySelectorAll<HTMLElement>("[data-desk]").forEach((el) => {
+    if (reduced) {
+      el.classList.add("is-live");
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        el.classList.add("is-live");
+        io.disconnect();
+      }
+    }, { threshold: 0.28 });
+    io.observe(el);
+  });
+}
+
 let drawn: Route | null = null;
 function draw() {
   const app = document.getElementById("app");
@@ -255,6 +278,7 @@ function draw() {
     bindTabs(app);
     bindCarousel(app);
     bindLaunch(app);
+    bindDesk(app);
   }
   const id = (location.hash || "").replace("#", "");
   if (id && id !== "home" && document.getElementById(id)) {

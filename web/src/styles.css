@@ -273,11 +273,11 @@ a { color: inherit; }
 }
 .glass-well:hover { outline-color: color-mix(in srgb, var(--peach) 35%, transparent); }
 .glass-well:focus-visible { outline: 2px solid var(--peach); outline-offset: 2px; }
-.glass-well img {
+.glass-well img.glass-frame {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   opacity: 0; transition: opacity .55s ease;
 }
-.glass-well img.is-on { opacity: 1; }
+.glass-well img.glass-frame.is-on { opacity: 1; }
 .glass-chip {
   position: absolute; left: .55rem; bottom: .5rem; z-index: 1;
   font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .04em;
@@ -569,6 +569,80 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
   color: var(--overlay1);
 }
 .cine figcaption span:last-child { color: var(--peach); }
+
+/* The bot's desk is a screen: 16:9, Mocha menubar, real Plank dock sliding onto the glass.
+   Cinema crops hide the dock; this is the thing that makes the still a computer. */
+.desk { margin: 2.4rem 0 0; }
+.desk figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .1rem 0;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em;
+  color: var(--overlay1);
+}
+.desk figcaption span:last-child { color: var(--peach); }
+.desk-screen, .glass-well.is-desk {
+  --desk-bar: 1.7rem;
+}
+.desk-screen {
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px;
+  background: var(--base);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .85), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+}
+.desk-wall {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 18%;
+}
+.desk-menubar {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  height: var(--desk-bar); padding: 0 .75rem;
+  background: color-mix(in srgb, var(--base) 86%, transparent);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em;
+  color: var(--overlay1);
+}
+.desk-brand { color: var(--text); font-weight: 600; }
+.desk-mod { color: var(--lavender); }
+.desk-host { color: var(--peach); }
+.desk-dock {
+  position: absolute; left: 0; right: 0; bottom: .4rem; z-index: 2;
+  width: 100%; height: auto; display: block; pointer-events: none;
+  transform: translateY(72%); opacity: 0;
+  transition: transform .75s cubic-bezier(.16, 1, .3, 1), opacity .45s ease;
+}
+.desk-screen.is-live .desk-dock,
+.glass-well.is-desk.is-live .desk-dock {
+  transform: none; opacity: 1;
+}
+.desk-hint {
+  position: absolute; top: calc(var(--desk-bar) + .55rem); left: 50%; z-index: 3;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: .4rem;
+  padding: .28rem .65rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--crust) 78%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .06em;
+  color: var(--sub); white-space: nowrap; pointer-events: none;
+  opacity: 0;
+}
+.desk-hint kbd {
+  font: inherit; color: var(--text);
+  padding: .05rem .3rem; border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--surface0) 55%, transparent);
+}
+.desk-screen.is-live .desk-hint {
+  animation: desk-hint-in .4s ease .45s both, desk-hint-out .5s ease 2.6s both;
+}
+@keyframes desk-hint-in { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes desk-hint-out { to { opacity: 0; transform: translateX(-50%) translateY(-4px); } }
+
+.glass-well .desk-menubar { opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+.glass-well.is-desk .desk-menubar { opacity: 1; }
+.glass-well .desk-dock { max-height: 32%; object-fit: cover; object-position: 50% 100%; }
+.glass-well.is-desk .glass-chip { opacity: 0; }
 
 .article { max-width: 46rem; padding: 2.4rem 0 3rem; }
 .article .byline {
@@ -868,6 +942,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .launch .ignition { opacity: .3; }
   .scroll-cue span { animation: none; }
   .split.is-ripple dd, .glass-chip.is-ripple { animation: none !important; }
+  .desk-dock { transform: none !important; opacity: 1 !important; }
+  .desk-hint { animation: none !important; opacity: 0 !important; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
   .panel { transition: none; }
@@ -919,6 +995,10 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .cine { margin-top: 1.5rem; }
   .cine-frame { border-radius: 6px; }
   .cine figcaption { font-size: 10px; }
+  .desk { margin-top: 1.5rem; }
+  .desk-screen { border-radius: 6px; }
+  .desk-menubar { font-size: 10px; height: 1.45rem; padding: 0 .55rem; }
+  .desk-hint { display: none; }
 
   .surfaces { padding: 2.5rem 0 2rem; }
   .tabs { gap: .15rem; padding: .25rem; overflow: visible; }
