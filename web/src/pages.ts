@@ -140,7 +140,8 @@ const GLASS: GlassSlide[] = [
   },
 ];
 
-/** Safari/iOS play VP9 WebM without alpha (opaque black). HEVC with alpha is the WebKit path. */
+/** Safari/iOS play VP9 WebM without alpha (opaque black). HEVC with alpha is the WebKit path.
+ *  That HEVC file must be premultiplied 4:4:4 — Safari treats the RGB as associated. */
 function prefersHevcAlpha(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;

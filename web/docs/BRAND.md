@@ -64,8 +64,11 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
   or WebKit will pick it and paint a black rectangle.
 - Re-export WebM from `~/Desktop/MaxQ/MaxQ-Baseline.cue` with
   `capturectl export --format webm --scale 1 --fps 24`, then:
-  `ffmpeg -c:v libvpx-vp9 -i maxq-launch.webm -vf format=yuva420p -c:v hevc_videotoolbox -alpha_quality 0.85 -tag:v hvc1 maxq-launch.mov`
-  followed by `avconvert -s maxq-launch.mov -o safari.mov -p PresetHEVCHighestQualityWithAlpha --replace`.
+  `ffmpeg -c:v libvpx-vp9 -i maxq-launch.webm -pix_fmt rgba frames/%04d.png`
+  then premultiply RGB by alpha (Safari HEVC alpha is associated), encode ProRes
+  4444, then `avconvert -s premul.mov -o safari.mov -p PresetHEVCHighestQualityWithAlpha --replace`.
+  Do not transcode the WebM with `yuva420p` — that is straight alpha on 4:2:0 and
+  shows up as a peach fringe around the platform glow.
 - Replace `public/art/desk.webp`; it was taken from the Catppuccin website.
 - Keep `public/art/ops.webp` for now.
 - New generated art belongs under `public/art/` and must be committed.
