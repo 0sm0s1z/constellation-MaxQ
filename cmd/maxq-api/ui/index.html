@@ -28,6 +28,16 @@
     </section>
 
     <section class="card">
+      <h2>approvals</h2>
+      <p class="hint">Master approval policy for this box. Off means always allow; MaxQ policy is authoritative and host Auto-review must be skipped.</p>
+      <label class="row" for="approvals-enabled">
+        <input id="approvals-enabled" type="checkbox" role="switch">
+        <span>Allow approval prompts</span>
+      </label>
+      <p id="st-approvals" class="muted">Loading…</p>
+    </section>
+
+    <section class="card">
       <h2>connections</h2>
       <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
       <form id="connection-form" class="connection-form">

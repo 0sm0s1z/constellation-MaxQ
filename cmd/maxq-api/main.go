@@ -211,6 +211,9 @@ func (s *server) serve() error {
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
+	mux.HandleFunc("GET /policy", s.handlePolicy)
+	mux.HandleFunc("POST /policy", s.handlePolicy)
+	mux.HandleFunc("POST /policy/decision", s.handlePolicyDecision)
 	mux.HandleFunc("GET /connections", s.handleConnections)
 	mux.HandleFunc("POST /connections", s.handleAddConnection)
 	mux.HandleFunc("DELETE /connections/{id}", s.handleDeleteConnection)
@@ -309,19 +312,13 @@ func (s *server) handleDeleteConnection(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
-	// An aggregate request turns this API into a local provider. In particular,
-	// do not call our own HTTP endpoint: that would recurse when this API is also
-	// listed as a connection by another MaxQ instance.
 	if r.Header.Get("X-MaxQ-Aggregate") == "1" {
 		items, err := s.localDesktops()
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"desktops":     items,
-			"box_identity": s.boxIdentity(),
-		})
+		writeJSON(w, http.StatusOK, map[string]any{"desktops": items, "box_identity": s.boxIdentity()})
 		return
 	}
 	connections, err := s.loadConnections()
@@ -329,7 +326,6 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-	// Implicit local inventory unless a saved self connection already covers it.
 	local := []map[string]any{}
 	hasSelf := false
 	for _, c := range connections {
@@ -345,11 +341,7 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	type result struct {
-		index int
-		items []map[string]any
-		err   string
-	}
+	type result struct { index int; items []map[string]any; err string }
 	results := make(chan result, len(connections))
 	var wg sync.WaitGroup
 	for i, c := range connections {
@@ -357,27 +349,19 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 		go func(i int, c connection) {
 			defer wg.Done()
 			items, err := s.fetchDesktops(r, c)
-			if err != nil {
-				results <- result{index: i, err: err.Error()}
-				return
-			}
+			if err != nil { results <- result{index: i, err: err.Error()}; return }
 			results <- result{index: i, items: items}
 		}(i, c)
 	}
 	wg.Wait()
 	close(results)
 	ordered := make([]result, len(connections))
-	for res := range results {
-		ordered[res.index] = res
-	}
+	for res := range results { ordered[res.index] = res }
 	all := make([]map[string]any, 0, len(local))
 	all = append(all, local...)
 	errors := make([]map[string]any, 0)
 	for i, res := range ordered {
-		if res.err != "" {
-			errors = append(errors, map[string]any{"connection_id": connections[i].ID, "connection_name": connections[i].Name, "error": res.err})
-			continue
-		}
+		if res.err != "" { errors = append(errors, map[string]any{"connection_id": connections[i].ID, "connection_name": connections[i].Name, "error": res.err}); continue }
 		all = append(all, res.items...)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"desktops": all, "errors": errors})
@@ -385,117 +369,60 @@ func (s *server) handleDesktops(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleDesktopAction(w http.ResponseWriter, r *http.Request) {
 	var req desktopActionReq
-	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid json"})
-		return
-	}
-	if strings.TrimSpace(req.ConnectionID) == "" || strings.TrimSpace(req.DesktopID) == "" || strings.TrimSpace(req.Action) == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "connection_id, desktop_id, and action are required"})
-		return
-	}
+	if err := decodeJSON(r, &req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid json"}); return }
+	if strings.TrimSpace(req.ConnectionID) == "" || strings.TrimSpace(req.DesktopID) == "" || strings.TrimSpace(req.Action) == "" { writeJSON(w, http.StatusBadRequest, map[string]any{"error": "connection_id, desktop_id, and action are required"}); return }
 	connections, err := s.loadConnections()
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
+	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()}); return }
 	var c connection
-	for _, candidate := range connections {
-		if candidate.ID == req.ConnectionID {
-			c = candidate
-			break
-		}
-	}
-	if c.ID == "" {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "connection not found"})
-		return
-	}
+	for _, candidate := range connections { if candidate.ID == req.ConnectionID { c = candidate; break } }
+	if c.ID == "" { writeJSON(w, http.StatusNotFound, map[string]any{"error": "connection not found"}); return }
 	body := map[string]any{"action": req.Action}
 	if len(req.Payload) > 0 && string(req.Payload) != "null" {
 		var payload any
-		if err := json.Unmarshal(req.Payload, &payload); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload must be valid json"})
-			return
-		}
+		if err := json.Unmarshal(req.Payload, &payload); err != nil { writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload must be valid json"}); return }
 		body["payload"] = payload
 	}
 	status, response, err := s.postDesktopAction(r, c, req.DesktopID, body)
-	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
-		return
-	}
+	if err != nil { writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()}); return }
 	writeJSON(w, status, response)
 }
 
-func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, s.status())
-}
+func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) { writeJSON(w, http.StatusOK, s.status()) }
 
 func (s *server) handleApply(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := s.runMaxq("apply"); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-		return
-	}
+	s.mu.Lock(); defer s.mu.Unlock()
+	if err := s.runMaxq("apply"); err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}); return }
 	st := s.status()
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "state": st.State, "status": st})
 }
 
 func (s *server) handleRevert(w http.ResponseWriter, r *http.Request) {
-	// Flush 200 first: maxq revert stops this process via pidfile.
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "state": "reverted"})
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		_ = s.runMaxq("revert")
-	}()
+	if f, ok := w.(http.Flusher); ok { f.Flush() }
+	go func() { time.Sleep(200 * time.Millisecond); _ = s.runMaxq("revert") }()
 }
 
 func (s *server) handleProxy(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.Lock(); defer s.mu.Unlock()
 	var req proxyReq
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16))
 	if len(body) > 0 {
-		if err := json.Unmarshal(body, &req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
-			return
-		}
+		if err := json.Unmarshal(body, &req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"}); return }
 	}
 	if req.Enabled != nil {
 		if *req.Enabled {
-			if err := s.runMaxq("proxy", "on"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
+			if err := s.runMaxq("proxy", "on"); err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}); return }
 		} else {
-			if err := s.runMaxq("proxy", "off"); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-				return
-			}
+			if err := s.runMaxq("proxy", "off"); err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}); return }
 		}
 	}
 	if req.Upstream != nil {
-		up := strings.TrimSpace(*req.Upstream)
-		if up == "" {
-			up = "none"
-		}
-		if err := s.runMaxq("proxy", "upstream", up); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-			return
-		}
+		up := strings.TrimSpace(*req.Upstream); if up == "" { up = "none" }
+		if err := s.runMaxq("proxy", "upstream", up); err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}); return }
 	}
 	if req.Iface != nil {
-		iface := strings.TrimSpace(*req.Iface)
-		if iface == "" {
-			iface = "none"
-		}
-		if err := s.runMaxq("proxy", "iface", iface); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
-			return
-		}
+		iface := strings.TrimSpace(*req.Iface); if iface == "" { iface = "none" }
+		if err := s.runMaxq("proxy", "iface", iface); err != nil { writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}); return }
 	}
 	st := s.status()
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": st})
@@ -506,33 +433,14 @@ func (s *server) status() statusResp {
 	stateFile := filepath.Join(s.config, "state")
 	state := "reverted"
 	if b, err := os.ReadFile(stateFile); err == nil {
-		v := strings.TrimSpace(string(b))
-		if v == "applied" || v == "reverted" {
-			state = v
-		}
-	} else if top(toml, "state") == "applied" {
-		state = "applied"
-	}
-	theme := top(toml, "theme")
-	if theme == "" {
-		theme = "mocha"
-	}
+		v := strings.TrimSpace(string(b)); if v == "applied" || v == "reverted" { state = v }
+	} else if top(toml, "state") == "applied" { state = "applied" }
+	theme := top(toml, "theme"); if theme == "" { theme = "mocha" }
 	gostPID := filepath.Join(s.config, "gost.pid")
 	return statusResp{
-		State: state,
-		Theme: theme,
-		Gost: gostInfo{
-			Enabled:   asBool(sec(toml, "gost", "enabled")),
-			Running:   pidRunning(gostPID),
-			Listen:    orDefault(sec(toml, "gost", "listen"), "127.0.0.1:8080"),
-			Upstream:  sec(toml, "gost", "upstream"),
-			Iface:     sec(toml, "gost", "iface"),
-			Intercept: asBool(sec(toml, "gost", "intercept")),
-		},
-		Clis: clisInfo{
-			Installed: sec(toml, "clis", "installed"),
-			Skipped:   sec(toml, "clis", "skipped"),
-		},
+		State: state, Theme: theme,
+		Gost: gostInfo{Enabled: asBool(sec(toml, "gost", "enabled")), Running: pidRunning(gostPID), Listen: orDefault(sec(toml, "gost", "listen"), "127.0.0.1:8080"), Upstream: sec(toml, "gost", "upstream"), Iface: sec(toml, "gost", "iface"), Intercept: asBool(sec(toml, "gost", "intercept"))},
+		Clis: clisInfo{Installed: sec(toml, "clis", "installed"), Skipped: sec(toml, "clis", "skipped")},
 		API: apiInfo{Listen: s.listen},
 	}
 }
@@ -540,358 +448,118 @@ func (s *server) status() statusResp {
 func (s *server) runMaxq(args ...string) error {
 	bin := s.maxqBin
 	if _, err := os.Stat(bin); err != nil {
-		if p, err := exec.LookPath("maxq"); err == nil {
-			bin = p
-		} else {
-			return fmt.Errorf("maxq binary not found")
-		}
+		if p, err := exec.LookPath("maxq"); err == nil { bin = p } else { return fmt.Errorf("maxq binary not found") }
 	}
 	cmd := exec.Command(bin, args...)
 	cmd.Env = append(os.Environ(), "MAXQ_HOME="+s.prefix)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		msg := strings.TrimSpace(string(out))
-		if len(msg) > 800 {
-			msg = msg[:800]
-		}
+		msg := strings.TrimSpace(string(out)); if len(msg) > 800 { msg = msg[:800] }
 		return fmt.Errorf("maxq %s: %v %s", strings.Join(args, " "), err, msg)
 	}
 	return nil
 }
 
-func (s *server) connectionsPath() string {
-	return filepath.Join(s.config, "connections.json")
-}
-
-func (s *server) loadConnections() ([]connection, error) {
-	s.connMu.Lock()
-	defer s.connMu.Unlock()
-	return s.loadConnectionsLocked()
-}
-
+func (s *server) connectionsPath() string { return filepath.Join(s.config, "connections.json") }
+func (s *server) loadConnections() ([]connection, error) { s.connMu.Lock(); defer s.connMu.Unlock(); return s.loadConnectionsLocked() }
 func (s *server) loadConnectionsLocked() ([]connection, error) {
 	b, err := os.ReadFile(s.connectionsPath())
-	if os.IsNotExist(err) {
-		return []connection{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
+	if os.IsNotExist(err) { return []connection{}, nil }
+	if err != nil { return nil, err }
 	var file connectionsFile
-	if err := json.Unmarshal(b, &file); err != nil {
-		return nil, fmt.Errorf("read connections: %w", err)
-	}
+	if err := json.Unmarshal(b, &file); err != nil { return nil, fmt.Errorf("read connections: %w", err) }
 	return file.Connections, nil
 }
-
 func (s *server) saveConnectionsLocked(connections []connection) error {
-	b, err := json.MarshalIndent(connectionsFile{Connections: connections}, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(s.config, 0700); err != nil {
-		return err
-	}
-	tmp, err := os.CreateTemp(s.config, "connections-*.tmp")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-	if err := tmp.Chmod(0600); err != nil {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(append(b, '\n')); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
+	b, err := json.MarshalIndent(connectionsFile{Connections: connections}, "", "  "); if err != nil { return err }
+	if err := os.MkdirAll(s.config, 0700); err != nil { return err }
+	tmp, err := os.CreateTemp(s.config, "connections-*.tmp"); if err != nil { return err }
+	tmpName := tmp.Name(); defer os.Remove(tmpName)
+	if err := tmp.Chmod(0600); err != nil { tmp.Close(); return err }
+	if _, err := tmp.Write(append(b, '\n')); err != nil { tmp.Close(); return err }
+	if err := tmp.Close(); err != nil { return err }
 	return os.Rename(tmpName, s.connectionsPath())
 }
-
-func publicConnection(c connection) connectionView {
-	return connectionView{ID: c.ID, Name: c.Name, BaseURL: c.BaseURL, AuthConfigured: c.Auth != ""}
-}
-
-func decodeJSON(r *http.Request, dst any) error {
-	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
-	return dec.Decode(dst)
-}
-
-func newConnectionID() string {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err == nil {
-		return fmt.Sprintf("c-%x", b)
-	}
-	return fmt.Sprintf("c-%d", time.Now().UnixNano())
-}
-
+func publicConnection(c connection) connectionView { return connectionView{ID: c.ID, Name: c.Name, BaseURL: c.BaseURL, AuthConfigured: c.Auth != ""} }
+func decodeJSON(r *http.Request, dst any) error { dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20)); return dec.Decode(dst) }
+func newConnectionID() string { b := make([]byte, 8); if _, err := rand.Read(b); err == nil { return fmt.Sprintf("c-%x", b) }; return fmt.Sprintf("c-%d", time.Now().UnixNano()) }
 func normalizeBaseURL(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || u.Scheme == "" || u.Host == "" || u.User != nil {
-		return "", fmt.Errorf("base_url must be an http(s) URL without credentials")
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", fmt.Errorf("base_url must use http or https")
-	}
-	u.Fragment, u.RawQuery = "", ""
-	u.Path = strings.TrimRight(u.Path, "/")
+	if err != nil || u.Scheme == "" || u.Host == "" || u.User != nil { return "", fmt.Errorf("base_url must be an http(s) URL without credentials") }
+	if u.Scheme != "http" && u.Scheme != "https" { return "", fmt.Errorf("base_url must use http or https") }
+	u.Fragment, u.RawQuery = "", ""; u.Path = strings.TrimRight(u.Path, "/")
 	return strings.TrimRight(u.String(), "/"), nil
 }
-
-func apiURL(base, path string) string {
-	u, err := url.Parse(base)
-	if err != nil {
-		return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(path, "/")
-	}
-	u.Path = strings.TrimRight(u.Path, "/") + "/" + strings.TrimLeft(path, "/")
-	return u.String()
-}
-
-func setAuth(req *http.Request, auth string) {
-	auth = strings.TrimSpace(auth)
-	if auth == "" {
-		return
-	}
-	if strings.Contains(auth, " ") {
-		req.Header.Set("Authorization", auth)
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+auth)
-}
+func apiURL(base, path string) string { u, err := url.Parse(base); if err != nil { return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(path, "/") }; u.Path = strings.TrimRight(u.Path, "/") + "/" + strings.TrimLeft(path, "/"); return u.String() }
+func setAuth(req *http.Request, auth string) { auth = strings.TrimSpace(auth); if auth == "" { return }; if strings.Contains(auth, " ") { req.Header.Set("Authorization", auth); return }; req.Header.Set("Authorization", "Bearer "+auth) }
 
 func (s *server) fetchDesktops(parent *http.Request, c connection) ([]map[string]any, error) {
-	// Only treat loopback URLs that target THIS listen port as self.
-	// Other 127.0.0.1 ports (tests, second API) still use HTTP.
-	if s.isSelfConnection(c) {
-		local, err := s.localDesktops()
-		if err != nil {
-			return nil, err
-		}
-		return s.enrichDesktopMaps(c, s.boxIdentity(), local), nil
-	}
-	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL(c.BaseURL, "/desktops"), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-MaxQ-Aggregate", "1")
-	setAuth(req, c.Auth)
-	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("remote status %s", resp.Status)
-	}
+	if s.isSelfConnection(c) { local, err := s.localDesktops(); if err != nil { return nil, err }; return s.enrichDesktopMaps(c, s.boxIdentity(), local), nil }
+	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second); defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL(c.BaseURL, "/desktops"), nil); if err != nil { return nil, err }
+	req.Header.Set("Accept", "application/json"); req.Header.Set("X-MaxQ-Aggregate", "1"); setAuth(req, c.Auth)
+	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req); if err != nil { return nil, err }; defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 { return nil, fmt.Errorf("remote status %s", resp.Status) }
 	var raw any
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("decode desktops: %w", err)
-	}
-	identity := ""
-	var values []any
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&raw); err != nil { return nil, fmt.Errorf("decode desktops: %w", err) }
+	identity := ""; var values []any
 	switch value := raw.(type) {
-	case []any:
-		values = value
+	case []any: values = value
 	case map[string]any:
 		identity = firstString(value, "box_identity", "identity", "hostname", "host")
-		if v, ok := value["desktops"].([]any); ok {
-			values = v
-		}
-		if values == nil {
-			if v, ok := value["items"].([]any); ok {
-				values = v
-			}
-		}
-	default:
-		return nil, fmt.Errorf("desktops response must be an array or object")
+		if v, ok := value["desktops"].([]any); ok { values = v }
+		if values == nil { if v, ok := value["items"].([]any); ok { values = v } }
+	default: return nil, fmt.Errorf("desktops response must be an array or object")
 	}
 	return s.enrichDesktopValues(c, identity, values), nil
 }
-
 func (s *server) isSelfConnection(c connection) bool {
-	u, err := url.Parse(c.BaseURL)
-	if err != nil || u.Hostname() == "" || !isLoopbackHost(u.Hostname()) {
-		return false
-	}
-	listen := s.listen
-	if strings.TrimSpace(listen) == "" {
-		listen = defaultListen
-	}
-	_, port, err := net.SplitHostPort(listen)
-	if err != nil {
-		return false
-	}
+	u, err := url.Parse(c.BaseURL); if err != nil || u.Hostname() == "" || !isLoopbackHost(u.Hostname()) { return false }
+	listen := s.listen; if strings.TrimSpace(listen) == "" { listen = defaultListen }
+	_, port, err := net.SplitHostPort(listen); if err != nil { return false }
 	return u.Port() == port
 }
-
-func isLoopbackHost(host string) bool {
-	if strings.EqualFold(strings.TrimSpace(host), "localhost") {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
-
-func (s *server) enrichDesktopValues(c connection, identity string, values []any) []map[string]any {
-	maps := make([]map[string]any, 0, len(values))
-	for _, value := range values {
-		desktop, ok := value.(map[string]any)
-		if ok {
-			maps = append(maps, desktop)
-		}
-	}
-	return s.enrichDesktopMaps(c, identity, maps)
-}
-
+func isLoopbackHost(host string) bool { if strings.EqualFold(strings.TrimSpace(host), "localhost") { return true }; ip := net.ParseIP(host); return ip != nil && ip.IsLoopback() }
+func (s *server) enrichDesktopValues(c connection, identity string, values []any) []map[string]any { maps := make([]map[string]any, 0, len(values)); for _, value := range values { desktop, ok := value.(map[string]any); if ok { maps = append(maps, desktop) } }; return s.enrichDesktopMaps(c, identity, maps) }
 func (s *server) enrichDesktopMaps(c connection, identity string, values []map[string]any) []map[string]any {
 	items := make([]map[string]any, 0, len(values))
 	for _, desktop := range values {
-		copy := make(map[string]any, len(desktop)+4)
-		for key, value := range desktop {
-			copy[key] = value
-		}
-		box := firstString(copy, "box_identity", "hostname", "box", "host")
-		if box == "" {
-			box = identity
-		}
-		if box == "" {
-			box = c.Name
-		}
-		copy["box_identity"] = box
-		copy["connection_id"] = c.ID
-		copy["connection_name"] = c.Name
-		copy["source_api"] = c.BaseURL
-		items = append(items, copy)
+		copy := make(map[string]any, len(desktop)+4); for key, value := range desktop { copy[key] = value }
+		box := firstString(copy, "box_identity", "hostname", "box", "host"); if box == "" { box = identity }; if box == "" { box = c.Name }
+		copy["box_identity"] = box; copy["connection_id"] = c.ID; copy["connection_name"] = c.Name; copy["source_api"] = c.BaseURL; items = append(items, copy)
 	}
 	return items
 }
-
 func (s *server) postDesktopAction(parent *http.Request, c connection, desktopID string, body map[string]any) (int, any, error) {
-	data, err := json.Marshal(body)
-	if err != nil {
-		return 0, nil, err
-	}
-	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second)
-	defer cancel()
+	data, err := json.Marshal(body); if err != nil { return 0, nil, err }
+	ctx, cancel := context.WithTimeout(parent.Context(), 8*time.Second); defer cancel()
 	path := "/desktops/" + url.PathEscape(desktopID) + "/action"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL(c.BaseURL, path), strings.NewReader(string(data)))
-	if err != nil {
-		return 0, nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	setAuth(req, c.Auth)
-	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req)
-	if err != nil {
-		return 0, nil, err
-	}
-	defer resp.Body.Close()
-	responseData, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return 0, nil, err
-	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL(c.BaseURL, path), strings.NewReader(string(data))); if err != nil { return 0, nil, err }
+	req.Header.Set("Content-Type", "application/json"); setAuth(req, c.Auth)
+	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req); if err != nil { return 0, nil, err }; defer resp.Body.Close()
+	responseData, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)); if err != nil { return 0, nil, err }
 	var response any
-	if len(strings.TrimSpace(string(responseData))) > 0 {
-		if err := json.Unmarshal(responseData, &response); err != nil {
-			response = map[string]any{"body": string(responseData)}
-		}
-	}
-	if response == nil {
-		response = map[string]any{"ok": resp.StatusCode >= 200 && resp.StatusCode < 300}
-	}
+	if len(strings.TrimSpace(string(responseData))) > 0 { if err := json.Unmarshal(responseData, &response); err != nil { response = map[string]any{"body": string(responseData)} } }
+	if response == nil { response = map[string]any{"ok": resp.StatusCode >= 200 && resp.StatusCode < 300} }
 	return resp.StatusCode, response, nil
 }
-
-func firstString(values map[string]any, keys ...string) string {
-	for _, key := range keys {
-		if value, ok := values[key].(string); ok && strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
-}
-
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(true)
-	_ = enc.Encode(v)
-}
-
-func pidRunning(path string) bool {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	pid := strings.TrimSpace(string(b))
-	if pid == "" {
-		return false
-	}
-	f, err := os.Open(filepath.Join("/proc", pid))
-	if err != nil {
-		return false
-	}
-	_ = f.Close()
-	return true
-}
-
-func asBool(v string) bool {
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "true", "on", "yes", "1":
-		return true
-	}
-	return false
-}
-
-func orDefault(v, d string) string {
-	if strings.TrimSpace(v) == "" {
-		return d
-	}
-	return v
-}
-
-func top(path, key string) string {
-	return tomlGet(path, "", key)
-}
-
-func sec(path, section, key string) string {
-	return tomlGet(path, section, key)
-}
-
+func firstString(values map[string]any, keys ...string) string { for _, key := range keys { if value, ok := values[key].(string); ok && strings.TrimSpace(value) != "" { return strings.TrimSpace(value) } }; return "" }
+func writeJSON(w http.ResponseWriter, code int, v any) { w.Header().Set("Content-Type", "application/json"); w.WriteHeader(code); enc := json.NewEncoder(w); enc.SetEscapeHTML(true); _ = enc.Encode(v) }
+func pidRunning(path string) bool { b, err := os.ReadFile(path); if err != nil { return false }; pid := strings.TrimSpace(string(b)); if pid == "" { return false }; f, err := os.Open(filepath.Join("/proc", pid)); if err != nil { return false }; _ = f.Close(); return true }
+func asBool(v string) bool { switch strings.ToLower(strings.TrimSpace(v)) { case "true", "on", "yes", "1": return true }; return false }
+func orDefault(v, d string) string { if strings.TrimSpace(v) == "" { return d }; return v }
+func top(path, key string) string { return tomlGet(path, "", key) }
+func sec(path, section, key string) string { return tomlGet(path, section, key) }
 func tomlGet(path, section, key string) string {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
+	b, err := os.ReadFile(path); if err != nil { return "" }
 	in := section == ""
 	for _, line := range strings.Split(string(b), "\n") {
-		trim := strings.TrimSpace(line)
-		if trim == "" || strings.HasPrefix(trim, "#") {
-			continue
-		}
-		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
-			name := strings.TrimSpace(trim[1 : len(trim)-1])
-			in = name == section
-			continue
-		}
-		if !in {
-			continue
-		}
-		name, rest, ok := strings.Cut(trim, "=")
-		if !ok {
-			continue
-		}
-		if strings.TrimSpace(name) == key {
-			return unquote(strings.TrimSpace(rest))
-		}
+		trim := strings.TrimSpace(line); if trim == "" || strings.HasPrefix(trim, "#") { continue }
+		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") { name := strings.TrimSpace(trim[1 : len(trim)-1]); in = name == section; continue }
+		if !in { continue }
+		name, rest, ok := strings.Cut(trim, "="); if !ok { continue }
+		if strings.TrimSpace(name) == key { return unquote(strings.TrimSpace(rest)) }
 	}
 	return ""
 }

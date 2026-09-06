@@ -1,0 +1,66 @@
+/* Rendered motion-design hero.
+   The browser plays a finished VP9/alpha composition; it does not rebuild flame,
+   smoke, masking, or rocket motion with DOM/CSS layers. */
+
+.rocket-stage--rendered {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden !important;
+  overflow: clip !important;
+  contain: paint;
+  aspect-ratio: 1503 / 1047;
+  background: transparent !important;
+}
+
+.rocket-stage--rendered .rocket-render-poster,
+.rocket-stage--rendered .rocket-render-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+}
+
+.rocket-stage--rendered .rocket-render-poster {
+  z-index: 0;
+  opacity: 1;
+}
+
+.rocket-stage--rendered .rocket-render-video {
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 120ms linear;
+}
+
+.rocket-stage--rendered.is-video-ready .rocket-render-video {
+  opacity: 1;
+}
+
+.rocket-stage--rendered.is-video-ready .rocket-render-poster {
+  opacity: 0;
+}
+
+.rocket-stage--rendered.is-static .rocket-render-video {
+  display: none;
+}
+
+/* Runtime replacement removes the legacy layered children, but these guards
+   ensure an interrupted render cannot accidentally show the old CSS stack. */
+.rocket-stage--rendered > .rocket-plate,
+.rocket-stage--rendered > .rocket-flame,
+.rocket-stage--rendered > .rocket-pad-fx,
+.rocket-stage--rendered > .rocket-fly {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocket-stage--rendered .rocket-render-video {
+    display: none !important;
+  }
+  .rocket-stage--rendered .rocket-render-poster {
+    opacity: 1 !important;
+  }
+}

@@ -2,6 +2,7 @@
 type Gost = { enabled: boolean; running: boolean; listen: string; upstream: string; iface: string; intercept: boolean };
 type Clis = { installed: string; skipped: string };
 type Status = { state: string; theme: string; gost: Gost; clis: Clis; api: { listen: string } };
+type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; source: string; skip_auto_review: boolean };
 type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
 
@@ -23,6 +24,7 @@ async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function getStatus(): Promise<Status> { return requestJSON<Status>("/status"); }
+async function getPolicy(): Promise<Policy> { return requestJSON<Policy>("/policy"); }
 async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
 async function getDesktops(): Promise<{ desktops: Desktop[]; errors: { connection_name: string; error: string }[] }> { return requestJSON("/desktops"); }
 async function postJSON(path: string, body: unknown): Promise<unknown> {
@@ -36,6 +38,14 @@ function renderStatus(s: Status): void {
   $("st-clis").textContent = [s.clis.installed, s.clis.skipped].filter((x) => x && x.length).join(" ") || "—";
   $("st-api").textContent = s.api.listen;
   const pill = $("pill"); pill.textContent = s.state; pill.className = "pill " + (s.state === "applied" ? "on" : "off");
+}
+
+function renderPolicy(policy: Policy): void {
+  const enabled = $("approvals-enabled") as HTMLInputElement;
+  enabled.checked = policy.approvals.mode === "on";
+  $("st-approvals").textContent = policy.approvals.mode === "off"
+    ? "Off · always allow · host Auto-review bypassed"
+    : "On · approval prompts allowed";
 }
 
 function renderConnections(connections: Connection[]): void {
@@ -72,15 +82,15 @@ function renderDesktops(desktops: Desktop[], errors: { connection_name: string; 
 
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "approvals-enabled"].forEach((id) => { ($(id) as HTMLButtonElement | HTMLInputElement).disabled = on; });
 }
 async function act(fn: () => Promise<unknown>): Promise<void> {
   showMsg(""); busy(true);
   try { await fn(); await refresh(); } catch (e) { showMsg(e instanceof Error ? e.message : String(e)); } finally { busy(false); }
 }
 async function refresh(): Promise<void> {
-  const [status, connections, desktops] = await Promise.all([getStatus(), getConnections(), getDesktops()]);
-  renderStatus(status); renderConnections(connections.connections); renderDesktops(desktops.desktops, desktops.errors || []);
+  const [status, policy, connections, desktops] = await Promise.all([getStatus(), getPolicy(), getConnections(), getDesktops()]);
+  renderStatus(status); renderPolicy(policy); renderConnections(connections.connections); renderDesktops(desktops.desktops, desktops.errors || []);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -88,6 +98,10 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
   $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
   $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
+  $("approvals-enabled").addEventListener("change", () => {
+    const enabled = $("approvals-enabled") as HTMLInputElement;
+    act(() => postJSON("/policy", { enabled: enabled.checked }));
+  });
   $("connection-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const name = $("connection-name") as HTMLInputElement;

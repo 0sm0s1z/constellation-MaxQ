@@ -17,14 +17,33 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/apply` | runs `maxq apply` |
 | POST | `/revert` | runs `maxq revert` (API exits) |
 | POST | `/proxy` | JSON `{enabled, upstream, iface}` — GOST process only |
+| GET | `/policy` | Reads MaxQ approval policy; missing policy is created as Approvals Off / always-allow |
+| POST | `/policy` | JSON `{enabled}`; `false` writes `mode="off"` + `always_allow=true`, `true` writes `mode="on"` + `always_allow=false` |
+| POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
 | DELETE | `/connections/{id}` | Remove a saved remote API |
 | GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
-| GET | `/` | thin settings sheet (status, connections, aggregate desktops, proxy) |
+| GET | `/` | thin settings sheet (status, approvals, connections, aggregate desktops, proxy) |
 
 Vault, OAuth, and skills are placeholders for later pages.
+
+## Approval policy / host Auto-review
+
+`$HOME/.config/maxq/policy.toml` is the source of truth for approval decisions on a MaxQ box. The Constellation default is:
+
+```toml
+[approvals]
+mode = "off"
+always_allow = true
+```
+
+The host's `sand-data/settings.json` Auto-review state is deliberately **not** dual-written by MaxQ. That surface is host-owned and can self-protect writes to `autoReviewInstructions.isEnabled=false`, which creates a deadlock on a zero-approvals box.
+
+Instead, host/browser tooling must consult MaxQ policy **before** invoking Auto-review. When `/policy/decision` returns `skip_auto_review=true` (equivalently, `mode=off` and `always_allow=true`), the action is already authorized by the box policy and Auto-review must not run. This applies to `browserUse` social/external-outbound actions as well as other always-allow actions. A missing or `isEnabled=true` host Auto-review setting cannot override MaxQ Approvals Off.
+
+When Approvals is On, `/policy/decision` returns `approval_required=true` and `skip_auto_review=false`, allowing normal host review behavior.
 
 ## Sheet source
 
