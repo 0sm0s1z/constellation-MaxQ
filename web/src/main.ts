@@ -131,6 +131,7 @@ function bindLaunch(root: HTMLElement) {
     apogeeTimer = window.setTimeout(() => launch.classList.add("is-apogee"), APOGEE_S * 1000);
   };
   const held = () => launch.classList.add("is-apogee", "is-held");
+  bindGlass(launch);
   if (!video) { live(); held(); return; }
   const showGif = () => {
     if (gif) {
@@ -159,6 +160,50 @@ function bindLaunch(root: HTMLElement) {
       if (video.paused) held();
     }
   }, 900);
+}
+
+/* The glass cycles one shot at a time once the rocket is holding. The shot on screen names the
+   telemetry key that glows, so the bottom edge of the canvas keeps a heartbeat after the flight. */
+const GLASS_PERIOD_MS = 5200;
+function bindGlass(launch: HTMLElement) {
+  const glass = launch.querySelector<HTMLElement>("[data-glass]");
+  if (!glass) return;
+  const frames = [...glass.querySelectorAll<HTMLImageElement>(".glass-frame img")];
+  const caps = [...glass.querySelectorAll<HTMLButtonElement>("[data-glass-to]")];
+  const tele = [...launch.querySelectorAll<HTMLElement>(".telemetry li[data-key]")];
+  if (!frames.length) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let i = 0;
+  let timer = 0;
+  const show = (n: number) => {
+    i = ((n % frames.length) + frames.length) % frames.length;
+    frames.forEach((f, k) => f.classList.toggle("is-on", k === i));
+    caps.forEach((c, k) => c.classList.toggle("is-on", k === i));
+    const hot = frames[i].dataset.tele;
+    tele.forEach((t) => t.classList.toggle("is-hot", t.dataset.key === hot));
+  };
+  const stop = () => window.clearInterval(timer);
+  const play = () => {
+    stop();
+    if (reduced) return;
+    timer = window.setInterval(() => show(i + 1), GLASS_PERIOD_MS);
+  };
+  caps.forEach((c) => c.addEventListener("click", () => { show(Number(c.dataset.glassTo)); play(); }));
+  glass.addEventListener("mouseenter", stop);
+  glass.addEventListener("mouseleave", play);
+  glass.addEventListener("focusin", stop);
+  glass.addEventListener("focusout", play);
+  // Start the cycle only after the glass has landed (apogee + reveal).
+  const start = () => {
+    if (!launch.classList.contains("is-apogee")) return false;
+    show(0);
+    window.setTimeout(play, 1400);
+    return true;
+  };
+  if (!start()) {
+    const mo = new MutationObserver(() => { if (start()) mo.disconnect(); });
+    mo.observe(launch, { attributes: true, attributeFilter: ["class"] });
+  }
 }
 
 function draw() {

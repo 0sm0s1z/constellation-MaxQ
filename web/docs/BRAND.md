@@ -32,6 +32,15 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 `.is-held`).
 
 - Rocket right, copy left; the rocket plays once and holds at the top (no `loop`).
+- The left column is four blocks, top to bottom: title (eyebrow, line, wordmark); claim
+  ("A co-operating system for your bot and you." + one-line lede + CTAs); split (`The bot
+  gets` / `You get`); glass (one product shot at a time, three mono captions). Title and
+  claim ride the flight; split and glass land after apogee (`.late`).
+- The glass cycles every 5.2s once the rocket holds. The shot on screen names the telemetry
+  key that glows (`GLASS[].tele` → `.telemetry li[data-key].is-hot`). Hover or focus pauses it.
+- Premise for all hero copy: MaxQ is a co-operating system for the bot and the operator.
+  One command on the bot's computer turns the stock box into a machine built for the bot;
+  the operator keeps the side door. Write from that, not from the feature list.
 - Wordmark is `public/namelogo.svg` used as a CSS mask so `.pastel-flow` paints the letters.
 - Four-point sparks (`.spark`) are placed by hand in `pages.ts` (`SPARKS`) and twinkle/rotate
   like the Cue star tracks.

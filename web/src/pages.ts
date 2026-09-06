@@ -101,6 +101,12 @@ const TELEMETRY: [string, string, boolean][] = [
   ["persist", "$HOME only", false],
   ["prove", "PASS", true],
 ];
+/* The glass: three shots, one at a time. `tele` names the telemetry key that glows while the shot is up. */
+const GLASS: { src: string; w: number; h: number; alt: string; num: string; cap: string; tele: string }[] = [
+  { src: "/shots/maxq-desktop.webp", w: 1100, h: 687, alt: "The bot's desktop on MaxQ: browser, Ghostty terminal, mocha dock", num: "01", cap: "the bot's desk", tele: "state" },
+  { src: "/shots/settings.webp", w: 1000, h: 624, alt: "MaxQ settings sheet on 127.0.0.1:7432, state applied", num: "02", cap: "the side door", tele: "intercept" },
+  { src: "/shots/prove.webp", w: 900, h: 562, alt: "maxq prove report: result=PASS, left_state=APPLIED", num: "03", cap: "prove · PASS", tele: "prove" },
+];
 
 function renderLaunch(): string {
   const reduceMotion =
@@ -121,22 +127,49 @@ function renderLaunch(): string {
   ).join("");
   const telemetry = TELEMETRY.map(
     ([k, v, ok], i) =>
-      `<li style="--i:${i}"><span class="tk">${k}</span><span class="tv${ok ? " ok" : ""}">${v}</span></li>`
+      `<li style="--i:${i}" data-key="${k}"><span class="tk">${k}</span><span class="tv${ok ? " ok" : ""}">${v}</span></li>`
+  ).join("");
+  const glassFrames = GLASS.map(
+    (g, i) =>
+      `<img class="${i === 0 ? "is-on" : ""}" src="${g.src}" alt="${g.alt}" width="${g.w}" height="${g.h}" loading="${i === 0 ? "eager" : "lazy"}" data-tele="${g.tele}" />`
+  ).join("");
+  const glassCaps = GLASS.map(
+    (g, i) =>
+      `<button type="button" class="${i === 0 ? "is-on" : ""}" data-glass-to="${i}" aria-label="Show ${g.cap}"><span class="gn">${g.num}</span>${g.cap}</button>`
   ).join("");
   return `
     <section class="launch${reduceMotion ? " is-live is-apogee is-held" : ""}" data-launch>
       <div class="launch-sky" aria-hidden="true">${sparks}</div>
       <div class="launch-grid">
         <div class="launch-copy">
-          <p class="eyebrow reveal r1">Constellation · first product</p>
-          <h1 class="launch-title">
-            <span class="launch-line reveal r2">Take Grok Bot to</span>
-            <span class="wordmark reveal r3" role="img" aria-label="MaxQ"><span class="wordmark-ink pastel-flow"></span></span>
-          </h1>
-          <p class="lede reveal r4">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
-          <div class="cta-row reveal r5">
-            <a class="btn-solid" href="#install">Install</a>
-            <a class="btn-ghost" href="#how">See how it works</a>
+          <div class="blk blk-title">
+            <p class="eyebrow reveal r1">Constellation · first product</p>
+            <h1 class="launch-title">
+              <span class="launch-line reveal r2">Take Grok Bot to</span>
+              <span class="wordmark reveal r3" role="img" aria-label="MaxQ"><span class="wordmark-ink pastel-flow"></span></span>
+            </h1>
+          </div>
+          <div class="blk blk-claim">
+            <p class="claim reveal r4">A co-operating system for your bot and you.</p>
+            <p class="lede reveal r4">One command on the bot's computer. The stock box becomes a workstation built for the bot. You keep the side door.</p>
+            <div class="cta-row reveal r5">
+              <a class="btn-solid" href="#install">Install</a>
+              <a class="btn-ghost" href="#how">See how it works</a>
+            </div>
+          </div>
+          <dl class="blk split late l1">
+            <div>
+              <dt>The bot gets</dt>
+              <dd>A computer made for it. Terminal, browser, desktops, theme, and its CLIs in place before the first task.</dd>
+            </div>
+            <div>
+              <dt>You get</dt>
+              <dd>The side door: settings, telemetry, processes, every desktop. Loopback only. Revert leaves the box standing.</dd>
+            </div>
+          </dl>
+          <div class="blk glass late l2" data-glass>
+            <div class="glass-frame">${glassFrames}</div>
+            <div class="glass-caps" role="tablist">${glassCaps}</div>
           </div>
         </div>
         <div class="launch-stage">
