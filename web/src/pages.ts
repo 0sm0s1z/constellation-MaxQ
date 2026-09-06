@@ -1,9 +1,4 @@
-import markChrome from "./logos/googlechrome.svg?raw";
-import markGhostty from "./logos/ghostty.svg?raw";
-import markClaude from "./logos/claude.svg?raw";
-import markOpencode from "./logos/opencode.svg?raw";
-import markVercel from "./logos/vercel.svg?raw";
-import markTailscale from "./logos/tailscale.svg?raw";
+import { kitIcons, type KitIcon } from "./icons/pack";
 
 export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier";
 export const INSTALL =
@@ -135,42 +130,42 @@ const plate = (src: string, alt: string, kind: string) => `
   <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
 
 /* The kit. What `maxq apply` actually puts on the box, grouped the way the box is used.
-   Marks are Simple Icons (CC0) inlined so they take the tile colour; tools without a public mark
-   get a mono monogram. Facts follow README + docs/CLIS.md + docs/THEME.md + docs/API.md. */
-type KitItem = { name: string; role: string; tag?: string; mark?: string; mono?: string; swatch?: true };
+   Marks are the Mocha icon pack in `src/icons` (real identity paths, currentColor).
+   Facts follow README + docs/CLIS.md + docs/THEME.md + docs/API.md. */
+type KitItem = { name: string; role: string; tag?: string; icon: KitIcon };
 type KitGroup = { id: string; eyebrow: string; title: string; note: string; items: KitItem[] };
 const KIT: KitGroup[] = [
   {
     id: "desk", eyebrow: "The desk", title: "The bot's tools",
     note: "Theme, launcher, terminal, browser. Set once, the same on every box.",
     items: [
-      { name: "Catppuccin Mocha", role: "wallpaper · GTK · cursors", tag: "theme", swatch: true },
-      { name: "Chrome", role: "official Mocha theme, per profile", tag: "$HOME only", mark: markChrome },
-      { name: "Ghostty", role: "Mocha config block + theme", tag: "config-only", mark: markGhostty },
-      { name: "rofi", role: "app launcher on Super + Space", tag: "launcher", mono: "⌘" },
+      { name: "Catppuccin Mocha", role: "wallpaper · GTK · cursors", tag: "theme", icon: "catppuccin" },
+      { name: "Chrome", role: "official Mocha theme, per profile", tag: "$HOME only", icon: "chrome" },
+      { name: "Ghostty", role: "Mocha config block + theme", tag: "config-only", icon: "ghostty" },
+      { name: "rofi", role: "app launcher on Super + Space", tag: "launcher", icon: "rofi" },
     ],
   },
   {
     id: "bench", eyebrow: "The bench", title: "Operator CLIs in $HOME/bin",
     note: "Official linux amd64 builds, MaxQ-marked so revert knows what it owns.",
     items: [
-      { name: "herdr", role: "session mux for coding agents", mono: "h" },
-      { name: "Grok CLI", role: "grok", mono: "G" },
-      { name: "Codex", role: "codex", mono: "C" },
-      { name: "Claude Code", role: "claude", mark: markClaude },
-      { name: "OpenCode", role: "opencode", mark: markOpencode },
-      { name: "Vercel fx", role: "fx", mark: markVercel },
-      { name: "Tailscale", role: "tailscale · tailscaled", mark: markTailscale },
+      { name: "herdr", role: "session mux for coding agents", icon: "herdr" },
+      { name: "Grok CLI", role: "grok", icon: "grok" },
+      { name: "Codex", role: "codex", icon: "codex" },
+      { name: "Claude Code", role: "claude", icon: "claude" },
+      { name: "OpenCode", role: "opencode", icon: "opencode" },
+      { name: "Vercel fx", role: "fx", icon: "vercel" },
+      { name: "Tailscale", role: "tailscale · tailscaled", icon: "tailscale" },
     ],
   },
   {
     id: "door", eyebrow: "The side door", title: "Your controls, on loopback",
     note: "A thin local control surface. Not an admin suite.",
     items: [
-      { name: "maxq-api", role: "127.0.0.1:7432 · status · apply · revert", tag: "loopback", mono: "◎" },
-      { name: "Desktops", role: "every X display · VNC / noVNC", tag: "live", mono: "▦" },
-      { name: "Resources", role: "RAM · CPU · agent profiles · kill", tag: "telemetry", mono: "∿" },
-      { name: "GOST", role: "local CONNECT proxy · no MITM", tag: "off by default", mono: "⇄" },
+      { name: "maxq-api", role: "127.0.0.1:7432 · status · apply · revert", tag: "loopback", icon: "maxq" },
+      { name: "Desktops", role: "every X display · VNC / noVNC", tag: "live", icon: "desktops" },
+      { name: "Resources", role: "RAM · CPU · agent profiles · kill", tag: "telemetry", icon: "resources" },
+      { name: "GOST", role: "local CONNECT proxy · no MITM", tag: "off by default", icon: "gost" },
     ],
   },
 ];
@@ -204,9 +199,7 @@ const REFUSES = [
 
 const kitTile = (it: KitItem) => `
   <li class="kit-tile">
-    <span class="kit-mark${it.swatch ? " is-swatch" : ""}">${
-      it.swatch ? "<i></i><i></i><i></i><i></i>" : it.mark ?? `<b>${it.mono ?? it.name[0]}</b>`
-    }</span>
+    <span class="kit-mark">${kitIcons[it.icon]}</span>
     <span class="kit-text"><strong>${it.name}</strong><span>${it.role}</span></span>
     ${it.tag ? `<span class="kit-tag">${it.tag}</span>` : ""}
   </li>`;

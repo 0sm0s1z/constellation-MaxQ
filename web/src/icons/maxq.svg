@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+  <!-- Orbital Q. Orbit under the letter so the Q still reads at 19px. -->
+  <ellipse cx="13.6" cy="8.1" rx="8.2" ry="2.7" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".75" transform="rotate(-32 13.6 8.1)"/>
+  <circle cx="20.85" cy="4.85" r="1.4" fill="#fab387"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M12 3.4a8.6 8.6 0 1 0 5.05 15.35l1.85 1.85a.95.95 0 1 0 1.35-1.35l-1.7-1.7A8.6 8.6 0 0 0 12 3.4Zm0 3.35a5.25 5.25 0 1 1 0 10.5 5.25 5.25 0 0 1 0-10.5Z"/>
+</svg>

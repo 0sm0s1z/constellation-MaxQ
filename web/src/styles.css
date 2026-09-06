@@ -728,14 +728,7 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
   display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 8px;
   background: var(--glass); border: 1px solid var(--rule); color: var(--text);
 }
-.kit-mark svg { width: 1.05rem; height: 1.05rem; display: block; }
-.kit-mark b { font: 600 13px/1 IBM Plex Mono, ui-monospace, monospace; color: var(--sub); }
-.kit-mark.is-swatch { display: grid; grid-template-columns: 1fr 1fr; place-items: stretch; gap: 2px; padding: 5px; }
-.kit-mark.is-swatch i { border-radius: 2px; }
-.kit-mark.is-swatch i:nth-child(1) { background: var(--mauve); }
-.kit-mark.is-swatch i:nth-child(2) { background: var(--peach); }
-.kit-mark.is-swatch i:nth-child(3) { background: var(--sky); }
-.kit-mark.is-swatch i:nth-child(4) { background: var(--green); }
+.kit-mark svg { width: 1.2rem; height: 1.2rem; display: block; overflow: visible; }
 .kit-group[data-kit="desk"] .kit-mark { color: var(--rosewater); }
 .kit-group[data-kit="bench"] .kit-mark { color: var(--sky); }
 .kit-group[data-kit="door"] .kit-mark { color: var(--lavender); }

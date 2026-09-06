@@ -92,8 +92,8 @@ The pretty page has to also answer "what do I get". Home order: launch → insta
 - **Kit** (`#kit`, `KIT` in `pages.ts`): the inventory `maxq apply` lands, in three groups —
   the desk (theme, Chrome, Ghostty, rofi), the bench (CLIs in `$HOME/bin`), the side door
   (`maxq-api`, desktops, resources, GOST). Tiles are hairline rows: mark, name, mono role, tag.
-  Marks are Simple Icons (CC0) inlined from `src/logos/*.svg` with `fill="currentColor"`; tools
-  without a public mark get a mono monogram; Catppuccin gets a four-swatch. Facts come from
+  Marks are the Mocha icon pack in `src/icons` (real identity paths, `currentColor`,
+  typed in `src/icons/pack.ts`). No monograms. Facts come from
   `README.md`, `docs/CLIS.md`, `docs/THEME.md`, `docs/API.md` — update those first, then the tiles.
   Tags are honest: Ghostty is `config-only`, GOST is `off by default`.
 - **Trust** (`#trust`): owns / refuses as two `dl` columns beside the real `maxq prove` report

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+  <!-- davatorium/rofi stacked windows. Two frames so the stack reads at 19px. -->
+  <g stroke-width="1.55" stroke-linejoin="round">
+    <rect x="2.4" y="3.1" width="13.4" height="10.6" rx="1.5"/>
+    <path d="M2.4 5.55h13.4"/>
+    <rect x="8.2" y="10.3" width="13.4" height="10.6" rx="1.5"/>
+    <path d="M8.2 12.75h13.4"/>
+  </g>
+</svg>
