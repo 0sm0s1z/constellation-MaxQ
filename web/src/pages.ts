@@ -27,6 +27,19 @@ const nameLogo = (cls: string) =>
 
 const surfaces = [
   {
+    id: "maxq",
+    num: "02",
+    label: "MaxQ",
+    title: "Make the box persist.",
+    lede: "Build package for Grok Bot's computer: workstation state for the bot, loopback controls for you.",
+    src: "/shots/desktops.webp",
+    alt: "MaxQ desktops multiplexer showing the bot computer desktops",
+    cap: "maxq · desktops",
+    w: 1037,
+    h: 1200,
+    href: "#home",
+  },
+  {
     id: "router",
     num: "01",
     label: "Router",
@@ -38,19 +51,6 @@ const surfaces = [
     w: 1100,
     h: 535,
     href: "#router",
-  },
-  {
-    id: "maxq",
-    num: "02",
-    label: "MaxQ",
-    title: "The computer Grok Bot runs on.",
-    lede: "Utilities for the bot. Secondary controls for you: settings, telemetry, processes, every desktop.",
-    src: "/shots/desktops.webp",
-    alt: "MaxQ desktops multiplexer, live Xvfb :1 through :15, current :5",
-    cap: "maxq · desktops",
-    w: 1037,
-    h: 1200,
-    href: "#home",
   },
   {
     id: "cue",
@@ -97,21 +97,20 @@ export function renderHome(): string {
           <p class="lede">${s.lede}</p>
           <a class="btn-ghost" href="${s.href}">Open ${s.label}</a>
         </div>
-        ${s.src
-          ? bezel(s.src, s.alt, s.cap, "laptop", s.w, s.h)
-          : `<figure class="bezel empty"><div class="chrome"><span></span><span></span><span></span></div><p class="ph">Crew screenshot landing. Not Cue.</p><figcaption>${s.cap}</figcaption></figure>`}
+        ${bezel(s.src, s.alt, s.cap, "laptop", s.w, s.h)}
       </div>`
     )
     .join("");
   return `
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">Constellation · first product</p>
+        <p class="eyebrow">Constellation · one box · two operators</p>
         <h1>
           <span class="words pastel-flow">Take Grok Bot to</span>
           ${nameLogo("hero-logo")}
         </h1>
-        <p class="lede">MaxQ is the build package for the computer Grok Bot runs on. The bot gets the utilities to ship code. You get the side door: settings, telemetry, processes, and every desktop.</p>
+        <p class="lede"><strong>MaxQ is the build package for the computer Grok Bot runs on.</strong></p>
+        <p class="lede">Install MaxQ on Grok Bot’s computer and it configures the workstation under <code>$HOME</code>: the desktop, theme, launcher, supported CLIs, and the local MaxQ control surface. The bot gets a stable place to work; you keep the side door for settings, visibility, processes, and every desktop on loopback. <code>maxq apply</code>, <code>status</code>, <code>prove</code>, and <code>revert</code> keep the state explicit, and revert removes MaxQ-owned state instead of taking over the machine.</p>
         <div class="cta-row">
           <a class="btn-solid" href="#install">Install</a>
           <a class="btn-ghost" href="#how">See how it works</a>
@@ -145,33 +144,102 @@ export function renderHome(): string {
         </div>
       </div>
     </section>
-    <div class="install-bar">${installLine()}</div>
     <div class="proof">
-      <span>state=applied</span>
-      <span>intercept=false</span>
       <span>$HOME only</span>
-      <span>prove PASS</span>
+      <span>127.0.0.1:7432</span>
+      <span>apply / prove / revert</span>
     </div>
+    <div class="install-bar">${installLine()}</div>
+
+    <section class="block" id="actors">
+      <div class="section-head">
+        <p class="eyebrow">Two actors · one box</p>
+        <h2 class="display">The bot gets the workstation. You keep the side door.</h2>
+      </div>
+      <div class="grid two">
+        <section>
+          <p class="eyebrow">The bot gets</p>
+          <h3>A stable workstation.</h3>
+          <p>Desktop, theme, launcher, browser and terminal environment, plus the supported CLIs and tools MaxQ manages under <code>$HOME</code>.</p>
+          ${shot("/shots/maxq-desktop.webp", "MaxQ desktop on the Grok Bot workstation", "bot · configured workstation", 1000, 625)}
+        </section>
+        <section>
+          <p class="eyebrow">You get</p>
+          <h3>The local operator side door.</h3>
+          <p>Settings, visibility, process control, and desktop control through the loopback MaxQ control surface.</p>
+          ${shot("/shots/settings.webp", "MaxQ loopback settings surface", "operator · settings on loopback", 1000, 624)}
+        </section>
+      </div>
+    </section>
+
+    <section class="block" id="changes">
+      <div class="section-head">
+        <p class="eyebrow">What MaxQ changes</p>
+        <h2 class="display">Three owned surfaces. Nothing imaginary.</h2>
+      </div>
+      <div class="grid three">
+        <section>
+          <h2>Workstation</h2>
+          <p>MaxQ applies the desktop, theme, launcher, and supported CLI state the bot works from.</p>
+          ${shot("/shots/ghostty.webp", "Ghostty configured with the MaxQ Mocha theme", "workstation · terminal state", 1000, 625)}
+        </section>
+        <section>
+          <h2>Operator glass</h2>
+          <p>A thin local control surface exposes settings and desktops without turning the box into an admin suite.</p>
+          ${shot("/shots/desktops.webp", "MaxQ desktop multiplexer", "operator glass · desktops", 1037, 1200)}
+        </section>
+        <section>
+          <h2>Persistence</h2>
+          <p>MaxQ-owned state stays under <code>$HOME</code>. Apply, prove, status, and revert keep the state explicit.</p>
+          ${shot("/shots/prove.webp", "maxq prove PASS on the Grok Bot computer", "persistence · prove PASS", 900, 562)}
+        </section>
+      </div>
+    </section>
+
     <section class="how" id="how">
       <div class="how-copy">
-        <p class="eyebrow">How it works</p>
-        <h2 class="display">One box. Operator and bot.</h2>
+        <p class="eyebrow">Lifecycle</p>
+        <h2 class="display">Install. Operate. Prove or revert.</h2>
         <ol class="steps">
-          <li><span class="step-num">01</span><div><h3>Packages</h3><p>SBOM inventory for the bot: go, node, docker, ghostty, grok, claude. Not apt. Does not mutate packages.</p></div></li>
-          <li><span class="step-num">02</span><div><h3>Operator glass</h3><p>Settings on loopback. Side-saddle the bot. Configure the machine without taking it hostage.</p></div></li>
-          <li><span class="step-num">03</span><div><h3>Desktops</h3><p>Live Xvfb through the noVNC multiplexer. :1–:15. View, switch, this desktop.</p></div></li>
-          <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code>. Revert does not delete the machine. Prove leaves APPLIED.</p></div></li>
+          <li><span class="step-num">01</span><div><h3>Install / apply</h3><p>The curl installer puts the MaxQ command in <code>$HOME/bin</code> and runs apply. Apply is idempotent.</p></div></li>
+          <li><span class="step-num">02</span><div><h3>Operate</h3><p>The bot works on the configured workstation. You use loopback settings, processes, and desktops.</p></div></li>
+          <li><span class="step-num">03</span><div><h3>Prove / revert</h3><p><code>maxq prove</code> runs revert → apply → assert and leaves APPLIED. <code>maxq revert</code> removes MaxQ-owned state.</p></div></li>
         </ol>
       </div>
-      ${bezel("/shots/collage.webp", "MaxQ operator glass: desktops multiplexer, settings, packages, OpenCode", "maxq · desktops, settings, packages", "laptop", 900, 1059)}
+      ${bezel("/shots/prove.webp", "maxq prove PASS on the Grok Bot computer", "prove · result=PASS · leaves APPLIED", "laptop", 900, 562)}
     </section>
+
+    <section class="block" id="trust">
+      <p class="eyebrow">Invariants</p>
+      <h2 class="display">What MaxQ owns. What it refuses to own.</h2>
+      <ul class="inv">
+        <li>Persistent MaxQ state stays under <code>$HOME</code>.</li>
+        <li>The control API binds loopback only at <code>127.0.0.1:7432</code> by default.</li>
+        <li>GOST is optional; <code>enabled=false</code> and <code>intercept=false</code> by default.</li>
+        <li>MaxQ does not write Chrome <code>ProxyMode</code> / <code>ProxyServer</code> managed policy.</li>
+        <li><code>maxq revert</code> removes MaxQ-owned state. Revert is part of the product.</li>
+      </ul>
+    </section>
+
     <section class="surfaces" id="surfaces">
       <div class="section-head">
-        <p class="eyebrow">Constellation</p>
+        <p class="eyebrow">Constellation context</p>
         <h2 class="display">Four surfaces. One stack.</h2>
+        <p>MaxQ makes the box persist. Router spends seats. Cue and Crew are native control and chat surfaces.</p>
       </div>
       <div class="tabs" role="tablist">${tabs}</div>
       <div class="panels">${panels}</div>
+    </section>
+
+    <section class="block" id="start">
+      <p class="eyebrow">Ready</p>
+      <h2 class="display">Install MaxQ on the stock box.</h2>
+      <p class="lede">Apply the workstation state. Keep the loopback side door. Prove or revert when you need to.</p>
+      ${installLine()}
+      <div class="cta-row">
+        <a class="btn-solid" href="#install">Install</a>
+        <a class="btn-ghost" href="${GITHUB}">GitHub</a>
+      </div>
     </section>`;
 }
 
