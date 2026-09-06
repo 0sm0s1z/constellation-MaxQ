@@ -96,7 +96,7 @@ a { color: inherit; }
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  padding: 1rem 0 1.1rem;
+  padding: .85rem 0 .9rem;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -214,7 +214,7 @@ a { color: inherit; }
 }
 /* Left column: four blocks. Title and claim ride the flight; split and glass land after apogee. */
 .launch-copy {
-  max-width: 34rem; align-self: center;
+  max-width: 36rem; align-self: center;
   display: flex; flex-direction: column; gap: 1rem;
 }
 .launch-copy .eyebrow { margin-bottom: .5rem; }
@@ -229,7 +229,7 @@ a { color: inherit; }
 }
 .blk-claim .lede { margin-bottom: .8rem; font-size: .98rem; }
 
-/* Block 3: who gets what. Two columns under a rule. */
+/* Block 3+4: stacked bot/you rows beside a landscape still. Square Cue plates are cropped, not letterboxed. */
 .split {
   margin: 0; padding-top: .95rem; border-top: 1px solid var(--rule);
   display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
@@ -240,28 +240,47 @@ a { color: inherit; }
 }
 .split div:last-child dt { color: var(--mauve); }
 .split dd { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--sub); }
+.split.is-ripple dd { animation: split-ripple .22s cubic-bezier(.2,0,0,1) both; }
+@keyframes split-ripple {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
 
-/* Block 4: the glass. One shot at a time, flat on the canvas, three mono captions. */
-.glass { display: grid; gap: .45rem; }
-.glass-frame {
-  position: relative; aspect-ratio: 2.75 / 1; overflow: hidden; border-radius: 6px;
+.duo {
+  display: grid; grid-template-columns: minmax(10.5rem, .82fr) minmax(0, 1.18fr);
+  gap: .9rem 1.15rem; align-items: center;
+  padding-top: .85rem; border-top: 1px solid var(--rule);
+}
+.duo .split { padding-top: 0; border-top: 0; grid-template-columns: 1fr; gap: .7rem; }
+.glass { display: grid; gap: .4rem; }
+.glass-well {
+  position: relative; display: block; aspect-ratio: 2.35 / 1; overflow: hidden; border-radius: 6px;
   background: var(--mantle);
   outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
-  -webkit-mask: linear-gradient(180deg, #000 78%, transparent);
-  mask: linear-gradient(180deg, #000 78%, transparent);
+  text-decoration: none; color: inherit;
 }
-.glass-frame img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%;
-  opacity: 0; transform: scale(1.015); transition: opacity .7s ease, transform 5.6s linear;
+.glass-well:hover { outline-color: color-mix(in srgb, var(--peach) 35%, transparent); }
+.glass-well:focus-visible { outline: 2px solid var(--peach); outline-offset: 2px; }
+.glass-well img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .55s ease;
 }
-.glass-frame img.is-on { opacity: 1; transform: scale(1); }
-.glass-caps { display: flex; gap: 1.25rem; flex-wrap: nowrap; overflow: hidden; }
+.glass-well img.is-on { opacity: 1; }
+.glass-chip {
+  position: absolute; left: .55rem; bottom: .5rem; z-index: 1;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .04em;
+  padding: .28rem .55rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--crust) 78%, transparent);
+  backdrop-filter: blur(12px); color: var(--peach); pointer-events: none;
+}
+.glass-chip.is-ripple { animation: split-ripple .22s cubic-bezier(.2,0,0,1) both; }
+.glass-caps { display: flex; gap: 1.15rem; flex-wrap: nowrap; overflow: hidden; }
 .glass-caps button {
   appearance: none; border: 0; background: transparent; padding: .1rem 0 .3rem; cursor: pointer;
   font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .03em;
   color: var(--overlay0); position: relative; text-align: left;
 }
-.glass-caps button .gn { color: var(--surface0); margin-right: .5rem; }
+.glass-caps button .gn { color: var(--surface0); margin-right: .45rem; }
 .glass-caps button::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
   background: var(--peach); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2,0,0,1);
@@ -301,6 +320,7 @@ a { color: inherit; }
   position: relative; z-index: 1;
 }
 .launch-gif[hidden] { display: none; }
+.launch.is-bitmap .ignition { display: none; }
 .launch-video { opacity: 0; transition: opacity .4s ease; }
 .launch.is-live .launch-video { opacity: 1; }
 .launch-still { display: none; }
@@ -346,7 +366,7 @@ a { color: inherit; }
 /* Telemetry: the proof strip, now a HUD readout that lights at apogee. */
 .telemetry {
   position: relative; z-index: 1;
-  list-style: none; margin: 1rem 0 0; padding: .8rem 0 .9rem;
+  list-style: none; margin: .7rem 0 0; padding: .65rem 0 .75rem;
   display: flex; flex-wrap: wrap; gap: .5rem 2.2rem;
   border-top: 1px solid var(--rule);
   font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; letter-spacing: .04em;
@@ -478,6 +498,24 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 }
 @media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
 .how .display { margin-bottom: 1.6rem; }
+
+.beat {
+  display: grid; gap: 2.5rem; align-items: start;
+  padding: 3.5rem 0 2.5rem;
+}
+@media (min-width: 960px) { .beat { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
+.beat .split { padding-top: 1.1rem; }
+
+.article { max-width: 46rem; padding: 2.4rem 0 3rem; }
+.article .byline {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px;
+  color: var(--overlay1); margin: 0 0 1.6rem;
+}
+.article h2.display { margin: 2.2rem 0 .8rem; font-size: clamp(1.35rem, 2.4vw, 1.8rem); }
+.article p { margin: 0 0 1rem; color: var(--sub); font-size: 1.02rem; }
+.article .shot { margin: 1.4rem 0 1.8rem; }
+.article .steps { margin: 1.2rem 0 1.6rem; }
+.article .btn-ghost { margin-right: .5rem; }
 .steps { list-style: none; margin: 0; padding: 0; }
 .steps li {
   display: grid; grid-template-columns: 2.4rem 1fr; gap: .85rem;
@@ -641,6 +679,7 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .launch .spark { animation: none !important; opacity: .7; }
   .launch .ignition { opacity: .3; }
   .scroll-cue span { animation: none; }
+  .split.is-ripple dd, .glass-chip.is-ripple { animation: none !important; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }
@@ -652,4 +691,5 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .launch-stage { order: -1; align-items: center; }
   .launch-copy { gap: 1.25rem; }
   .split { grid-template-columns: 1fr; gap: .9rem; }
+  .duo { grid-template-columns: 1fr; }
 }

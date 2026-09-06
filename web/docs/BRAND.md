@@ -32,14 +32,16 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 `.is-held`).
 
 - Rocket right, copy left; the rocket plays once and holds at the top (no `loop`).
-- The left column is four blocks, top to bottom: title (eyebrow, line, wordmark); claim
-  ("A co-operating system for your bot and you." + one-line lede + CTAs); split (`The bot
-  gets` / `You get`); glass (one product shot at a time, three mono captions). Title and
-  claim ride the flight; split and glass land after apogee (`.late`).
-- The glass cycles every 5.2s once the rocket holds. The shot on screen names the telemetry
-  key that glows (`GLASS[].tele` → `.telemetry li[data-key].is-hot`). Hover or focus pauses it.
+- The late block is a duo: stacked `The bot gets` / `You get` rows on the left,
+  landscape glass (2.35:1) on the right. Square Cue stills are cropped, not
+  letterboxed. Captions sit under the well (`01 the bot's desk` / `02 the side
+  door` / `03 more tokens`). Clicking the well follows `GLASS[].href`
+  (`#desk`, `#door`, `#frontier`). Chip + split copy ripple (~220ms). No typewriter.
+- Split copy is per-slide. Labels stay `The bot gets` / `You get`. Charge the
+  speech from `docs/VISION.md`.
+- Eyebrow: `Constellation · one box. two operators.` Do not say "first product."
 - Premise for all hero copy: MaxQ is a co-operating system for the bot and the operator.
-  One command on the bot's computer turns the stock box into a machine built for the bot;
+  One command on the bot's computer turns the stock box into a machine tailored for the bot;
   the operator keeps the side door. Write from that, not from the feature list.
 - Wordmark is `public/namelogo.svg` used as a CSS mask so `.pastel-flow` paints the letters.
 - Four-point sparks (`.spark`) are placed by hand in `pages.ts` (`SPARKS`) and twinkle/rotate
@@ -51,10 +53,16 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 
 ## Art and motion
 
-- Hero launch uses Cue-exported `public/art/maxq-launch.webm` (1024×1180, 24fps, alpha VP9;
-  GIF fallback if the video errors, still for reduced motion).
-- Re-export from `~/Desktop/MaxQ/MaxQ-Baseline.cue` with
-  `capturectl export --format webm --scale 1 --fps 24`.
+- Hero launch uses Cue-exported `public/art/maxq-launch.webm` (1024×1180, 24fps, VP9
+  with alpha) on Chromium/Firefox. Safari and iOS drop VP9 alpha (opaque black +
+  bloom), so they get `public/art/maxq-launch.mov` (HEVC `hvc1` with alpha, Apple
+  `PresetHEVCHighestQualityWithAlpha`). GIF fallback if the video errors; still
+  for reduced motion. Do not put the WebM `<source>` in the Safari video element
+  or WebKit will pick it and paint a black rectangle.
+- Re-export WebM from `~/Desktop/MaxQ/MaxQ-Baseline.cue` with
+  `capturectl export --format webm --scale 1 --fps 24`, then:
+  `ffmpeg -c:v libvpx-vp9 -i maxq-launch.webm -vf format=yuva420p -c:v hevc_videotoolbox -alpha_quality 0.85 -tag:v hvc1 maxq-launch.mov`
+  followed by `avconvert -s maxq-launch.mov -o safari.mov -p PresetHEVCHighestQualityWithAlpha --replace`.
 - Replace `public/art/desk.webp`; it was taken from the Catppuccin website.
 - Keep `public/art/ops.webp` for now.
 - New generated art belongs under `public/art/` and must be committed.

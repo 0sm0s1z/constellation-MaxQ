@@ -6,6 +6,12 @@
   "outputDirectory": "dist",
   "headers": [
     {
+      "source": "/art/maxq-launch.mov",
+      "headers": [
+        { "key": "Content-Type", "value": "video/mp4" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },

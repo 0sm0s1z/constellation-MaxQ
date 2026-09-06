@@ -1,11 +1,14 @@
-export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops";
+export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
 
+const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "surfaces"]);
+
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
-  const known: Route[] = ["home", "stack", "router", "cue", "crew", "install", "invariants", "ops"];
+  if (HOME_HASHES.has(hash)) return "home";
+  const known: Route[] = ["home", "stack", "router", "cue", "crew", "install", "invariants", "ops", "frontier"];
   return (known as string[]).includes(hash) ? (hash as Route) : "home";
 }
 
@@ -14,6 +17,9 @@ const installLine = () => `
 
 const shot = (src: string, alt: string, caption: string, w: number, h: number) => `
   <figure class="shot"><img src="${src}" alt="${alt}" width="${w}" height="${h}" /><figcaption>${caption}</figcaption></figure>`;
+
+const escapeAttr = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
 const bezel = (src: string, alt: string, caption: string, kind: "laptop" | "phone" = "laptop", w = 1280, h = 800) => `
   <figure class="bezel ${kind}">
@@ -102,22 +108,61 @@ const TELEMETRY: [string, string, boolean][] = [
   ["prove", "PASS", true],
 ];
 /* The glass: three shots, one at a time. `tele` names the telemetry key that glows while the shot is up. */
-const GLASS: { src: string; w: number; h: number; alt: string; num: string; cap: string; tele: string }[] = [
-  { src: "/shots/maxq-desktop.webp", w: 1100, h: 687, alt: "The bot's desktop on MaxQ: browser, Ghostty terminal, mocha dock", num: "01", cap: "the bot's desk", tele: "state" },
-  { src: "/shots/settings.webp", w: 1000, h: 624, alt: "MaxQ settings sheet on 127.0.0.1:7432, state applied", num: "02", cap: "the side door", tele: "intercept" },
-  { src: "/shots/prove.webp", w: 900, h: 562, alt: "maxq prove report: result=PASS, left_state=APPLIED", num: "03", cap: "prove · PASS", tele: "prove" },
+type GlassSlide = {
+  src: string; w: number; h: number; alt: string;
+  num: string; cap: string; tele: string; href: string;
+  bot: string; you: string; chip: string; pos: string;
+};
+const GLASS: GlassSlide[] = [
+  {
+    src: "/shots/bots-desk.webp", w: 1107, h: 869,
+    alt: "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot",
+    num: "01", cap: "the bot's desk", tele: "state", href: "#desk",
+    bot: "A computer tailored for it. Terminal, browser, desktops, theme, and the skills to use them before the first task.",
+    you: "An assistant that doesn't need onboarding. The desk is on your network. You can watch the herdr session.",
+    chip: "box@grokbot", pos: "50% 42%",
+  },
+  {
+    src: "/shots/desktops-eva.webp", w: 1600, h: 1243,
+    alt: "MaxQ operator desktops: nine live Xvfb sessions and a STREAM sidebar",
+    num: "02", cap: "the side door", tele: "intercept", href: "#door",
+    bot: "Steering and a stable box. You can kill a runaway process before the RAM is gone.",
+    you: "Telemetry, visibility, control. Nine desktops at once. Skills from the marketplace, on loopback.",
+    chip: "14 / 22 live", pos: "48% 46%",
+  },
+  {
+    src: "/research/frontier-400cap.webp", w: 1800, h: 900,
+    alt: "Subscription Efficiency Frontier: SuperGrok Heavy in the best-value region",
+    num: "03", cap: "more tokens", tele: "prove", href: "#frontier",
+    bot: "More tokens. Usage limits on Bot are brutal. This gets it out of jail.",
+    you: "More tokens. Constellation Router unlocks the subscription efficiency frontier.",
+    chip: "Heavy · $0.065 / 1M FIE", pos: "22% 38%",
+  },
 ];
+
+/** Safari/iOS play VP9 WebM without alpha (opaque black). HEVC with alpha is the WebKit path. */
+function prefersHevcAlpha(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  if (/Chrom(e|ium)|Edg|OPR|Firefox/i.test(ua)) return false;
+  return /Safari/i.test(ua);
+}
 
 function renderLaunch(): string {
   const reduceMotion =
     typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const alt = "MaxQ launch: a rocket lifting off a laptop";
   const still = `<img class="launch-still" src="/art/maxq-launch-still.webp" alt="${alt}" width="1024" height="1180" />`;
+  const sources = prefersHevcAlpha()
+    ? `<source src="/art/maxq-launch.mov" type='video/mp4; codecs="hvc1"' />`
+    : `<source src="/art/maxq-launch.webm" type="video/webm" />`;
   const stage = reduceMotion
     ? still
     : `
-        <video class="launch-video" autoplay muted playsinline width="1024" height="1180" poster="/art/maxq-launch-still.webp" aria-label="${alt}">
-          <source src="/art/maxq-launch.webm" type="video/webm" />
+        <video class="launch-video" autoplay muted playsinline webkit-playsinline width="1024" height="1180" poster="/art/maxq-launch-still.webp" aria-label="${alt}">
+          ${sources}
         </video>
         <img class="launch-gif" data-src="/art/maxq-launch.gif" alt="${alt}" width="614" height="708" hidden />
         ${still}`;
@@ -131,19 +176,20 @@ function renderLaunch(): string {
   ).join("");
   const glassFrames = GLASS.map(
     (g, i) =>
-      `<img class="${i === 0 ? "is-on" : ""}" src="${g.src}" alt="${g.alt}" width="${g.w}" height="${g.h}" loading="${i === 0 ? "eager" : "lazy"}" data-tele="${g.tele}" />`
+      `<img class="${i === 0 ? "is-on" : ""}" src="${g.src}" alt="${g.alt}" width="${g.w}" height="${g.h}" loading="${i === 0 ? "eager" : "lazy"}" data-tele="${g.tele}" data-href="${g.href}" data-bot="${escapeAttr(g.bot)}" data-you="${escapeAttr(g.you)}" data-chip="${escapeAttr(g.chip)}" style="object-position:${g.pos}" />`
   ).join("");
   const glassCaps = GLASS.map(
     (g, i) =>
-      `<button type="button" class="${i === 0 ? "is-on" : ""}" data-glass-to="${i}" aria-label="Show ${g.cap}"><span class="gn">${g.num}</span>${g.cap}</button>`
+      `<button type="button" role="tab" class="${i === 0 ? "is-on" : ""}" data-glass-to="${i}" aria-selected="${i === 0 ? "true" : "false"}" aria-label="Show ${g.cap}"><span class="gn">${g.num}</span>${g.cap}</button>`
   ).join("");
+  const g0 = GLASS[0];
   return `
-    <section class="launch${reduceMotion ? " is-live is-apogee is-held" : ""}" data-launch>
+    <section class="launch${reduceMotion ? " is-live is-apogee is-held" : ""}" id="home" data-launch>
       <div class="launch-sky" aria-hidden="true">${sparks}</div>
       <div class="launch-grid">
         <div class="launch-copy">
           <div class="blk blk-title">
-            <p class="eyebrow reveal r1">Constellation · first product</p>
+            <p class="eyebrow reveal r1">Constellation · one box. two operators.</p>
             <h1 class="launch-title">
               <span class="launch-line reveal r2">Take Grok Bot to</span>
               <span class="wordmark reveal r3" role="img" aria-label="MaxQ"><span class="wordmark-ink pastel-flow"></span></span>
@@ -151,25 +197,30 @@ function renderLaunch(): string {
           </div>
           <div class="blk blk-claim">
             <p class="claim reveal r4">A co-operating system for your bot and you.</p>
-            <p class="lede reveal r4">One command on the bot's computer. The stock box becomes a workstation built for the bot. You keep the side door.</p>
+            <p class="lede reveal r4">One command on the bot's computer. The stock box becomes a workstation tailored for the bot. You keep the side door.</p>
             <div class="cta-row reveal r5">
               <a class="btn-solid" href="#install">Install</a>
               <a class="btn-ghost" href="#how">See how it works</a>
             </div>
           </div>
-          <dl class="blk split late l1">
-            <div>
-              <dt>The bot gets</dt>
-              <dd>A computer made for it. Terminal, browser, desktops, theme, and its CLIs in place before the first task.</dd>
+          <div class="blk duo late l1" data-glass>
+            <dl class="split" data-split>
+              <div>
+                <dt>The bot gets</dt>
+                <dd data-split-bot>${g0.bot}</dd>
+              </div>
+              <div>
+                <dt>You get</dt>
+                <dd data-split-you>${g0.you}</dd>
+              </div>
+            </dl>
+            <div class="glass">
+              <a class="glass-well" data-glass-link href="${g0.href}">
+                ${glassFrames}
+                <span class="glass-chip" data-glass-chip>${g0.chip}</span>
+              </a>
+              <div class="glass-caps" role="tablist">${glassCaps}</div>
             </div>
-            <div>
-              <dt>You get</dt>
-              <dd>The side door: settings, telemetry, processes, every desktop. Loopback only. Revert leaves the box standing.</dd>
-            </div>
-          </dl>
-          <div class="blk glass late l2" data-glass>
-            <div class="glass-frame">${glassFrames}</div>
-            <div class="glass-caps" role="tablist">${glassCaps}</div>
           </div>
         </div>
         <div class="launch-stage">
@@ -220,6 +271,42 @@ export function renderHome(): string {
         </ol>
       </div>
       ${bezel("/shots/collage.webp", "MaxQ operator glass: desktops multiplexer, settings, packages, OpenCode", "maxq · desktops, settings, packages", "laptop", 900, 1059)}
+    </section>
+    <section class="beat" id="desk">
+      <div class="beat-copy">
+        <p class="eyebrow">01 · The bot's desk</p>
+        <h2 class="display">A computer tailored for the bot. Not a generic box it has to figure out.</h2>
+        <p class="lede">Terminal, browser, desktops, theme, and the CLIs and skills it ships with, in place before the first task. It does not flounder. It does not need a week of onboarding.</p>
+        <dl class="split">
+          <div>
+            <dt>The bot gets</dt>
+            <dd>A desk designed for how it actually works. Dedicated computer-use skills so it is not tripping over standard systems.</dd>
+          </div>
+          <div>
+            <dt>You get</dt>
+            <dd>An assistant that doesn't need onboarding. Tailscale onto your network. Visibility into the herdr session, not just the chat.</dd>
+          </div>
+        </dl>
+      </div>
+      ${bezel("/shots/bots-desk.webp", "The bot's MaxQ desk: mocha wallpaper, rofi, Ghostty at box@grokbot", "maxq · the bot's desk", "laptop", 1107, 869)}
+    </section>
+    <section class="beat" id="door">
+      <div class="beat-copy">
+        <p class="eyebrow">02 · The side door</p>
+        <h2 class="display">Chat is a simple control surface. It is a poor one when something goes off the rails.</h2>
+        <p class="lede">The desk gives the bot tools so it can work. The side door gives you tools so you can steer it. Nine desktops at once. Telemetry. Process kill. A TUI on the box, on loopback. Skills from the marketplace.</p>
+        <dl class="split">
+          <div>
+            <dt>The bot gets</dt>
+            <dd>Steering, structure, alignment. A box that stays up because RAM problems are RAM problems, not mysterious AI failures.</dd>
+          </div>
+          <div>
+            <dt>You get</dt>
+            <dd>Telemetry, visibility, and control. Watch every desktop. Point the box at your own model router. Install a skill without a prompt essay.</dd>
+          </div>
+        </dl>
+      </div>
+      ${bezel("/shots/desktops-eva.webp", "MaxQ operator desktops EVA: nine live sessions and STREAM telemetry", "maxq · the side door", "laptop", 1600, 1243)}
     </section>
     <section class="surfaces" id="surfaces">
       <div class="section-head">

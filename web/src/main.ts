@@ -2,6 +2,7 @@ import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
   renderStack, renderRouter, renderCue, renderCrew, GITHUB, type Route,
 } from "./pages";
+import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
@@ -13,6 +14,7 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   install: { label: "install", draw: renderInstall },
   invariants: { label: "invariants", draw: renderInvariants },
   ops: { label: "ops", draw: renderOps },
+  frontier: { label: "frontier", draw: renderFrontier },
 };
 
 const NAV: Route[] = ["home", "stack", "router", "cue", "crew"];
@@ -41,6 +43,7 @@ function shell(inner: string, route: Route): string {
       <span>
         <a href="#invariants">invariants</a>
         · <a href="#ops">ops</a>
+        · <a href="#frontier">frontier</a>
         · <a href="${GITHUB}">github</a>
         · <a href="${GITHUB}/blob/main/docs/TRUST.md">trust</a>
       </span>
@@ -140,6 +143,7 @@ function bindLaunch(root: HTMLElement) {
       gif.hidden = false;
     }
     video.remove();
+    launch.classList.add("is-bitmap");
     live();
   };
   video.addEventListener("playing", live, { once: true });
@@ -163,24 +167,47 @@ function bindLaunch(root: HTMLElement) {
 }
 
 /* The glass cycles one shot at a time once the rocket is holding. The shot on screen names the
-   telemetry key that glows, so the bottom edge of the canvas keeps a heartbeat after the flight. */
-const GLASS_PERIOD_MS = 5200;
+   telemetry key that glows, so the bottom edge of the canvas keeps a heartbeat after the flight.
+   Split copy and the chip ripple with the slide — fast, not a typewriter. */
+const GLASS_PERIOD_MS = 6500;
 function bindGlass(launch: HTMLElement) {
   const glass = launch.querySelector<HTMLElement>("[data-glass]");
   if (!glass) return;
-  const frames = [...glass.querySelectorAll<HTMLImageElement>(".glass-frame img")];
+  const frames = [...glass.querySelectorAll<HTMLImageElement>(".glass-well img")];
   const caps = [...glass.querySelectorAll<HTMLButtonElement>("[data-glass-to]")];
   const tele = [...launch.querySelectorAll<HTMLElement>(".telemetry li[data-key]")];
+  const split = launch.querySelector<HTMLElement>("[data-split]");
+  const bot = launch.querySelector<HTMLElement>("[data-split-bot]");
+  const you = launch.querySelector<HTMLElement>("[data-split-you]");
+  const chip = launch.querySelector<HTMLElement>("[data-glass-chip]");
+  const link = launch.querySelector<HTMLAnchorElement>("[data-glass-link]");
   if (!frames.length) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let i = 0;
   let timer = 0;
+  const ripple = (el: HTMLElement | null) => {
+    if (!el || reduced) return;
+    el.classList.remove("is-ripple");
+    void el.offsetWidth;
+    el.classList.add("is-ripple");
+  };
   const show = (n: number) => {
     i = ((n % frames.length) + frames.length) % frames.length;
     frames.forEach((f, k) => f.classList.toggle("is-on", k === i));
-    caps.forEach((c, k) => c.classList.toggle("is-on", k === i));
-    const hot = frames[i].dataset.tele;
+    caps.forEach((c, k) => {
+      const on = k === i;
+      c.classList.toggle("is-on", on);
+      c.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const frame = frames[i];
+    const hot = frame.dataset.tele;
     tele.forEach((t) => t.classList.toggle("is-hot", t.dataset.key === hot));
+    if (bot && frame.dataset.bot) bot.textContent = frame.dataset.bot;
+    if (you && frame.dataset.you) you.textContent = frame.dataset.you;
+    if (chip && frame.dataset.chip) chip.textContent = frame.dataset.chip;
+    if (link && frame.dataset.href) link.href = frame.dataset.href;
+    ripple(split);
+    ripple(chip);
   };
   const stop = () => window.clearInterval(timer);
   const play = () => {
@@ -188,12 +215,16 @@ function bindGlass(launch: HTMLElement) {
     if (reduced) return;
     timer = window.setInterval(() => show(i + 1), GLASS_PERIOD_MS);
   };
-  caps.forEach((c) => c.addEventListener("click", () => { show(Number(c.dataset.glassTo)); play(); }));
+  caps.forEach((c) => c.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    show(Number(c.dataset.glassTo));
+    play();
+  }));
   glass.addEventListener("mouseenter", stop);
   glass.addEventListener("mouseleave", play);
   glass.addEventListener("focusin", stop);
   glass.addEventListener("focusout", play);
-  // Start the cycle only after the glass has landed (apogee + reveal).
   const start = () => {
     if (!launch.classList.contains("is-apogee")) return false;
     show(0);
@@ -206,15 +237,24 @@ function bindGlass(launch: HTMLElement) {
   }
 }
 
+let drawn: Route | null = null;
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
   const route = parseRoute();
-  app.innerHTML = shell(routes[route].draw(), route);
-  bindCopy(app);
-  bindTabs(app);
-  bindCarousel(app);
-  bindLaunch(app);
+  if (route !== drawn) {
+    drawn = route;
+    app.innerHTML = shell(routes[route].draw(), route);
+    bindCopy(app);
+    bindTabs(app);
+    bindCarousel(app);
+    bindLaunch(app);
+  }
+  const id = (location.hash || "").replace("#", "");
+  if (id && id !== "home" && document.getElementById(id)) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(id)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }
 }
 
 function dismissLoader() {
