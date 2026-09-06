@@ -67,12 +67,18 @@ function bindTabs(root: HTMLElement) {
   const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-tab]")];
   const panels = [...root.querySelectorAll<HTMLElement>("[data-panel]")];
   if (!tabs.length) return;
+  // Panels crossfade (styles.css .panel). `hidden` is lifted before the fade-in and set after the fade-out.
   const show = (id: string) => {
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === id));
     panels.forEach((p) => {
       const on = p.dataset.panel === id;
-      p.classList.toggle("active", on);
-      p.hidden = !on;
+      if (on) {
+        p.hidden = false;
+        requestAnimationFrame(() => p.classList.add("active"));
+      } else {
+        p.classList.remove("active");
+        window.setTimeout(() => { if (!p.classList.contains("active")) p.hidden = true; }, 480);
+      }
     });
   };
   tabs.forEach((tab) => {

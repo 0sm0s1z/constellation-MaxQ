@@ -52,7 +52,34 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 - Telemetry (`state`, `intercept`, `persist`, `prove`) lights at apogee. It replaced the proof strip.
 - Scene two: `.how::before` bleeds `public/art/hero-orbit.webp` behind the steps.
 - No border, radius card, box shadow, or window chrome on the art. `.bezel` is for product
-  screenshots only.
+  screenshots on the secondary routes only; the home page does not use it.
+
+## Header
+
+`.topbar` is sticky. Its glass is a viewport-wide `::before` (blur + crust tint) feathered to
+transparent at the bottom, so it never reads as a card with side edges or a hard bottom line.
+`html`/`body` carry `overflow-x: clip` for that and the other full-bleed backdrops; `#app` must
+not set `z-index` (it would isolate the blended art plates from the starfield).
+
+## Home, below the fold
+
+Same treatment as the launch canvas: art flat on the page, real captures in one locked frame,
+copy in operator register.
+
+- **Art plates** (`.plate`): `public/art/hero-laptop.webp` in `#how`, `public/art/ops.webp` in
+  `#door`. The art's dark field is blended out (`mix-blend-mode: lighten`) and radially feathered;
+  a soft pastel pool sits under it. No frame, no chrome.
+- **Cinema stills** (`.cine`): one full-width 2.2:1 frame per beat, cover-fit, hairline, 8px
+  radius, mono caption (`maxq · the bot's desk` / `box@grokbot`). The stills are cropped in Cue
+  from the real captures — window chrome and VNC borders removed — and saved as
+  `public/shots/*-cine.webp` (`bots-desk-cine.webp` 1079×490, `desktops-eva-cine.webp` 1600×727).
+  The hero glass uses the same crops. Do not put a raw screenshot with its own title bar in a frame.
+- **Beats**: eyebrow + display headline in one column, lede + `The bot gets` / `You get` in the
+  other, still beneath. `#door` puts the ops plate where the headline column would be.
+- **Surfaces** (`.screen`): locked 2:1 frame, cover-fit, no traffic lights; panels crossfade.
+
+Re-cut a still through `capturectl` (create → import → `scene.setCanvas` + `layer.transform` →
+render), not by hand-cropping in a paint tool; keep offsets in the commit message.
 
 ## Art and motion
 

@@ -37,7 +37,7 @@
   inherits: false;
   initial-value: 0%;
 }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overflow-x: clip; }
 html {
   background: var(--crust);
   color: var(--text);
@@ -54,13 +54,15 @@ body {
   font-size: 16px;
   line-height: 1.55;
   min-height: 100vh;
-  background: var(--crust);
+  background: transparent; /* html paints the crust; a body background would cover the z -1 backdrops */
+  overflow-x: clip; /* full-bleed backdrops (.launch, .how::before, .topbar::before) reach past #app */
 }
 code { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: .88em; }
 img { max-width: 100%; }
 a { color: inherit; }
 
-#stars, .diamonds { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+/* Backdrop lives at z -1 in the root stacking context so blended art (.plate) can see the stars. */
+#stars, .diamonds { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .diamonds { overflow: hidden; }
 .dia {
   position: absolute; width: 14px; height: 14px;
@@ -84,14 +86,14 @@ a { color: inherit; }
 }
 
 #app {
-  position: relative;
-  z-index: 1;
+  position: relative; /* no z-index: #app must not isolate, see .plate */
   max-width: var(--wrap);
   margin: 0 auto;
   padding: 0 1.5rem 4rem;
-  overflow-x: clip; /* full-bleed backdrops (.launch, .how::before) may scale past the viewport */
 }
 
+/* Sticky header. The glass is a viewport-wide pseudo behind the row, feathered at the bottom so it
+   never reads as a card sitting on the page: no side edges, no hard line under the nav. */
 .topbar {
   display: flex;
   align-items: center;
@@ -100,8 +102,20 @@ a { color: inherit; }
   position: sticky;
   top: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--crust) 22%, transparent);
-  backdrop-filter: blur(16px);
+  isolation: isolate;
+}
+.topbar::before {
+  content: "";
+  position: absolute; z-index: -1; pointer-events: none;
+  inset: -1px calc(50% - 50vw) -1.75rem;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--crust) 78%, transparent) 0%,
+    color-mix(in srgb, var(--crust) 62%, transparent) 55%,
+    transparent 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-mask: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+  mask: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
 }
 .brand { display: flex; align-items: center; text-decoration: none; overflow: visible; }
 .brand .namelogo {
@@ -181,6 +195,7 @@ a { color: inherit; }
   position: absolute; display: block; opacity: 0;
   transform: translate(-50%, -50%) rotate(0deg);
   filter: drop-shadow(0 0 6px currentColor);
+  will-change: transform, opacity; /* own layer: the twinkle must not re-raster the shadow each frame */
 }
 .spark path { fill: currentColor; }
 .spark.mauve { color: var(--mauve); }
@@ -496,15 +511,62 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
     to   { background-position: right 50%; transform: scale(1); }
   }
 }
-@media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
+@media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; } }
 .how .display { margin-bottom: 1.6rem; }
 
-.beat {
-  display: grid; gap: 2.5rem; align-items: start;
-  padding: 3.5rem 0 2.5rem;
+/* Art plates. The isometric pastel pieces sit flat on the canvas like the launch rocket: the
+   dark field is feathered into the crust, a soft pastel pool sits under it, no frame. */
+.plate { margin: 0; position: relative; }
+.plate::before {
+  content: ""; position: absolute; inset: 22% 18%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mauve) 26%, transparent), color-mix(in srgb, var(--peach) 14%, transparent) 55%, transparent);
+  filter: blur(36px);
 }
-@media (min-width: 960px) { .beat { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
-.beat .split { padding-top: 1.1rem; }
+.plate img {
+  display: block; width: 100%; height: auto;
+  /* The art's dark field is darker than the crust: `lighten` lets the page (and the stars) win there,
+     and the mask feathers whatever is left at the edges. */
+  mix-blend-mode: lighten;
+  -webkit-mask: radial-gradient(ellipse farthest-side at 50% 50%, #000 55%, transparent 100%);
+  mask: radial-gradient(ellipse farthest-side at 50% 50%, #000 55%, transparent 100%);
+}
+.plate-box { justify-self: end; width: min(100%, 40rem); }
+@media (min-width: 960px) { .plate-box { transform: translate(6%, 0) scale(1.08); } }
+.plate-deck { width: min(100%, 26rem); justify-self: center; align-self: center; }
+
+/* Beats. Copy rides on top in two columns; the real capture runs the full width beneath as one
+   cinema frame. Nothing here is a card. */
+.beat { padding: 4.5rem 0 1.5rem; }
+.beat-head {
+  display: grid; gap: 1.5rem 3rem; align-items: start;
+}
+@media (min-width: 900px) {
+  .beat-head { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .beat-head.has-plate { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); align-items: center; }
+}
+.beat-head .display { margin-bottom: 0; }
+.beat-head .lede { margin-bottom: 1.2rem; max-width: none; }
+.beat .split { padding-top: .95rem; }
+
+/* Cinema frame: locked 2.2:1, the still is cover-fit. One hairline, one radius, a mono caption. */
+.cine { margin: 2.4rem 0 0; }
+.cine-frame {
+  position: relative; aspect-ratio: 2.2 / 1; overflow: hidden; border-radius: 8px;
+  background: var(--mantle);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .85);
+}
+.cine-frame::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(180deg, transparent 70%, color-mix(in srgb, var(--crust) 55%, transparent));
+}
+.cine-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cine figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .1rem 0;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em;
+  color: var(--overlay1);
+}
+.cine figcaption span:last-child { color: var(--peach); }
 
 .article { max-width: 46rem; padding: 2.4rem 0 3rem; }
 .article .byline {
@@ -548,11 +610,36 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 .tab.active { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .tab.active .tab-num { color: var(--peach); }
 .tab:hover { color: var(--text); }
+/* Panels stack in one grid cell and crossfade; `hidden` only lands after the fade. */
+.panels { display: grid; }
 .panel {
+  grid-area: 1 / 1;
   display: grid; gap: 2rem; align-items: center;
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .45s cubic-bezier(.2,0,0,1), transform .45s cubic-bezier(.2,0,0,1);
 }
+.panel.active { opacity: 1; transform: none; pointer-events: auto; }
 @media (min-width: 960px) { .panel { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); } }
-.panel[hidden] { display: none !important; }
+.panel[hidden] { visibility: hidden; }
+
+/* Surface screen: locked frame, cover-fit shot, no traffic lights. */
+.screen { margin: 0; position: relative; }
+.screen::before {
+  content: ""; position: absolute; inset: 10% 6% -6%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mauve) 22%, transparent), color-mix(in srgb, var(--sky) 10%, transparent) 60%, transparent);
+  filter: blur(40px);
+}
+.screen-frame {
+  position: relative; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 8px;
+  background: var(--mantle);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  box-shadow: 0 30px 70px -36px rgba(0, 0, 0, .8);
+}
+.screen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.screen figcaption {
+  padding: .6rem .1rem 0; font-family: IBM Plex Mono, ui-monospace, monospace;
+  font-size: 11px; letter-spacing: .04em; color: var(--overlay1);
+}
 .panel-copy h3 {
   margin: 0 0 .7rem; font-size: clamp(1.5rem, 2.6vw, 2rem);
   letter-spacing: -.03em; font-weight: 700;
@@ -682,6 +769,14 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .split.is-ripple dd, .glass-chip.is-ripple { animation: none !important; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
+  .panel { transition: none; }
+}
+
+@media (max-width: 899px) {
+  .plate-box { justify-self: center; width: min(100%, 30rem); }
+  .plate-deck { order: 2; width: min(100%, 20rem); }
+  .beat { padding-top: 3.25rem; }
+  .cine { margin-top: 1.6rem; }
 }
 
 @media (max-width: 720px) {

@@ -28,18 +28,20 @@ const bezel = (src: string, alt: string, caption: string, kind: "laptop" | "phon
     <figcaption>${caption}</figcaption>
   </figure>`;
 
+/* Surfaces index. Shots sit in a locked `.screen` frame (cover-fit), never in window chrome. */
 const surfaces = [
   {
     id: "router",
     num: "01",
     label: "Router",
     title: "Make every seat count.",
-    lede: "Constellation Auto picks a model from seats you already pay for: how hard the job is, the cheapest remaining token, and how close that seat is to reset.",
+    lede: "Constellation Auto picks the model from seats you already pay for: how hard the job is, the cheapest token left, and how close that seat is to reset.",
     src: "/shots/router-dashboard.webp",
     alt: "Constellation Router dashboard: seats, included usage, reset clocks",
-    cap: "router · operations",
+    cap: "router · seats",
     w: 1100,
     h: 535,
+    pos: "50% 0%",
     href: "#router",
   },
   {
@@ -47,12 +49,13 @@ const surfaces = [
     num: "02",
     label: "MaxQ",
     title: "The computer Grok Bot runs on.",
-    lede: "Utilities for the bot. Secondary controls for you: settings, telemetry, processes, every desktop.",
-    src: "/shots/desktops.webp",
-    alt: "MaxQ desktops multiplexer, live Xvfb :1 through :15, current :5",
+    lede: "Tools for the bot. Controls for you: settings, telemetry, processes, every desktop on one sheet.",
+    src: "/shots/desktops-eva-cine.webp",
+    alt: "MaxQ operator desktops: nine live sessions and the STREAM sidebar",
     cap: "maxq · desktops",
-    w: 1037,
-    h: 1200,
+    w: 1600,
+    h: 727,
+    pos: "50% 0%",
     href: "#home",
   },
   {
@@ -60,12 +63,13 @@ const surfaces = [
     num: "03",
     label: "Cue",
     title: "Native glass. Not an Electron fork.",
-    lede: "Swift/SwiftUI chat-and-steer for macOS. iOS still landing.",
+    lede: "Swift and SwiftUI chat-and-steer for macOS. Capture, compose, hand off. iOS is landing.",
     src: "/shots/cue-macos.webp",
-    alt: "Cue macOS: MaxQ launch region on the canvas, inspector and filmstrip",
+    alt: "Cue macOS: the MaxQ launch region on the canvas, inspector and filmstrip",
     cap: "cue · macOS",
     w: 1100,
     h: 682,
+    pos: "50% 0%",
     href: "#cue",
   },
   {
@@ -73,15 +77,27 @@ const surfaces = [
     num: "04",
     label: "Crew",
     title: "Chat stays in Crew. The box is a provider.",
-    lede: "Cue-like SwiftUI with pluggable ComputerProviders: local Docker/VZ, Proxmox, AWS/EC2, Connect-Mac.",
+    lede: "Cue-style SwiftUI with pluggable computer providers: local Docker or VZ, Proxmox, EC2, a Mac you already own.",
     src: "/shots/crew-macos.webp",
     alt: "Crew macOS: Messages, MuxBot, Multiplexer",
     cap: "crew · macOS",
     w: 1006,
     h: 670,
+    pos: "50% 0%",
     href: "#crew",
   },
 ];
+
+/* Cinema still: one landscape frame, cropped in Cue from the real capture, mono caption under it. */
+const cine = (src: string, alt: string, w: number, h: number, left: string, right: string) => `
+  <figure class="cine">
+    <div class="cine-frame"><img src="${src}" alt="${escapeAttr(alt)}" width="${w}" height="${h}" loading="lazy" /></div>
+    <figcaption><span>${left}</span><span>${right}</span></figcaption>
+  </figure>`;
+
+/* Art plate: pastel isometric art flat on the canvas, feathered into the crust. No chrome. */
+const plate = (src: string, alt: string, kind: string) => `
+  <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
 
 /* Launch canvas. The Cue export is the clock: ignition 0.5s, apogee 3.5s, hold to 6s.
    Copy, sparks, and telemetry are staggered against that clock in styles.css (.r1–.r7).
@@ -115,20 +131,20 @@ type GlassSlide = {
 };
 const GLASS: GlassSlide[] = [
   {
-    src: "/shots/bots-desk.webp", w: 1107, h: 869,
+    src: "/shots/bots-desk-cine.webp", w: 1079, h: 490,
     alt: "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot",
     num: "01", cap: "the bot's desk", tele: "state", href: "#desk",
     bot: "A computer tailored for it. Terminal, browser, desktops, theme, and the skills to use them before the first task.",
     you: "An assistant that doesn't need onboarding. The desk is on your network. You can watch the herdr session.",
-    chip: "box@grokbot", pos: "50% 42%",
+    chip: "box@grokbot", pos: "50% 40%",
   },
   {
-    src: "/shots/desktops-eva.webp", w: 1600, h: 1243,
+    src: "/shots/desktops-eva-cine.webp", w: 1600, h: 727,
     alt: "MaxQ operator desktops: nine live Xvfb sessions and a STREAM sidebar",
     num: "02", cap: "the side door", tele: "intercept", href: "#door",
     bot: "Steering and a stable box. You can kill a runaway process before the RAM is gone.",
     you: "Telemetry, visibility, control. Nine desktops at once. Skills from the marketplace, on loopback.",
-    chip: "14 / 22 live", pos: "48% 46%",
+    chip: "14 / 22 live", pos: "50% 0%",
   },
   {
     src: "/research/frontier-400cap.webp", w: 1800, h: 900,
@@ -249,64 +265,76 @@ export function renderHome(): string {
           <p class="lede">${s.lede}</p>
           <a class="btn-ghost" href="${s.href}">Open ${s.label}</a>
         </div>
-        ${s.src
-          ? bezel(s.src, s.alt, s.cap, "laptop", s.w, s.h)
-          : `<figure class="bezel empty"><div class="chrome"><span></span><span></span><span></span></div><p class="ph">Crew screenshot landing. Not Cue.</p><figcaption>${s.cap}</figcaption></figure>`}
+        <figure class="screen">
+          <div class="screen-frame"><img src="${s.src}" alt="${escapeAttr(s.alt)}" width="${s.w}" height="${s.h}" loading="lazy" style="object-position:${s.pos}" /></div>
+          <figcaption>${s.cap}</figcaption>
+        </figure>
       </div>`
     )
     .join("");
   return `
     ${renderLaunch()}
     <div class="install-bar">${installLine()}</div>
+
     <section class="how" id="how">
       <div class="how-copy">
         <p class="eyebrow">How it works</p>
-        <h2 class="display">One box. Operator and bot.</h2>
+        <h2 class="display">One box. Two operators.</h2>
         <ol class="steps">
-          <li><span class="step-num">01</span><div><h3>Packages</h3><p>SBOM inventory for the bot: go, node, docker, ghostty, grok, claude. Not apt. Does not mutate packages.</p></div></li>
-          <li><span class="step-num">02</span><div><h3>Operator glass</h3><p>Settings on loopback. Side-saddle the bot. Configure the machine without taking it hostage.</p></div></li>
-          <li><span class="step-num">03</span><div><h3>Desktops</h3><p>Live Xvfb through the noVNC multiplexer. :1–:15. View, switch, this desktop.</p></div></li>
-          <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code>. Revert does not delete the machine. Prove leaves APPLIED.</p></div></li>
+          <li><span class="step-num">01</span><div><h3>Install</h3><p>One command on the bot's computer. The stock box becomes a workstation built around the bot.</p></div></li>
+          <li><span class="step-num">02</span><div><h3>The desk</h3><p>Terminal, browser, desktops, theme, skills. In place before the first task.</p></div></li>
+          <li><span class="step-num">03</span><div><h3>The side door</h3><p>Settings, telemetry, every desktop. On loopback. You steer without taking the box hostage.</p></div></li>
+          <li><span class="step-num">04</span><div><h3>Persist</h3><p>Only <code>$HOME</code> changes. Revert leaves the machine alone. Prove leaves it <code>APPLIED</code>.</p></div></li>
         </ol>
       </div>
-      ${bezel("/shots/collage.webp", "MaxQ operator glass: desktops multiplexer, settings, packages, OpenCode", "maxq · desktops, settings, packages", "laptop", 900, 1059)}
+      ${plate("/art/hero-laptop.webp", "The box: a laptop with the bot's editor and telemetry on the glass", "plate-box")}
     </section>
-    <section class="beat" id="desk">
-      <div class="beat-copy">
-        <p class="eyebrow">01 · The bot's desk</p>
-        <h2 class="display">A computer tailored for the bot. Not a generic box it has to figure out.</h2>
-        <p class="lede">Terminal, browser, desktops, theme, and the CLIs and skills it ships with, in place before the first task. It does not flounder. It does not need a week of onboarding.</p>
-        <dl class="split">
-          <div>
-            <dt>The bot gets</dt>
-            <dd>A desk designed for how it actually works. Dedicated computer-use skills so it is not tripping over standard systems.</dd>
-          </div>
-          <div>
-            <dt>You get</dt>
-            <dd>An assistant that doesn't need onboarding. Tailscale onto your network. Visibility into the herdr session, not just the chat.</dd>
-          </div>
-        </dl>
+
+    <section class="beat beat-desk" id="desk">
+      <div class="beat-head">
+        <div>
+          <p class="eyebrow">01 · The bot's desk</p>
+          <h2 class="display">A desk built for the bot.</h2>
+        </div>
+        <div>
+          <p class="lede">It arrives knowing how to use a computer. Terminal, browser, desktops, theme, and the skills to drive them are in place before the first task. No week of onboarding. No stock image to figure out.</p>
+          <dl class="split">
+            <div>
+              <dt>The bot gets</dt>
+              <dd>A workstation shaped around how it works. Computer-use skills that fit the tools on the box, so it stops tripping over them.</dd>
+            </div>
+            <div>
+              <dt>You get</dt>
+              <dd>An assistant that hits the ground running, on your network. Join the herdr session and watch the work, not the transcript.</dd>
+            </div>
+          </dl>
+        </div>
       </div>
-      ${bezel("/shots/bots-desk.webp", "The bot's MaxQ desk: mocha wallpaper, rofi, Ghostty at box@grokbot", "maxq · the bot's desk", "laptop", 1107, 869)}
+      ${cine("/shots/bots-desk-cine.webp", "The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot", 1079, 490, "maxq · the bot's desk", "box@grokbot")}
     </section>
-    <section class="beat" id="door">
-      <div class="beat-copy">
-        <p class="eyebrow">02 · The side door</p>
-        <h2 class="display">Chat is a simple control surface. It is a poor one when something goes off the rails.</h2>
-        <p class="lede">The desk gives the bot tools so it can work. The side door gives you tools so you can steer it. Nine desktops at once. Telemetry. Process kill. A TUI on the box, on loopback. Skills from the marketplace.</p>
-        <dl class="split">
-          <div>
-            <dt>The bot gets</dt>
-            <dd>Steering, structure, alignment. A box that stays up because RAM problems are RAM problems, not mysterious AI failures.</dd>
-          </div>
-          <div>
-            <dt>You get</dt>
-            <dd>Telemetry, visibility, and control. Watch every desktop. Point the box at your own model router. Install a skill without a prompt essay.</dd>
-          </div>
-        </dl>
+
+    <section class="beat beat-door" id="door">
+      <div class="beat-head has-plate">
+        ${plate("/art/ops.webp", "The operator deck: three desktops stacked above one control panel", "plate-deck")}
+        <div>
+          <p class="eyebrow">02 · The side door</p>
+          <h2 class="display">Chat is a fine steering wheel. Until something goes wrong.</h2>
+          <p class="lede">The desk gives the bot its tools. The side door gives you yours: nine desktops on one sheet, telemetry, process kill, a TUI on the box. All on loopback. Not a sidecar. A side door.</p>
+          <dl class="split">
+            <div>
+              <dt>The bot gets</dt>
+              <dd>Structure and a stable box. A RAM problem is a RAM problem, not a mysterious AI failure.</dd>
+            </div>
+            <div>
+              <dt>You get</dt>
+              <dd>Telemetry, visibility, control. Point the box at your own router. Install a skill without a prompt essay.</dd>
+            </div>
+          </dl>
+        </div>
       </div>
-      ${bezel("/shots/desktops-eva.webp", "MaxQ operator desktops EVA: nine live sessions and STREAM telemetry", "maxq · the side door", "laptop", 1600, 1243)}
+      ${cine("/shots/desktops-eva-cine.webp", "MaxQ operator desktops: nine live sessions and the STREAM sidebar", 1600, 727, "maxq · the side door", "14 / 22 live")}
     </section>
+
     <section class="surfaces" id="surfaces">
       <div class="section-head">
         <p class="eyebrow">Constellation</p>
