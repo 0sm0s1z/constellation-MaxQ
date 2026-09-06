@@ -124,11 +124,44 @@ a { color: inherit; }
   display: block; height: 28px; width: auto; max-height: 28px;
   object-fit: contain; object-position: left center;
 }
-.nav { display: flex; gap: 1.15rem; margin-left: auto; font-size: 13px; }
-.nav a { color: var(--overlay1); text-decoration: none; }
+.nav { display: flex; align-items: center; gap: 1.15rem; margin-left: auto; font-size: 13px; }
+.nav a { color: var(--overlay1); text-decoration: none; display: inline-flex; align-items: baseline; gap: .35rem; }
 .nav a:hover { color: var(--text); }
 .nav a.active { color: var(--text); }
+.nav-num { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; color: var(--overlay0); letter-spacing: .04em; }
+.nav a.active .nav-num, .nav a:hover .nav-num { color: var(--peach); }
+.nav-sep { width: 1px; height: .9rem; background: var(--rule); }
 .nav-end { display: flex; align-items: center; gap: .5rem; }
+
+/* Products menu: a native <details> styled as a glass sheet. Summary reads like the other links. */
+.menu { position: relative; }
+.menu summary {
+  list-style: none; cursor: pointer; color: var(--overlay1); display: inline-flex; align-items: center; gap: .35rem;
+  transition: color .15s ease;
+}
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary i { width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform .18s ease; }
+.menu[open] summary i { transform: translateY(1px) rotate(-135deg); }
+.menu summary:hover, .menu[open] summary, .menu.active summary { color: var(--text); }
+.menu-sheet {
+  position: absolute; top: calc(100% + .75rem); left: -.75rem; z-index: 20;
+  min-width: 17rem; padding: .4rem; border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--crust) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .9), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  animation: menu-in .18s cubic-bezier(.2, 0, 0, 1) both;
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(-6px); } }
+.menu-item {
+  display: grid; grid-template-columns: 1.6rem 1fr auto; gap: .6rem; align-items: baseline;
+  padding: .5rem .65rem; border-radius: 8px; color: var(--sub) !important;
+}
+.menu-item:hover, .menu-item.active { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text) !important; }
+.menu-num { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; color: var(--peach); }
+.menu-label { font-size: 13px; }
+.menu-note { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; color: var(--overlay1); }
+.nav-toggle { display: none; }
 .brand { flex-direction: column; align-items: flex-start; gap: .15rem; }
 .brand-kicker {
   font-family: IBM Plex Mono, ui-monospace, monospace;
@@ -853,13 +886,16 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
   position: relative; aspect-ratio: 16 / 10; border-radius: 6px; overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
   background: var(--base); cursor: pointer; padding: 0;
-  transition: transform .25s cubic-bezier(.2, 0, 0, 1), box-shadow .25s ease, border-color .25s ease, opacity .25s ease;
+  transition: box-shadow .25s ease, border-color .25s ease, opacity .25s ease;
 }
 .dtile.w1 { background: radial-gradient(90% 120% at 20% 110%, #2a2740, transparent 60%), radial-gradient(80% 80% at 90% 0%, #1c2033, #11111b 70%); }
 .dtile.w2 { background: radial-gradient(100% 100% at 80% 100%, #23283f, transparent 60%), radial-gradient(70% 90% at 10% 10%, #1e1e2e, #11111b 75%); }
 .dtile.w3 { background: radial-gradient(120% 80% at 50% 120%, #2b2340, transparent 62%), #14141f; }
 .dtile:not(.is-live) { opacity: .38; cursor: default; }
-.dtile.is-current { border-color: color-mix(in srgb, var(--peach) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--peach) 35%, transparent), 0 10px 28px -14px var(--peach); transform: translateY(-2px); }
+/* No transform on the current tile: a tile that lifts under the pointer re-fires mouseenter on
+   its neighbour at the seam and the ring flickers between the two. Ring + glow only. */
+.dtile.is-current { border-color: color-mix(in srgb, var(--peach) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--peach) 35%, transparent), 0 10px 28px -14px var(--peach); }
+.dtile:disabled { pointer-events: none; }
 .dtile-id {
   position: absolute; top: .3rem; left: .35rem;
   font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 9.5px; color: var(--text); opacity: .85;
@@ -951,6 +987,124 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 .toggle.is-locked::after { content: ""; position: absolute; right: .3rem; top: 50%; width: 5px; height: 6px; transform: translateY(-50%); border: 1.5px solid var(--overlay1); border-top-width: 1px; border-radius: 1px 1px 0 0; }
 .toggle.is-shake { animation: shake .32s ease; }
 @keyframes shake { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+
+/* ---- Why MaxQ: the navigator ------------------------------------------------------------
+   Three cards on a rail above the products. Each card is one of the why pages: number, a dot on
+   the rail, the claim, three mono points. Reveal is staggered; hover lights the dot and the rail
+   segment in the page's tint so the row reads as a journey, not a grid of links. */
+.why { padding: 4.5rem 0 2.5rem; }
+.why-head { display: grid; gap: 1rem 3rem; align-items: end; margin-bottom: 2.4rem; }
+.why-head .display { margin-bottom: 0; }
+.why-head .lede { margin-bottom: 0; max-width: none; }
+@media (min-width: 900px) { .why-head { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } }
+.why-rail { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: 1rem; counter-reset: why; }
+@media (min-width: 900px) { .why-rail { grid-template-columns: repeat(3, 1fr); } }
+.why-rail::before {
+  content: ""; position: absolute; left: 1.2rem; right: 1.2rem; top: 1.72rem; height: 1px; z-index: 0;
+  background: linear-gradient(90deg, var(--green), var(--peach), var(--sky));
+  opacity: 0; transform: scaleX(.6); transform-origin: left; transition: opacity .7s ease .2s, transform .9s cubic-bezier(.2, 0, 0, 1) .2s;
+}
+.why-rail.is-live::before { opacity: .55; transform: none; }
+@media (max-width: 899px) { .why-rail::before { display: none; } }
+.why-card { --tint: var(--sky); position: relative; z-index: 1; opacity: 0; transform: translateY(14px); transition: opacity .55s ease, transform .55s cubic-bezier(.2, 0, 0, 1); }
+.why-card[data-tint="green"] { --tint: var(--green); }
+.why-card[data-tint="peach"] { --tint: var(--peach); }
+.why-rail.is-live .why-card { opacity: 1; transform: none; }
+.why-rail.is-live .why-card:nth-child(2) { transition-delay: .14s; }
+.why-rail.is-live .why-card:nth-child(3) { transition-delay: .28s; }
+.why-card a {
+  display: grid; grid-template-rows: auto auto 1fr auto auto; gap: .55rem; height: 100%;
+  padding: 1.15rem 1.2rem 1.1rem; border-radius: 14px; color: inherit; text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tint) 9%, transparent), transparent 60%),
+    color-mix(in srgb, var(--crust) 62%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25); backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: 0 24px 60px -32px rgba(0, 0, 0, .9), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  transition: border-color .22s ease, transform .3s cubic-bezier(.2, 0, 0, 1), box-shadow .3s ease;
+}
+.why-card a:hover, .why-card a:focus-visible { border-color: color-mix(in srgb, var(--tint) 50%, var(--rule)); transform: translateY(-3px); box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .95), 0 0 40px -18px var(--tint); outline: none; }
+.why-num { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: var(--tint); }
+.why-dot { position: absolute; top: 1.45rem; right: 1.2rem; width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--tint) 45%, var(--surface0)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 12%, transparent); transition: background .22s ease, box-shadow .22s ease; }
+.why-card a:hover .why-dot { background: var(--tint); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tint) 22%, transparent), 0 0 18px var(--tint); }
+.why-card h3 { margin: 0; font-size: 1.2rem; font-weight: 600; letter-spacing: -.01em; }
+.why-card p { margin: 0; color: var(--sub); font-size: .92rem; line-height: 1.5; }
+.why-points { list-style: none; margin: .2rem 0 0; padding: 0; display: grid; gap: .3rem; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; color: var(--overlay1); }
+.why-points li::before { content: "·"; color: var(--tint); margin-right: .5rem; }
+.why-go { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--tint); display: inline-flex; gap: .4rem; align-items: center; margin-top: .3rem; }
+.why-go i { font-style: normal; transition: transform .22s cubic-bezier(.2, 0, 0, 1); }
+.why-card a:hover .why-go i { transform: translateX(4px); }
+
+/* ---- Why pages -------------------------------------------------------------------------
+   access / control / telemetry. The hero reuses the beat head (plate + display + split) so the
+   page opens like a home beat. Then problem prose, a tinted tile grid, and a journey with the
+   live-type panel beside it. The page tint follows data-tint. */
+.why-page { --tint: var(--sky); padding: 1.5rem 0 3rem; }
+.why-page[data-tint="green"] { --tint: var(--green); }
+.why-page[data-tint="peach"] { --tint: var(--peach); }
+.why-hero { padding: 2rem 0 1rem; }
+.why-hero .display { font-size: clamp(2rem, 4.2vw, 3.2rem); }
+.why-hero .split { padding-top: 1rem; }
+.plate-orbit { width: min(100%, 34rem); justify-self: center; align-self: center; }
+.plate-desk { width: min(100%, 32rem); justify-self: center; align-self: center; }
+.why-sec { padding: 3.5rem 0 0; }
+.why-sec .display { margin-bottom: 0; }
+.why-sec-head { margin-bottom: 1.6rem; }
+.why-problem { display: grid; gap: 1.2rem 3rem; align-items: start; }
+@media (min-width: 900px) { .why-problem { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
+.why-prose p { margin: 0 0 1rem; color: var(--sub); font-size: 1.02rem; line-height: 1.6; }
+.why-prose code { color: var(--sky); }
+.why-callout {
+  display: flex; gap: .8rem; align-items: baseline; margin-top: 1.2rem !important;
+  padding: .7rem .9rem; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px !important; color: var(--text) !important; line-height: 1.45 !important;
+}
+.why-callout .why-k { color: var(--red); }
+.why-k { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tint); }
+.why-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+@media (min-width: 700px) { .why-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1040px) { .why-grid { grid-template-columns: repeat(3, 1fr); } }
+.why-tile {
+  display: grid; gap: .45rem; align-content: start; padding: 1.1rem 1.15rem 1.15rem; border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tint) 7%, transparent), transparent 60%), var(--glass);
+  transition: border-color .22s ease, box-shadow .3s ease;
+}
+.why-tile:hover { border-color: color-mix(in srgb, var(--tint) 40%, var(--rule)); box-shadow: 0 0 36px -20px var(--tint); }
+.why-tile h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.why-tile p { margin: 0; color: var(--sub); font-size: .92rem; line-height: 1.5; }
+.why-tile code { color: var(--sky); font-size: .85em; }
+.why-journey { display: grid; gap: 2rem 3rem; align-items: start; }
+@media (min-width: 960px) { .why-journey { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); } }
+.why-steps { margin-top: 1.4rem; }
+.why-steps .step-num { color: var(--tint); }
+.why-figure { position: sticky; top: 5.5rem; }
+.why-figure .cine { margin-top: 0; }
+.why-panel .proof-bar span:first-child { color: var(--tint); }
+.why-panel .ph { color: var(--overlay0); text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
+.why-panel .pv.no { color: var(--red); }
+.why-live .console { padding: 0; }
+.why-next { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 4rem; }
+.why-next a {
+  display: grid; gap: .3rem; padding: 1.1rem 1.2rem; border-radius: 12px; text-decoration: none; color: var(--text);
+  border: 1px solid var(--rule); background: var(--glass); transition: border-color .2s ease, background .2s ease;
+}
+.why-next a:hover { border-color: color-mix(in srgb, var(--tint) 45%, var(--rule)); background: color-mix(in srgb, var(--tint) 6%, var(--glass)); }
+.why-next .eyebrow { margin: 0; }
+.why-next strong { font-weight: 600; font-size: 1.05rem; }
+.why-fwd { text-align: right; }
+@media (max-width: 720px) {
+  .why { padding: 3rem 0 1.5rem; }
+  .why-head { margin-bottom: 1.4rem; }
+  .why-hero .display { font-size: clamp(1.7rem, 8vw, 2.2rem); }
+  .why-sec { padding-top: 2.5rem; }
+  .why-figure { position: static; }
+  .why-next { grid-template-columns: 1fr; margin-top: 2.5rem; }
+  .why-fwd { text-align: left; }
+  .plate-orbit, .plate-desk { order: -1; width: min(100%, 18rem); margin-bottom: -1rem; }
+}
 
 /* ---- Invariants + proof ----------------------------------------------------------------
    Owns / refuses as two dl columns; the real `maxq prove` report set as live type beside it. */
@@ -1190,7 +1344,27 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
    flattened (display: contents) so its blocks and the stage share one grid and can be ordered.
    Sparks and the floating diamonds are desktop atmosphere; on a phone they land on text. */
 @media (max-width: 720px) {
-  .nav { display: none; }
+  .nav-toggle {
+    display: grid; gap: 4px; place-content: center; width: 2rem; height: 2rem; padding: 0; margin-left: .15rem;
+    border-radius: 8px; border: 1px solid var(--rule); background: var(--glass); cursor: pointer;
+  }
+  .nav-toggle span { display: block; width: 14px; height: 1.5px; background: var(--text); transition: transform .2s ease, opacity .2s ease; }
+  .topbar.is-open .nav-toggle span:first-child { transform: translateY(2.75px) rotate(45deg); }
+  .topbar.is-open .nav-toggle span:last-child { transform: translateY(-2.75px) rotate(-45deg); }
+  .nav {
+    display: none; position: absolute; left: 0; right: 0; top: calc(100% - .25rem); margin: 0;
+    flex-direction: column; align-items: stretch; gap: 0; padding: .5rem; border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+    background: color-mix(in srgb, var(--crust) 88%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .9);
+  }
+  .topbar.is-open .nav { display: flex; animation: menu-in .18s ease both; }
+  .nav > a { padding: .65rem .75rem; border-radius: 8px; font-size: 14px; }
+  .nav > a:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  .nav-sep { width: auto; height: 1px; margin: .25rem .5rem; }
+  .menu summary { padding: .65rem .75rem; font-size: 14px; }
+  .menu-sheet { position: static; min-width: 0; padding: 0 0 .25rem .75rem; border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .topbar { gap: .75rem; padding: .7rem 0 .75rem; }
   .brand .namelogo { height: 24px; max-height: 24px; }
   .dia, .launch-sky { display: none; }

@@ -1,7 +1,8 @@
 import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
-  renderStack, renderRouter, renderCue, renderCrew, GITHUB, type Route,
+  renderStack, renderRouter, renderCue, renderCrew, GITHUB, WHY, type Route,
 } from "./pages";
+import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
 
@@ -15,25 +16,50 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   invariants: { label: "invariants", draw: renderInvariants },
   ops: { label: "ops", draw: renderOps },
   frontier: { label: "frontier", draw: renderFrontier },
+  access: { label: "access", draw: () => renderWhy("access") },
+  control: { label: "control", draw: () => renderWhy("control") },
+  telemetry: { label: "telemetry", draw: () => renderWhy("telemetry") },
 };
 
-const NAV: Route[] = ["home", "stack", "router", "cue", "crew"];
+/* Topbar: the site is about MaxQ. The why pages sit in the bar; the other Constellation surfaces
+   fold into one Products menu, which the `#surfaces` tabs at the foot of the home page mirror. */
+const PRODUCTS: { key: Route; num: string; note: string }[] = [
+  { key: "router", num: "01", note: "spend the seats" },
+  { key: "home", num: "02", note: "the bot's box" },
+  { key: "cue", num: "03", note: "native glass, macOS" },
+  { key: "crew", num: "04", note: "steer computers" },
+  { key: "stack", num: "··", note: "all four, one page" },
+];
 
 function shell(inner: string, route: Route): string {
-  const links = NAV.map((key) => {
-    const active = key === route ? " active" : "";
-    return `<a class="${active}" href="#${key}">${routes[key].label}</a>`;
+  const productOpen = (["router", "cue", "crew", "stack"] as Route[]).includes(route);
+  const products = PRODUCTS.map((p) => {
+    const active = p.key === route && route !== "home" ? " active" : "";
+    const label = p.key === "home" ? "maxq" : routes[p.key].label;
+    return `<a class="menu-item${active}" href="#${p.key}"><span class="menu-num">${p.num}</span><span class="menu-label">${label}</span><span class="menu-note">${p.note}</span></a>`;
+  }).join("");
+  const why = WHY.map((w) => {
+    const active = w.id === route ? " active" : "";
+    return `<a class="${active}" href="#${w.id}"><span class="nav-num">${w.num}</span>${w.short}</a>`;
   }).join("");
   return `
-    <header class="topbar">
+    <header class="topbar" data-topbar>
       <a class="brand" href="#home">
         <span class="brand-kicker">Constellation</span>
         <img class="namelogo" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" />
       </a>
-      <nav class="nav">${links}</nav>
+      <nav class="nav" data-nav>
+        <details class="menu${productOpen ? " active" : ""}" data-menu>
+          <summary>products <i aria-hidden="true"></i></summary>
+          <div class="menu-sheet">${products}</div>
+        </details>
+        <span class="nav-sep" aria-hidden="true"></span>
+        ${why}
+      </nav>
       <div class="nav-end">
         <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
         <a class="btn-solid btn-sm" href="#install">Install</a>
+        <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><span></span><span></span></button>
       </div>
     </header>
     <div class="accent pastel-flow" aria-hidden="true"></div>
@@ -247,6 +273,53 @@ function bindGlass(launch: HTMLElement) {
     const mo = new MutationObserver(() => { if (start()) mo.disconnect(); });
     mo.observe(launch, { attributes: true, attributeFilter: ["class"] });
   }
+}
+
+/* Products menu closes on outside click / Escape; the phone menu turns the nav into a sheet. */
+let menuListeners = false;
+function bindNav(root: HTMLElement) {
+  const bar = root.querySelector<HTMLElement>("[data-topbar]");
+  const menu = root.querySelector<HTMLDetailsElement>("[data-menu]");
+  const toggle = root.querySelector<HTMLButtonElement>("[data-nav-toggle]");
+  const nav = root.querySelector<HTMLElement>("[data-nav]");
+  if (nav) nav.id = "site-nav";
+  if (menu) {
+    if (!menuListeners) {
+      // The shell is redrawn per route; document listeners go on once and find the live menu.
+      menuListeners = true;
+      const live = () => document.querySelector<HTMLDetailsElement>("[data-menu]");
+      document.addEventListener("click", (ev) => {
+        const m = live();
+        if (!m?.open) return;
+        if (!(ev.target instanceof Node) || !m.contains(ev.target)) m.open = false;
+      });
+      document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { const m = live(); if (m) m.open = false; } });
+    }
+    menu.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => { menu.open = false; }));
+  }
+  if (bar && toggle) {
+    toggle.addEventListener("click", () => {
+      const open = !bar.classList.contains("is-open");
+      bar.classList.toggle("is-open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    nav?.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => {
+      bar.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    }));
+  }
+}
+
+/* Staggered reveal for any block marked data-reveal (the why rail). */
+function bindReveal(root: HTMLElement) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  root.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) => {
+    if (reduced) { el.classList.add("is-live"); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { el.classList.add("is-live"); io.disconnect(); }
+    }, { threshold: 0.18 });
+    io.observe(el);
+  });
 }
 
 function bindDesk(root: HTMLElement) {
@@ -488,11 +561,17 @@ function draw() {
     bindLaunch(app);
     bindDesk(app);
     bindConsole(app);
+    bindNav(app);
+    bindReveal(app);
   }
+  document.querySelector("[data-topbar]")?.classList.remove("is-open");
   const id = (location.hash || "").replace("#", "");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (id && id !== "home" && document.getElementById(id)) {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.getElementById(id)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  } else if (route !== "home") {
+    // A page route (access, control, …) is a new page: start at the top, not wherever the last one was.
+    window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
   }
 }
 

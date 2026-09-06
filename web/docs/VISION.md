@@ -94,6 +94,43 @@ opens the paper as a first-class page on this site.
 Funny is allowed here, once: both columns start with "more tokens." Then they
 diverge into why it matters.
 
+## Why MaxQ — the three pages
+
+The front page says what the box is. Three pages after it say why it matters,
+in the order you meet the problems. Each opens like a home beat (plate, display,
+the bot gets / you get), states the problem in prose, lists what the side door
+does as tinted tiles, then walks a five-step journey beside a live-type panel.
+`WHY` in `src/pages.ts` is the index; `src/why.ts` is the copy.
+
+### 01 · Access & security (green)
+
+The bot lives in the cloud; your network doesn't. To touch Home Assistant, the
+router, a NAS, it has to come inside — and the stock box on a private network
+exposes the desktop with no password, no isolation between bots, no firewall,
+no inbound/outbound filtering. We filed three HackerOne reports against Grok
+Bot for this (CVSS 9.8, 8.8, 6.6). MaxQ: Tailscale in the apply, a firewall by
+port and by source, keyed SSH, a vault + OAuth so the bot logs in without ever
+holding the secret, and a view of what goes where.
+
+### 02 · Control & extension (peach)
+
+The bot arrives with no skills and the only way to give it any is chat. The
+marketplace is good but every skill is a prompt ceremony, per bot. And its
+computer is its problem — RAM, a wedged Chrome — you ask nicely. `maxq-api` is
+a Go program on the box that gives you a user's hands: skills assigned,
+enabled, disabled, updated per bot; its file system in your browser (upload,
+download); processes trimmed, restarted, killed, a bot put to sleep; the box's
+package inventory (SBOM — it lists, it does not mutate).
+
+### 03 · Monitoring & telemetry (sky)
+
+Grok Bot shows you one screen, one bot, when you ask. Run three and you're an
+ops floor you can't see. MaxQ multiplexes every desktop through noVNC onto one
+sheet, meters RAM/CPU/load by agent, sets triggers (schedule, probe, shell,
+webhook) that page you before the box falls over, shows the STREAM sidebar,
+and lets you join the terminal through herdr. The telemetry page ends on the
+live console block from the front page.
+
 ## Voice
 
 Short. Direct. Operator-register. Charge the speech with the premise, then get

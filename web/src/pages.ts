@@ -1,28 +1,90 @@
 import { kitIcons, type KitIcon } from "./icons/pack";
 
-export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier";
+export type Route =
+  | "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier"
+  | "access" | "control" | "telemetry";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
 
-const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "surfaces", "start"]);
+const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "why", "surfaces", "start"]);
+const KNOWN: Route[] = [
+  "home", "stack", "router", "cue", "crew", "install", "invariants", "ops", "frontier",
+  "access", "control", "telemetry",
+];
 
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
   if (HOME_HASHES.has(hash)) return "home";
-  const known: Route[] = ["home", "stack", "router", "cue", "crew", "install", "invariants", "ops", "frontier"];
-  return (known as string[]).includes(hash) ? (hash as Route) : "home";
+  return (KNOWN as string[]).includes(hash) ? (hash as Route) : "home";
 }
+
+/* Why MaxQ. Three pages that follow the front page: the front page says what the box is, these say
+   why it matters. Order is the journey — get the bot onto your network safely, give it hands and
+   skills, then watch all of it. `WHY` drives the home navigator, the topbar, and `why.ts`. */
+export type WhyId = "access" | "control" | "telemetry";
+export type WhyTint = "green" | "peach" | "sky";
+export type Why = {
+  id: WhyId; num: string; label: string; short: string; tint: WhyTint;
+  title: string; one: string; points: string[]; art: string; artAlt: string; artKind: string;
+};
+export const WHY: Why[] = [
+  {
+    id: "access", num: "01", label: "Access & security", short: "access", tint: "green",
+    title: "Get the bot onto your network. Without opening a hole.",
+    one: "A tailnet in the apply. A firewall by port and by source. A vault so the bot can log in without ever seeing the key.",
+    points: ["tailnet, not port-forwarding", "inbound by port · by source", "vault + oauth, never pasted"],
+    art: "/art/hero-orbit.webp", artAlt: "Orbit rings: the tailnet wrapping the box", artKind: "plate-orbit",
+  },
+  {
+    id: "control", num: "02", label: "Control & extension", short: "control", tint: "peach",
+    title: "Everything a user of that computer could do. From your browser.",
+    one: "Skills on and off per bot. Files up and down. Processes trimmed, restarted, killed. The box's inventory, in plain sight.",
+    points: ["skills · assign, enable, update", "files · browse, upload, download", "processes · trim, restart, kill"],
+    art: "/art/desk.webp", artAlt: "The bot's desk: laptop, side screens, a control deck", artKind: "plate-desk",
+  },
+  {
+    id: "telemetry", num: "03", label: "Monitoring & telemetry", short: "telemetry", tint: "sky",
+    title: "See what every bot is doing. All of them. At once.",
+    one: "Every desktop live on one sheet. RAM, CPU, load by agent. Triggers that page you before the box falls over.",
+    points: ["every desktop · one sheet", "ram · cpu · load, per agent", "triggers · schedule, probe, webhook"],
+    art: "/art/ops.webp", artAlt: "The operator deck: three desktops stacked above one control panel", artKind: "plate-deck",
+  },
+];
+
+const whyCard = (w: Why) => `
+  <li class="why-card" data-tint="${w.tint}">
+    <a href="#${w.id}">
+      <span class="why-num">${w.num}</span>
+      <span class="why-dot" aria-hidden="true"></span>
+      <h3>${escapeHtml(w.label)}</h3>
+      <p>${escapeHtml(w.one)}</p>
+      <ul class="why-points">${w.points.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul>
+      <span class="why-go">Read <i aria-hidden="true">→</i></span>
+    </a>
+  </li>`;
+
+export const renderWhyNav = () => `
+    <section class="why" id="why">
+      <div class="section-head why-head">
+        <div>
+          <p class="eyebrow">Why MaxQ</p>
+          <h2 class="display">Above: what it is. Next: why it matters.</h2>
+        </div>
+        <p class="lede">Three pages, one journey. Get the bot onto your network without opening a hole. Give it hands and skills. Then watch all of it work.</p>
+      </div>
+      <ol class="why-rail" data-reveal>${WHY.map(whyCard).join("")}</ol>
+    </section>`;
 
 const installLine = () => `
   <div class="term"><code><span class="ps1">$</span><span class="cmd">${INSTALL}</span><span class="cursor"></span></code><button class="copy" type="button" data-copy="${INSTALL}">copy</button></div>`;
 
-const shot = (src: string, alt: string, caption: string, w: number, h: number) => `
+export const shot = (src: string, alt: string, caption: string, w: number, h: number) => `
   <figure class="shot"><img src="${src}" alt="${alt}" width="${w}" height="${h}" /><figcaption>${caption}</figcaption></figure>`;
 
 const escapeAttr = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-const escapeHtml = (value: string) =>
+export const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const bezel = (src: string, alt: string, caption: string, kind: "laptop" | "phone" = "laptop", w = 1280, h = 800) => `
@@ -93,7 +155,7 @@ const surfaces = [
 ];
 
 /* Cinema still: one landscape frame, cropped in Cue from the real capture, mono caption under it. */
-const cine = (src: string, alt: string, w: number, h: number, left: string, right: string) => `
+export const cine = (src: string, alt: string, w: number, h: number, left: string, right: string) => `
   <figure class="cine">
     <div class="cine-frame"><img src="${src}" alt="${escapeAttr(alt)}" width="${w}" height="${h}" loading="lazy" /></div>
     <figcaption><span>${left}</span><span>${right}</span></figcaption>
@@ -128,7 +190,7 @@ const deskStage = (left: string, right: string) => `
   </figure>`;
 
 /* Art plate: pastel isometric art flat on the canvas, feathered into the crust. No chrome. */
-const plate = (src: string, alt: string, kind: string) => `
+export const plate = (src: string, alt: string, kind: string) => `
   <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
 
 /* The kit. What `maxq apply` actually puts on the box, grouped the way the box is used.
@@ -268,18 +330,18 @@ const procRow = (p: Proc) => `
     <button class="proc-kill" type="button" data-kill="${p.name}">kill</button>
   </li>`;
 
-const renderConsole = () => {
+export const renderConsole = (head = true) => {
   const used = ramUsed();
   const ramPct = Math.round((used / RAM_TOTAL_GB) * 100);
   return `
-    <section class="console" id="console">
-      <div class="section-head console-head">
+    <section class="console${head ? "" : " console-bare"}" id="console">
+      ${head ? `<div class="section-head console-head">
         <div>
           <p class="eyebrow">Through the side door</p>
           <h2 class="display">Watch it. Meter it. Steer it.</h2>
         </div>
         <p class="lede">This is the sheet at <code>127.0.0.1:7432</code>, as live type. Every desktop on the box, the meters, the switches. Put a hand on it.</p>
-      </div>
+      </div>` : ""}
       <div class="console-grid" data-console>
         <figure class="console-panel" data-kind="desktops">
           <div class="console-bar"><span>desktops</span><span class="console-live" data-live-count>14 / 22 live</span></div>
@@ -616,9 +678,11 @@ export function renderHome(): string {
       </figure>
     </section>
 
+    ${renderWhyNav()}
+
     <section class="surfaces" id="surfaces">
       <div class="section-head">
-        <p class="eyebrow">Constellation</p>
+        <p class="eyebrow">Constellation · Products</p>
         <h2 class="display">Four surfaces. One stack.</h2>
       </div>
       <div class="tabs" role="tablist">${tabs}</div>
