@@ -37,7 +37,8 @@
   inherits: false;
   initial-value: 0%;
 }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overflow-x: clip; }
+html { scroll-padding-top: 4.75rem; } /* anchors clear the sticky topbar */
 html {
   background: var(--crust);
   color: var(--text);
@@ -54,13 +55,15 @@ body {
   font-size: 16px;
   line-height: 1.55;
   min-height: 100vh;
-  background: var(--crust);
+  background: transparent; /* html paints the crust; a body background would cover the z -1 backdrops */
+  overflow-x: clip; /* full-bleed backdrops (.launch, .how::before, .topbar::before) reach past #app */
 }
 code { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: .88em; }
 img { max-width: 100%; }
 a { color: inherit; }
 
-#stars, .diamonds { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+/* Backdrop lives at z -1 in the root stacking context so blended art (.plate) can see the stars. */
+#stars, .diamonds { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .diamonds { overflow: hidden; }
 .dia {
   position: absolute; width: 14px; height: 14px;
@@ -84,23 +87,36 @@ a { color: inherit; }
 }
 
 #app {
-  position: relative;
-  z-index: 1;
+  position: relative; /* no z-index: #app must not isolate, see .plate */
   max-width: var(--wrap);
   margin: 0 auto;
   padding: 0 1.5rem 4rem;
 }
 
+/* Sticky header. The glass is a viewport-wide pseudo behind the row, feathered at the bottom so it
+   never reads as a card sitting on the page: no side edges, no hard line under the nav. */
 .topbar {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  padding: 1rem 0 1.1rem;
+  padding: .85rem 0 .9rem;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--crust) 22%, transparent);
-  backdrop-filter: blur(16px);
+  isolation: isolate;
+}
+.topbar::before {
+  content: "";
+  position: absolute; z-index: -1; pointer-events: none;
+  inset: -1px calc(50% - 50vw) -1.75rem;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--crust) 78%, transparent) 0%,
+    color-mix(in srgb, var(--crust) 62%, transparent) 55%,
+    transparent 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-mask: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+  mask: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
 }
 .brand { display: flex; align-items: center; text-decoration: none; overflow: visible; }
 .brand .namelogo {
@@ -149,6 +165,7 @@ a { color: inherit; }
 .display {
   margin: 0 0 1rem; font-weight: 800; letter-spacing: -.04em;
   font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.15; color: var(--text);
+  text-wrap: balance;
 }
 .lede { margin: 0 0 1.25rem; color: var(--sub); max-width: 36rem; }
 .grad {
@@ -157,36 +174,265 @@ a { color: inherit; }
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 
-.hero {
-  display: grid; gap: 2.5rem; align-items: center;
-  padding: 2.5rem 0 3rem;
+/* ---- Launch canvas ------------------------------------------------------------------
+   Full-bleed first screen. The Cue export is the clock: ignition .5s, apogee 3.5s, hold.
+   .is-live   → video started; copy staggers in (.r1–.r7)
+   .is-apogee → rocket at the top; telemetry lights
+   .is-held   → video ended; rocket holds, ignition glow settles
+   No card, border, shadow, or chrome on the art (AGENTS.md). */
+.launch {
+  --bleed: calc(50% - 50vw);
+  --gutter: max(1.5rem, calc(50vw - var(--wrap) / 2));
+  --clock: 0s;
+  position: relative;
+  margin: 0 var(--bleed);
+  padding: .5rem var(--gutter) 0;
+  min-height: calc(100svh - 5.2rem);
+  display: flex; flex-direction: column;
+  overflow: clip;
+  isolation: isolate;
 }
-@media (min-width: 960px) {
-  .hero { grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); padding: 3.5rem 0 4rem; }
+.launch-sky { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.spark {
+  position: absolute; display: block; opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg);
+  filter: drop-shadow(0 0 6px currentColor);
+  will-change: transform, opacity; /* own layer: the twinkle must not re-raster the shadow each frame */
 }
-.hero h1 {
-  margin: 0 0 .85rem; font-weight: 900; letter-spacing: -.045em;
-  font-size: clamp(1.55rem, 2.5vw, 2.35rem); line-height: 1;
-  color: var(--text);
-  display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center;
-  gap: .15em .3em; white-space: nowrap;
+.spark path { fill: currentColor; }
+.spark.mauve { color: var(--mauve); }
+.spark.peach { color: var(--peach); }
+.spark.sky { color: var(--sky); }
+.spark.lavender { color: var(--lavender); }
+.spark.pink { color: var(--pink); }
+.launch.is-live .spark {
+  animation:
+    spark-in .9s cubic-bezier(.2,0,0,1) calc(.35s + var(--i) * .12s) both,
+    spark-twinkle var(--dur) ease-in-out calc(1.3s + var(--delay)) infinite;
 }
-.hero h1 .words {
-  display: inline; min-width: 0;
-  color: transparent;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+@keyframes spark-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(-40deg); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
-.hero h1 .hero-logo {
-  display: block; flex: 0 0 auto; height: 0.88em; width: auto;
-  max-height: none; object-fit: contain; object-position: left center;
-}
-@media (max-width: 959px) {
-  .hero h1 { flex-wrap: wrap; white-space: normal; }
+@keyframes spark-twinkle {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  38%      { opacity: .18; transform: translate(-50%, -50%) scale(.72) rotate(calc(var(--spin) * 26deg)); }
+  62%      { opacity: .95; transform: translate(-50%, -50%) scale(1.04) rotate(calc(var(--spin) * 40deg)); }
+  80%      { opacity: .4; transform: translate(-50%, -50%) scale(.85) rotate(calc(var(--spin) * 48deg)); }
 }
 
-.hero-copy .lede { font-size: 1.08rem; }
+.launch-grid {
+  position: relative; z-index: 1; flex: 1;
+  display: grid; gap: 1.5rem 2rem; align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .launch-grid { grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); }
+}
+/* Left column: four blocks. Title and claim ride the flight; split and glass land after apogee. */
+.launch-copy {
+  max-width: 34rem; align-self: center;
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.launch-copy .eyebrow { margin-bottom: .5rem; }
+.launch-title { margin: 0; display: grid; gap: .4rem; }
+.launch-line {
+  display: block; font-weight: 900; letter-spacing: -.045em; line-height: .98;
+  font-size: clamp(2rem, 3.5vw, 2.9rem); color: var(--text);
+}
+.blk-claim .claim {
+  margin: 0 0 .35rem; font-size: clamp(1.15rem, 1.6vw, 1.3rem); font-weight: 600;
+  letter-spacing: -.02em; line-height: 1.3; color: var(--text);
+}
+.blk-claim .lede { margin-bottom: .8rem; font-size: .98rem; }
+
+/* Block 3: who gets what. Two columns under a rule. */
+.split {
+  margin: 0; padding-top: .95rem; border-top: 1px solid var(--rule);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+}
+.split dt {
+  margin: 0 0 .35rem; font-family: IBM Plex Mono, ui-monospace, monospace;
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--peach);
+}
+.split div:last-child dt { color: var(--mauve); }
+.split dd { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--sub); }
+.split.is-ripple dd { animation: split-ripple .22s cubic-bezier(.2,0,0,1) both; }
+@keyframes split-ripple {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Block 4: one landscape well. Aspect is locked so Cue stills of different sizes do not reflow. */
+.glass { display: grid; gap: .4rem; }
+.glass-well {
+  position: relative; display: block; aspect-ratio: 2.75 / 1; overflow: hidden; border-radius: 6px;
+  background: var(--mantle);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  text-decoration: none; color: inherit;
+}
+.glass-well:hover { outline-color: color-mix(in srgb, var(--peach) 35%, transparent); }
+.glass-well:focus-visible { outline: 2px solid var(--peach); outline-offset: 2px; }
+.glass-well img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .55s ease;
+}
+.glass-well img.is-on { opacity: 1; }
+.glass-chip {
+  position: absolute; left: .55rem; bottom: .5rem; z-index: 1;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .04em;
+  padding: .28rem .55rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--crust) 78%, transparent);
+  backdrop-filter: blur(12px); color: var(--peach); pointer-events: none;
+}
+.glass-chip.is-ripple { animation: split-ripple .22s cubic-bezier(.2,0,0,1) both; }
+.glass-caps {
+  display: flex; gap: 1.25rem; flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none;
+}
+.glass-caps::-webkit-scrollbar { display: none; }
+.glass-caps button {
+  appearance: none; border: 0; background: transparent; padding: .1rem 0 .3rem; cursor: pointer;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .03em;
+  color: var(--overlay0); position: relative; text-align: left;
+  white-space: nowrap; flex-shrink: 0;
+}
+.glass-caps button .gn { color: var(--surface0); margin-right: .45rem; }
+.glass-caps button::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--peach); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2,0,0,1);
+}
+.glass-caps button:hover { color: var(--sub); }
+.glass-caps button.is-on { color: var(--text); }
+.glass-caps button.is-on .gn { color: var(--peach); }
+.glass-caps button.is-on::after { transform: scaleX(1); }
+
+/* Late blocks arrive after apogee, when the eye comes back from the rocket. */
+.late { opacity: 0; }
+.launch.is-apogee .late { animation: rise .8s cubic-bezier(.2,0,0,1) both; animation-delay: var(--at, 0s); }
+.l1 { --at: .2s; }
+.l2 { --at: .55s; }
+/* Wordmark: traced SVG used as a mask so the shared pastel clock paints through the letters. */
+.wordmark {
+  display: block; width: min(100%, 24rem); aspect-ratio: 1319 / 318;
+  position: relative;
+}
+.wordmark-ink {
+  position: absolute; inset: 0;
+  -webkit-mask: url(/namelogo.svg) no-repeat left center / contain;
+  mask: url(/namelogo.svg) no-repeat left center / contain;
+  background-size: 300% 100%;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--mauve) 35%, transparent));
+}
 .cta-row { display: flex; flex-wrap: wrap; gap: .65rem; margin: 0; }
-.install-bar { margin: 0 0 1.4rem; }
+
+.launch-stage {
+  position: relative; display: flex; justify-content: center; align-items: flex-end;
+  min-height: 46svh;
+}
+@media (min-width: 900px) { .launch-stage { justify-content: flex-end; min-height: 0; } }
+.launch-video, .launch-gif, .launch-still {
+  display: block; width: auto; max-width: 100%;
+  height: min(82svh, 880px); background: transparent;
+  position: relative; z-index: 1;
+}
+.launch-gif[hidden] { display: none; }
+.launch.is-bitmap .ignition { display: none; }
+.launch-video { opacity: 0; transition: opacity .4s ease; }
+.launch.is-live .launch-video { opacity: 1; }
+.launch-still { display: none; }
+.ignition {
+  position: absolute; left: 50%; bottom: 3%; width: 70%; aspect-ratio: 1.6;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--peach) 55%, transparent), color-mix(in srgb, var(--mauve) 22%, transparent) 45%, transparent 72%);
+  opacity: 0; filter: blur(22px); pointer-events: none; z-index: 0;
+}
+@media (min-width: 900px) { .ignition { left: auto; right: 6%; transform: none; width: 60%; } }
+.launch.is-live .ignition { animation: ignite 6s cubic-bezier(.2,0,0,1) .35s both; }
+.launch.is-held .ignition { opacity: .32; animation: none; }
+@keyframes ignite {
+  0% { opacity: 0; transform: translateX(var(--ig-x, -50%)) scale(.5); }
+  12% { opacity: 1; transform: translateX(var(--ig-x, -50%)) scale(1.15); }
+  40% { opacity: .55; }
+  100% { opacity: .32; transform: translateX(var(--ig-x, -50%)) scale(1); }
+}
+@media (min-width: 900px) { .ignition { --ig-x: 0; } }
+
+/* Reveal clock. Every .rN is a delay against the video's `playing`. */
+.reveal { opacity: 0; }
+.launch.is-live .reveal { animation: rise .8s cubic-bezier(.2,0,0,1) both; animation-delay: var(--at, 0s); }
+.r1 { --at: .05s; }
+.r2 { --at: .25s; }
+.r3 { --at: .55s; }
+.r4 { --at: 1.15s; }
+.r5 { --at: 1.55s; }
+.r7 { --at: 4.2s; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The wordmark wipes on with the climb rather than rising. */
+.launch.is-live .wordmark.reveal {
+  animation: wipe 1.6s cubic-bezier(.3,0,.1,1) .6s both;
+}
+@keyframes wipe {
+  from { opacity: 1; clip-path: inset(-20% 100% -20% 0); }
+  to   { opacity: 1; clip-path: inset(-20% 0% -20% 0); }
+}
+
+/* Telemetry: the proof strip, now a HUD readout that lights at apogee. */
+.telemetry {
+  position: relative; z-index: 1;
+  list-style: none; margin: .7rem 0 0; padding: .65rem 0 .75rem;
+  display: flex; flex-wrap: wrap; gap: .5rem 2.2rem;
+  border-top: 1px solid var(--rule);
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; letter-spacing: .04em;
+}
+.telemetry li { display: inline-flex; gap: .55rem; opacity: 0; transform: translateY(6px); }
+.telemetry .tk { color: var(--overlay0); }
+.telemetry .tk::after { content: "="; margin-left: .55rem; color: var(--surface0); }
+.telemetry .tv { color: var(--sub); }
+.telemetry .tv.ok { color: var(--green); }
+.launch.is-apogee .telemetry li {
+  animation: tele-in .5s cubic-bezier(.2,0,0,1) calc(var(--i) * .14s) both;
+}
+@keyframes tele-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  55% { opacity: 1; color: var(--rosewater); }
+  100% { opacity: 1; transform: none; }
+}
+.launch.is-apogee .telemetry { border-top-color: color-mix(in srgb, var(--peach) 35%, transparent); transition: border-color .8s ease; }
+.telemetry .tv { transition: color .6s ease, text-shadow .6s ease; }
+.telemetry li.is-hot .tk { color: var(--overlay1); }
+.telemetry li.is-hot .tv { color: var(--rosewater); text-shadow: 0 0 12px color-mix(in srgb, var(--peach) 55%, transparent); }
+.telemetry li.is-hot .tv.ok { color: var(--green); text-shadow: 0 0 12px color-mix(in srgb, var(--green) 55%, transparent); }
+
+.scroll-cue {
+  position: absolute; left: 50%; bottom: 4.4rem; transform: translateX(-50%);
+  width: 22px; height: 36px; border-radius: 11px; z-index: 1;
+  border: 1.5px solid color-mix(in srgb, var(--text) 22%, transparent);
+}
+.scroll-cue span {
+  position: absolute; left: 50%; top: 6px; width: 3px; height: 7px; margin-left: -1.5px;
+  border-radius: 2px; background: var(--peach);
+  animation: cue-drop 1.8s ease-in-out infinite;
+}
+@keyframes cue-drop { 0%, 100% { transform: translateY(0); opacity: 1; } 60% { transform: translateY(12px); opacity: 0; } 61% { transform: translateY(0); opacity: 0; } }
+@media (max-width: 899px) { .scroll-cue { display: none; } }
+
+/* Scroll-driven exit: the first screen recedes into scene two where supported. */
+@supports (animation-timeline: view()) {
+  .launch-grid {
+    animation: launch-exit linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 70%;
+  }
+  @keyframes launch-exit {
+    to { transform: translateY(-48px) scale(.985); opacity: .15; }
+  }
+}
+
+.install-bar { margin: 1.4rem 0 1.4rem; }
 .install-bar .term { width: 100%; }
 .hero-visual { position: relative; min-height: 280px; }
 .float-shot {
@@ -241,20 +487,99 @@ button.copy {
 }
 button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--green); }
 
-.proof {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: .55rem 1.75rem;
-  padding: 1.1rem 0 2.4rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
-  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; color: var(--overlay1);
-  letter-spacing: .04em;
-}
-.proof span:first-child { color: var(--green); }
-
+/* Scene two. The orbit rings art becomes the backdrop the launch canvas bleeds into. */
 .how {
+  position: relative;
   display: grid; gap: 2.5rem; align-items: start;
-  padding: 4.5rem 0 3rem;
+  padding: 5rem 0 4rem;
 }
-@media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); } }
+.how::before {
+  content: ""; position: absolute; inset: -6rem calc(50% - 50vw) -3rem; z-index: -1;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--crust) 78%, transparent), color-mix(in srgb, var(--crust) 30%, transparent) 48%, transparent 72%),
+    url(/art/hero-orbit.webp) right 62% / cover no-repeat;
+  opacity: .55; pointer-events: none;
+  -webkit-mask: linear-gradient(180deg, transparent, #000 28%, #000 70%, transparent);
+  mask: linear-gradient(180deg, transparent, #000 28%, #000 70%, transparent);
+}
+@supports (animation-timeline: view()) {
+  .how::before {
+    animation: orbit-drift linear both;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+  @keyframes orbit-drift {
+    from { background-position: right 70%; transform: scale(1.06); }
+    to   { background-position: right 50%; transform: scale(1); }
+  }
+}
+@media (min-width: 960px) { .how { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; } }
 .how .display { margin-bottom: 1.6rem; }
+
+/* Art plates. The isometric pastel pieces sit flat on the canvas like the launch rocket: the
+   dark field is feathered into the crust, a soft pastel pool sits under it, no frame. */
+.plate { margin: 0; position: relative; }
+.plate::before {
+  content: ""; position: absolute; inset: 22% 18%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mauve) 26%, transparent), color-mix(in srgb, var(--peach) 14%, transparent) 55%, transparent);
+  filter: blur(36px);
+}
+.plate img {
+  display: block; width: 100%; height: auto;
+  /* The art's dark field is darker than the crust: `lighten` lets the page (and the stars) win there,
+     and the mask feathers whatever is left at the edges. */
+  mix-blend-mode: lighten;
+  -webkit-mask: radial-gradient(ellipse farthest-side at 50% 50%, #000 55%, transparent 100%);
+  mask: radial-gradient(ellipse farthest-side at 50% 50%, #000 55%, transparent 100%);
+}
+.plate-box { justify-self: end; width: min(100%, 40rem); }
+@media (min-width: 960px) { .plate-box { transform: translate(6%, 0) scale(1.08); } }
+.plate-deck { width: min(100%, 32rem); justify-self: center; align-self: center; }
+
+/* Beats. Copy rides on top in two columns; the real capture runs the full width beneath as one
+   cinema frame. Nothing here is a card. */
+.beat { padding: 4.5rem 0 1.5rem; }
+.beat-head {
+  display: grid; gap: 1.5rem 3rem; align-items: start;
+}
+@media (min-width: 900px) {
+  .beat-head { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .beat-head.has-plate { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); align-items: center; }
+}
+.beat-head .display { margin-bottom: 0; }
+.beat-head .lede { margin-bottom: 1.2rem; max-width: none; }
+.beat .split { padding-top: .95rem; }
+
+/* Cinema frame: locked 2.2:1, the still is cover-fit. One hairline, one radius, a mono caption. */
+.cine { margin: 2.4rem 0 0; }
+.cine-frame {
+  position: relative; aspect-ratio: 2.2 / 1; overflow: hidden; border-radius: 8px;
+  background: var(--mantle);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .85);
+}
+.cine-frame::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(180deg, transparent 70%, color-mix(in srgb, var(--crust) 55%, transparent));
+}
+.cine-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cine figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .1rem 0;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em;
+  color: var(--overlay1);
+}
+.cine figcaption span:last-child { color: var(--peach); }
+
+.article { max-width: 46rem; padding: 2.4rem 0 3rem; }
+.article .byline {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px;
+  color: var(--overlay1); margin: 0 0 1.6rem;
+}
+.article h2.display { margin: 2.2rem 0 .8rem; font-size: clamp(1.35rem, 2.4vw, 1.8rem); }
+.article p { margin: 0 0 1rem; color: var(--sub); font-size: 1.02rem; }
+.article .shot { margin: 1.4rem 0 1.8rem; }
+.article .steps { margin: 1.2rem 0 1.6rem; }
+.article .btn-ghost { margin-right: .5rem; }
 .steps { list-style: none; margin: 0; padding: 0; }
 .steps li {
   display: grid; grid-template-columns: 2.4rem 1fr; gap: .85rem;
@@ -267,6 +592,105 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 }
 .steps h3 { margin: 0 0 .25rem; font-size: 1.05rem; font-weight: 600; }
 .steps p { margin: 0; color: var(--sub); font-size: .95rem; }
+.how .lede { margin-bottom: 1.4rem; }
+.how .display { margin-bottom: .9rem; }
+
+/* The command strip under the steps: the whole CLI, five chips, mono. */
+.cmds { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.1rem 0 0; }
+.cmds code {
+  font-size: 12px; padding: .3rem .6rem; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--glass); color: var(--sky);
+}
+
+/* ---- The kit -------------------------------------------------------------------------
+   The inventory `maxq apply` lands. Three groups (desk / bench / side door), each a list of
+   tiles: a mark, a name, a role, an optional tag. Tiles are rows on hairlines, not cards. */
+.kit { padding: 4.5rem 0 1.5rem; }
+.kit-head { display: grid; gap: 1rem 3rem; align-items: end; margin-bottom: 2.2rem; }
+.kit-head .display { margin-bottom: 0; }
+.kit-head .lede { margin-bottom: 0; max-width: none; }
+@media (min-width: 900px) { .kit-head { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } }
+.kit-grid { display: grid; gap: 2.5rem 2.5rem; }
+@media (min-width: 900px) { .kit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.kit-group h3 { margin: .1rem 0 .3rem; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; }
+.kit-note { margin: 0 0 1rem; color: var(--sub); font-size: .92rem; }
+.kit-group[data-kit="desk"] .eyebrow { color: var(--peach); }
+.kit-group[data-kit="bench"] .eyebrow { color: var(--sky); }
+.kit-group[data-kit="door"] .eyebrow { color: var(--mauve); }
+.kit-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.kit-tile {
+  display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  align-items: center; column-gap: .85rem; row-gap: .05rem;
+  padding: .72rem 0; border-bottom: 1px solid var(--rule);
+}
+.kit-tile .kit-mark { grid-row: 1 / 3; }
+.kit-tile .kit-tag { grid-column: 3; grid-row: 1; align-self: center; }
+.kit-tile .kit-text { display: contents; }
+.kit-tile .kit-text strong { grid-column: 2; grid-row: 1; }
+.kit-tile .kit-text span { grid-column: 2 / 4; grid-row: 2; }
+.kit-mark {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 8px;
+  background: var(--glass); border: 1px solid var(--rule); color: var(--text);
+}
+.kit-mark svg { width: 1.05rem; height: 1.05rem; display: block; }
+.kit-mark b { font: 600 13px/1 IBM Plex Mono, ui-monospace, monospace; color: var(--sub); }
+.kit-mark.is-swatch { display: grid; grid-template-columns: 1fr 1fr; place-items: stretch; gap: 2px; padding: 5px; }
+.kit-mark.is-swatch i { border-radius: 2px; }
+.kit-mark.is-swatch i:nth-child(1) { background: var(--mauve); }
+.kit-mark.is-swatch i:nth-child(2) { background: var(--peach); }
+.kit-mark.is-swatch i:nth-child(3) { background: var(--sky); }
+.kit-mark.is-swatch i:nth-child(4) { background: var(--green); }
+.kit-group[data-kit="desk"] .kit-mark { color: var(--rosewater); }
+.kit-group[data-kit="bench"] .kit-mark { color: var(--sky); }
+.kit-group[data-kit="door"] .kit-mark { color: var(--lavender); }
+.kit-text strong { font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.kit-text span { color: var(--overlay1); font-size: .8rem; line-height: 1.3; font-family: IBM Plex Mono, ui-monospace, monospace; letter-spacing: .01em; }
+.kit-tag {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--overlay1); white-space: nowrap;
+}
+
+/* ---- Invariants + proof ----------------------------------------------------------------
+   Owns / refuses as two dl columns; the real `maxq prove` report set as live type beside it. */
+.trust { position: relative; display: grid; gap: 2.5rem; align-items: center; padding: 4.5rem 0 2rem; }
+@media (min-width: 960px) { .trust { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 4rem; } }
+.trust .display { margin-bottom: .9rem; }
+.trust .lede { max-width: none; margin-bottom: 1.6rem; }
+.owns { display: grid; gap: 1.5rem 2rem; }
+@media (min-width: 640px) { .owns { grid-template-columns: 1fr 1fr; } }
+.owns dl { margin: 0; }
+.owns dt {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  padding-bottom: .5rem; border-bottom: 1px solid var(--rule); margin-bottom: .2rem;
+}
+.owns dt.ok { color: var(--green); }
+.owns dt.no { color: var(--peach); }
+.owns div { display: grid; gap: .1rem; padding: .6rem 0; border-bottom: 1px solid var(--rule); }
+.owns code { font-size: .82rem; color: var(--text); }
+.owns span { font-size: .84rem; color: var(--sub); line-height: 1.4; }
+.proof {
+  margin: 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--rule); background: var(--glass);
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .85);
+}
+.proof-bar, .proof figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .9rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .04em; color: var(--overlay1);
+}
+.proof-bar { border-bottom: 1px solid var(--rule); }
+.proof-bar span:first-child { color: var(--sky); }
+.proof figcaption { border-top: 1px solid var(--rule); }
+.proof figcaption span:last-child { color: var(--green); }
+.proof pre { margin: 0; padding: .9rem 1rem; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12.5px; line-height: 1.65; overflow-x: auto; }
+.proof code { font: inherit; color: var(--overlay0); }
+.proof .pk { color: var(--overlay1); }
+.proof .pv { color: var(--sub); }
+.proof .pv.ok { color: var(--green); text-shadow: 0 0 12px color-mix(in srgb, var(--green) 45%, transparent); }
+
+/* Closing call. */
+.start { padding: 3rem 0 4.5rem; max-width: 46rem; }
+.start .display { margin-bottom: .6rem; }
+.start .term { margin: 1.2rem 0 1rem; }
 
 .surfaces { padding: 2rem 0 3rem; }
 .section-head { margin-bottom: 1.5rem; }
@@ -287,14 +711,39 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 .tab.active { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .tab.active .tab-num { color: var(--peach); }
 .tab:hover { color: var(--text); }
+/* Panels stack in one grid cell and crossfade; `hidden` only lands after the fade. */
+.panels { display: grid; }
 .panel {
+  grid-area: 1 / 1;
   display: grid; gap: 2rem; align-items: center;
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .45s cubic-bezier(.2,0,0,1), transform .45s cubic-bezier(.2,0,0,1);
 }
+.panel.active { opacity: 1; transform: none; pointer-events: auto; }
 @media (min-width: 960px) { .panel { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); } }
-.panel[hidden] { display: none !important; }
+.panel[hidden] { visibility: hidden; }
+
+/* Surface screen: locked frame, cover-fit shot, no traffic lights. */
+.screen { margin: 0; position: relative; }
+.screen::before {
+  content: ""; position: absolute; inset: 10% 6% -6%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mauve) 22%, transparent), color-mix(in srgb, var(--sky) 10%, transparent) 60%, transparent);
+  filter: blur(40px);
+}
+.screen-frame {
+  position: relative; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 8px;
+  background: var(--mantle);
+  outline: 1px solid color-mix(in srgb, var(--text) 9%, transparent); outline-offset: -1px;
+  box-shadow: 0 30px 70px -36px rgba(0, 0, 0, .8);
+}
+.screen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.screen figcaption {
+  padding: .6rem .1rem 0; font-family: IBM Plex Mono, ui-monospace, monospace;
+  font-size: 11px; letter-spacing: .04em; color: var(--overlay1);
+}
 .panel-copy h3 {
   margin: 0 0 .7rem; font-size: clamp(1.5rem, 2.6vw, 2rem);
-  letter-spacing: -.03em; font-weight: 700;
+  letter-spacing: -.03em; font-weight: 700; text-wrap: balance;
 }
 .panel-copy .lede { margin-bottom: 1.1rem; }
 
@@ -389,213 +838,11 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .carousel { position: relative; overflow: visible; }
 .slides { margin: 0; overflow: visible; }
 .slide { margin: 0; overflow: visible; }
-.rocket-slide { overflow: visible; }
-.slide img { display: block; width: 100%; height: auto; }
+.slide img, .slide video { display: block; width: 100%; height: auto; }
 .slide figcaption {
   padding-top: .55rem;
   font-family: IBM Plex Mono, ui-monospace, monospace;
   font-size: 11px; color: var(--overlay1);
-}
-.rocket-stage {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-}
-
-.rocket-stage .rocket-plate {
-  display: block;
-  width: 100%;
-  height: auto;
-  position: relative;
-  z-index: 0;
-}
-
-.rocket-stage .rocket-sprite {
-  position: absolute;
-  left: 40%;
-  top: 26%;
-  width: 10%;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 3;
-  filter:
-    drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
-    drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
-}
-
-.rocket-fly {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  animation: rocket-lift 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-lift {
-  0%, 10% { transform: translate(0, 0); }
-  100% { transform: translate(16%, -38%); }
-}
-
-.rocket-stage .rocket-glow {
-  mix-blend-mode: plus-lighter;
-  opacity: 0;
-  filter: blur(14px) saturate(1.38);
-  transform: translate(0, 5%) scale(1.16);
-  transform-origin: 50% 80%;
-  animation: rocket-body-glow 5.5s ease-in-out infinite alternate;
-}
-
-/* Endpoint-aligned flame still: tip under nozzle; reveal tip→pad (rocket-path.css overrides). */
-.rocket-stage .rocket-flame {
-  --trail-reveal: 18%;
-  position: absolute;
-  left: 2%;
-  top: 28%;
-  width: 46%;
-  max-width: none;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 2;
-  opacity: 0;
-  transform-origin: 0 0;
-  transform: rotate(-9.5deg);
-  mix-blend-mode: plus-lighter;
-  filter:
-    saturate(1.08)
-    drop-shadow(0 0 8px rgba(250,179,135,.38))
-    drop-shadow(0 0 18px rgba(255,236,214,.16));
-  -webkit-mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  animation: rocket-flame-reveal 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-flame-reveal {
-  0%, 5% {
-    opacity: .62;
-    --trail-reveal: 18%;
-  }
-  16% {
-    opacity: .9;
-    --trail-reveal: 48%;
-  }
-  36% {
-    opacity: .98;
-    --trail-reveal: 72%;
-  }
-  56% {
-    opacity: 1;
-    --trail-reveal: 88%;
-  }
-  100% {
-    opacity: 1;
-    --trail-reveal: 100%;
-  }
-}
-
-/* Compact nozzle hot spot moves with the rocket. */
-.rocket-fly::after {
-  content: "";
-  position: absolute;
-  left: 44.5%;
-  top: 44.2%;
-  width: 2.6%;
-  height: 7%;
-  transform-origin: 50% 0;
-  transform: translate(-50%, 0) rotate(31deg) scaleY(.7);
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0;
-  mix-blend-mode: plus-lighter;
-  background: radial-gradient(
-    ellipse at 50% 4%,
-    rgba(255,255,248,.98) 0%,
-    rgba(255,235,210,.88) 28%,
-    rgba(250,179,135,.48) 54%,
-    transparent 78%
-  );
-  filter: blur(1.8px) drop-shadow(0 0 8px rgba(250,179,135,.72));
-  animation: rocket-nozzle-core 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-nozzle-core {
-  0%, 5% { opacity: .72; transform: translate(-50%, 0) rotate(31deg) scaleY(.65); }
-  16% { opacity: .85; transform: translate(-50%, 0) rotate(31deg) scaleY(.9); }
-  100% { opacity: .92; transform: translate(-50%, 0) rotate(31deg) scaleY(1.08); }
-}
-
-@keyframes rocket-body-glow {
-  0%, 8% { opacity: 0; }
-  28% { opacity: .22; }
-  100% { opacity: .58; }
-}
-
-
-/* Base launch cloud at the keyboard/pad — static from the first frame. */
-.rocket-pad-fx {
-  position: absolute;
-  left: 44.5%;
-  top: 55.5%;
-  width: 30%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  overflow: visible;
-}
-.rocket-pad-fx .pad-puff {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  height: auto;
-  opacity: .78;
-  transform: translate(-50%, -50%) scale(1.05);
-  mix-blend-mode: normal;
-  filter:
-    saturate(1.1)
-    blur(.55px)
-    drop-shadow(0 0 12px rgba(250,179,135,.28));
-  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
-  mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
-  animation: none;
-}
-.rocket-pad-fx .pad-puff-b {
-  width: 78%;
-  left: 62%;
-  top: 44%;
-  opacity: .70;
-  transform: translate(-50%, -50%) scale(.92);
-  filter: saturate(1.08) blur(.35px) drop-shadow(0 0 10px rgba(245,194,231,.22));
-}
-.rocket-pad-fx .pad-puff-c {
-  width: 92%;
-  left: 38%;
-  top: 58%;
-  opacity: .74;
-  transform: translate(-50%, -50%) scale(1);
-  filter: saturate(1.1) blur(.55px) drop-shadow(0 0 12px rgba(203,166,247,.2));
-}
-.rocket-pad-fx .pad-puff-d {
-  width: 68%;
-  left: 54%;
-  top: 62%;
-  opacity: .66;
-  transform: translate(-50%, -50%) scale(.88);
-  filter: saturate(1.06) blur(.7px);
 }
 
 .dots {
@@ -612,23 +859,81 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
-  .rocket-fly { animation: none; transform: none; }
-  .rocket-stage .rocket-glow,
-  .rocket-stage .rocket-flame,
-  .rocket-fly::after { animation: none; opacity: 0; }
-  .rocket-pad-fx .pad-puff { animation: none; opacity: 0; }
+  .launch-video, .launch-gif { display: none !important; }
+  .launch-still { display: block; }
+  .launch .reveal, .launch .late, .launch .telemetry li, .launch .ignition, .launch-grid, .how::before {
+    animation: none !important; opacity: 1; transform: none; clip-path: none;
+  }
+  .launch .spark { animation: none !important; opacity: .7; }
+  .launch .ignition { opacity: .3; }
+  .scroll-cue span { animation: none; }
+  .split.is-ripple dd, .glass-chip.is-ripple { animation: none !important; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
+  .panel { transition: none; }
 }
 
+@media (max-width: 899px) {
+  .plate-box { justify-self: center; width: min(100%, 30rem); }
+  .plate-deck { order: 2; width: min(100%, 20rem); }
+  .beat { padding-top: 3.25rem; }
+  .cine { margin-top: 1.6rem; }
+}
+
+/* ---- Phone ----------------------------------------------------------------------------
+   One column. The hero reads title → rocket → claim/CTAs → split → glass: the copy column is
+   flattened (display: contents) so its blocks and the stage share one grid and can be ordered.
+   Sparks and the floating diamonds are desktop atmosphere; on a phone they land on text. */
 @media (max-width: 720px) {
   .nav { display: none; }
-  .hero { padding-top: 1.4rem; }
-}
+  .topbar { gap: .75rem; padding: .7rem 0 .75rem; }
+  .brand .namelogo { height: 24px; max-height: 24px; }
+  .dia, .launch-sky { display: none; }
 
-/* Static SoT hero plate — animation abandoned */
-.rocket-slide .hero-static-plate {
-  display: block;
-  width: 100%;
-  height: auto;
+  .launch { min-height: auto; padding-top: .75rem; }
+  .launch-grid { gap: 1.35rem; }
+  .launch-copy { display: contents; }
+  .blk-title { order: 1; }
+  .launch-stage { order: 2; align-items: center; min-height: 0; margin: -.25rem 0 -.5rem; }
+  .blk-claim { order: 3; }
+  .split { order: 4; }
+  .glass { order: 5; }
+  .launch-video, .launch-gif, .launch-still { height: min(46svh, 520px); }
+  .ignition { bottom: 4%; width: 78%; }
+  .launch-line { font-size: clamp(1.9rem, 9vw, 2.4rem); }
+  .wordmark { width: min(100%, 20rem); }
+  .blk-claim .claim { font-size: 1.1rem; }
+  .split { grid-template-columns: 1fr; gap: .9rem; }
+  .glass-well { aspect-ratio: 2.2 / 1; }
+  .telemetry { gap: .45rem 1.4rem; font-size: 11px; }
+
+  .install-bar { margin: 1.2rem 0 .6rem; }
+  .how { padding: 3.5rem 0 2.5rem; gap: 1.5rem; }
+  .how::before { inset: -3rem calc(50% - 50vw) 0; opacity: .4; }
+  .steps li { padding: .85rem 0; }
+  .display { font-size: clamp(1.7rem, 8vw, 2.2rem); }
+  .beat { padding: 3rem 0 1rem; }
+  .beat-head { gap: 1rem; }
+  .beat-head .lede { margin-bottom: .9rem; }
+  .plate-deck { order: -1; width: min(100%, 18rem); margin-bottom: -1rem; }
+  .cine { margin-top: 1.5rem; }
+  .cine-frame { border-radius: 6px; }
+  .cine figcaption { font-size: 10px; }
+
+  .surfaces { padding: 2.5rem 0 2rem; }
+  .tabs { gap: .15rem; padding: .25rem; overflow: visible; }
+  .tab { flex: 1 1 0; justify-content: center; padding: .5rem .35rem; font-size: 12px; gap: .3rem; }
+  .tab .tab-num { display: none; }
+  .panel { gap: 1.25rem; }
+  .panel-copy .lede { margin-bottom: .9rem; }
+  .screen-frame { border-radius: 6px; }
+
+  .kit { padding: 3rem 0 .5rem; }
+  .kit-head { margin-bottom: 1.4rem; }
+  .kit-grid { gap: 1.8rem; }
+  .kit-tile { padding: .6rem 0; }
+  .trust { padding: 3rem 0 1rem; gap: 1.6rem; }
+  .owns { gap: 1.2rem; }
+  .proof pre { font-size: 11.5px; }
+  .start { padding: 2.5rem 0 3rem; }
 }

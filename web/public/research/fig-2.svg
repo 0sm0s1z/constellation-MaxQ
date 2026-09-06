@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1380" viewBox="0 0 1800 1380" role="img" aria-labelledby="title desc">
+  <title id="title">Subscription Efficiency Frontier</title>
+  <desc id="desc">Capacity-match comparison of monthly fresh-input-equivalent frontier compute and compute per dollar across five AI subscription families.</desc>
+  <rect width="1800" height="1380" fill="#0F1923"/>
+  <text x="72" y="62" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="800" fill="#EB9933" text-anchor="start" letter-spacing="1.8" opacity="1">OPENSECURITY RESEARCH  /  SUBSCRIPTION ECONOMICS  /  2026-08-18</text>
+  <text x="72" y="128" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="53" font-weight="850" fill="#F7F8FA" text-anchor="start" letter-spacing="-1.6" opacity="1">SUBSCRIPTION EFFICIENCY FRONTIER</text>
+  <text x="72" y="174" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="25" font-weight="600" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">Capacity-match view · How much stacking approaches Heavy-scale compute?</text>
+  <text x="72" y="214" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="400" fill="#7B8C9C" text-anchor="start" letter-spacing="0" opacity="1">X = monthly FIE compute. Y = compute per subscription dollar. Native plans are filled; modeled stacks are open.</text>
+  <line x1="72" y1="246" x2="1728" y2="246" stroke="#EB9933" stroke-width="5"/>
+  <rect x="1450.823969487771" y="300" width="254.1760305122291" height="399" rx="10" fill="#28241C" opacity="0.92" stroke="#EB9933" stroke-width="1.5" stroke-opacity="0.45"/>
+  <text x="1466.823969487771" y="330" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="850" fill="#F6D7A8" text-anchor="start" letter-spacing="0.2" opacity="1">HIGH CAPACITY + HIGH VALUE</text>
+  <text x="1466.823969487771" y="353" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="600" fill="#F6D7A8" text-anchor="start" letter-spacing="0" opacity="1">≥2B FIE / month  ·  ≥8M FIE per $</text>
+  <line x1="225" y1="300" x2="225" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="225" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">10M</text>
+  <line x1="385.36722029485196" y1="300" x2="385.36722029485196" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="385.36722029485196" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">20M</text>
+  <line x1="597.3611543016075" y1="300" x2="597.3611543016075" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="597.3611543016075" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">50M</text>
+  <line x1="757.7283745964595" y1="300" x2="757.7283745964595" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="757.7283745964595" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">100M</text>
+  <line x1="918.0955948913114" y1="300" x2="918.0955948913114" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="918.0955948913114" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">200M</text>
+  <line x1="1130.0895288980669" y1="300" x2="1130.0895288980669" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1130.0895288980669" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">500M</text>
+  <line x1="1290.456749192919" y1="300" x2="1290.456749192919" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1290.456749192919" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">1B</text>
+  <line x1="1450.823969487771" y1="300" x2="1450.823969487771" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1450.823969487771" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">2B</text>
+  <line x1="1662.8179034945263" y1="300" x2="1662.8179034945263" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1662.8179034945263" y="1072" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">5B</text>
+  <line x1="225" y1="1035" x2="1705" y2="1035" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="1041" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">0</text>
+  <line x1="225" y1="951" x2="1705" y2="951" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="957" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">2</text>
+  <line x1="225" y1="867" x2="1705" y2="867" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="873" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">4</text>
+  <line x1="225" y1="783" x2="1705" y2="783" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="789" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">6</text>
+  <line x1="225" y1="699" x2="1705" y2="699" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="705" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">8</text>
+  <line x1="225" y1="615" x2="1705" y2="615" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="621" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">10</text>
+  <line x1="225" y1="531" x2="1705" y2="531" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="537" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">12</text>
+  <line x1="225" y1="447" x2="1705" y2="447" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="453" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">14</text>
+  <line x1="225" y1="363" x2="1705" y2="363" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="205" y="369" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">16</text>
+  <line x1="225" y1="300" x2="225" y2="1035" stroke="#3D5163" stroke-width="2"/>
+  <line x1="225" y1="1035" x2="1705" y2="1035" stroke="#3D5163" stroke-width="2"/>
+  <text x="965" y="1113" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="800" fill="#F7F8FA" text-anchor="middle" letter-spacing="1.4" opacity="1">MONTHLY FRESH-INPUT-EQUIVALENT FRONTIER COMPUTE · LOG SCALE</text>
+  <text x="65" y="667.5" transform="rotate(-90 65 667.5)" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="800" fill="#F7F8FA" text-anchor="middle" letter-spacing="1.2">MILLION FIE TOKENS PER SUBSCRIPTION DOLLAR · HIGHER IS BETTER</text>
+  <line x1="1644.630523121137" y1="300" x2="1644.630523121137" y2="1035" stroke="#6A7B8C" stroke-width="2" stroke-dasharray="4 9"/>
+  <text x="1634.630523121137" y="1021" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="800" fill="#8FA6B8" text-anchor="end" letter-spacing="0.8" opacity="1">HEAVY CAPACITY 4.622B</text>
+  <polyline points="715.4537151797932,597.675 969.722308603215,685.0014 969.722308603215,772.5 1248.2653980626142,685.014 1464.523284155656,589.3800000000001 1644.630523121137,387.92280000000005" fill="none" stroke="#F4AE4C" stroke-width="3" opacity="0.62"/>
+  <line x1="1464.523284155656" y1="589.3800000000001" x2="1624.9450128718795" y2="589.275" stroke="#F4AE4C" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <polyline points="607.766236855074,925.17 980.3042726587535,925.086 1152.3087881665463,919.416" fill="none" stroke="#E18F76" stroke-width="3" opacity="0.62"/>
+  <line x1="1152.3087881665463" y1="919.416" x2="1312.7180397074837" y2="919.395" stroke="#E18F76" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <line x1="1152.3087881665463" y1="919.416" x2="1633.3999400463797" y2="919.4202" stroke="#E18F76" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <polyline points="359.70198420570676,884.3376 520.0692045005587,959.7822 892.1717103756296,959.8956000000001 1212.8414436530843,884.8416" fill="none" stroke="#89ADFB" stroke-width="3" opacity="0.62"/>
+  <line x1="1212.8414436530843" y1="884.8416" x2="1373.2086639479362" y2="884.8416" stroke="#89ADFB" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <line x1="1212.8414436530843" y1="884.8416" x2="1533.5758842427883" y2="884.8416" stroke="#89ADFB" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <polyline points="475.28751892167884,973.05 847.4917651172788,973.092 1168.2654427109665,911.163" fill="none" stroke="#87C9A6" stroke-width="3" opacity="0.62"/>
+  <line x1="1168.2654427109665" y1="911.163" x2="1328.7503341078423" y2="911.1" stroke="#87C9A6" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <line x1="1168.2654427109665" y1="911.163" x2="1649.386719602439" y2="911.1504" stroke="#87C9A6" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <polyline points="741.4353632962802,817.5323999999999 1160.4855229144919,702.3851999999999 1356.2620115125987,686.1354" fill="none" stroke="#A785FA" stroke-width="3" opacity="0.62"/>
+  <line x1="1356.2620115125987" y1="686.1354" x2="1516.6292318074507" y2="686.1354" stroke="#A785FA" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <line x1="1356.2620115125987" y1="686.1354" x2="1676.9964521023026" y2="686.1354" stroke="#A785FA" stroke-width="2.5" stroke-dasharray="10 8" opacity="0.72"/>
+  <circle cx="715.4537151797932" cy="597.675" r="10" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="969.722308603215" cy="685.0014" r="10" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="953.722308603215" y="667.0014" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">SuperGrok · 250.0M · $30</text>
+  <circle cx="969.722308603215" cy="772.5" r="10" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1248.2653980626142" cy="685.014" r="10" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1464.523284155656" cy="589.3800000000001" r="10" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="1448.523284155656" y="571.3800000000001" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">Cursor Ultra · 2.122B · $200</text>
+  <circle cx="1644.630523121137" cy="387.92280000000005" r="13" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="1628.630523121137" y="422.92280000000005" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">SG Heavy · 4.622B · $300</text>
+  <circle cx="1624.9450128718795" cy="589.275" r="10" fill="#0F1923" stroke="#F4AE4C" stroke-width="4"/>
+  <text x="1608.9450128718795" y="620.275" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">2x Cursor Ultra · 4.245B · $400 · NOT A SKU</text>
+  <circle cx="607.766236855074" cy="925.17" r="10" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="980.3042726587535" cy="925.086" r="10" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="1152.3087881665463" cy="919.416" r="10" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="1312.7180397074837" cy="919.395" r="10" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <circle cx="1633.3999400463797" cy="919.4202" r="10" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <text x="1618.3999400463797" y="953.4202" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#E18F76" text-anchor="end" letter-spacing="0" opacity="1">8x Max 20x · 4.403B · $1,600 · NOT A SKU</text>
+  <circle cx="359.70198420570676" cy="884.3376" r="10" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="520.0692045005587" cy="959.7822" r="10" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="892.1717103756296" cy="959.8956000000001" r="10" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1212.8414436530843" cy="884.8416" r="10" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1373.2086639479362" cy="884.8416" r="10" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <circle cx="1533.5758842427883" cy="884.8416" r="10" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <text x="1518.5758842427883" y="857.8416" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#89ADFB" text-anchor="end" letter-spacing="0" opacity="1">4x AI Ultra 20x · 2.860B · $799.96 · NOT A SKU</text>
+  <circle cx="475.28751892167884" cy="973.05" r="10" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="847.4917651172788" cy="973.092" r="10" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="1168.2654427109665" cy="911.163" r="10" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="1328.7503341078423" cy="911.1" r="10" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <circle cx="1649.386719602439" cy="911.1504" r="10" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <text x="1634.386719602439" y="888.1504" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#87C9A6" text-anchor="end" letter-spacing="0" opacity="1">8x Pro 20x · 4.718B · $1,600 · NOT A SKU</text>
+  <circle cx="741.4353632962802" cy="817.5323999999999" r="10" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <circle cx="1160.4855229144919" cy="702.3851999999999" r="10" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <circle cx="1356.2620115125987" cy="686.1354" r="10" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <text x="1341.2620115125987" y="665.1354" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#A785FA" text-anchor="end" letter-spacing="0" opacity="1">GLM Max · 1.329B · $160</text>
+  <circle cx="1516.6292318074507" cy="686.1354" r="10" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <circle cx="1676.9964521023026" cy="686.1354" r="10" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <text x="1661.9964521023026" y="716.1354" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="700" fill="#A785FA" text-anchor="end" letter-spacing="0" opacity="1">4x GLM Max · 5.316B · $640 · NOT A SKU</text>
+  <circle cx="230" cy="1160" r="9" fill="#F7F8FA" stroke="#F7F8FA" stroke-width="2"/>
+  <text x="250" y="1166" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="600" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">Native retail plan</text>
+  <circle cx="455" cy="1160" r="9" fill="#0F1923" stroke="#F7F8FA" stroke-width="4"/>
+  <text x="475" y="1166" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="600" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">Hypothetical linear stack · not a sold SKU</text>
+  <text x="1720" y="1166" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">Capacity estimates are empirical central points; confidence varies by plan.</text>
+  <text x="230" y="1196" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="650" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">† X Premium $8 and Premium+ $40 are archived March 2025 prices, not verified current.</text>
+  <rect x="0" y="1220" width="1800" height="160" fill="#121B26"/>
+  <line x1="0" y1="1220" x2="1800" y2="1220" stroke="#243140" stroke-width="1"/>
+  <text x="72" y="1259" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="700" fill="#F7F8FA" text-anchor="start" letter-spacing="1.8" opacity="1">MODEL NORMALIZATION · FRESH-INPUT-EQUIVALENT FRONTIER COMPUTE</text>
+  <text x="1728" y="1259" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="1.1" opacity="1">LIST-EQUIVALENT · NOT SERVING COST · 2026-08-18</text>
+  <rect x="72" y="1283" width="7" height="61" rx="3" fill="#F4AE4C"/>
+  <text x="92" y="1304" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">XAI / CURSOR</text>
+  <text x="92" y="1329" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Grok 4.6 · xhigh</text>
+  <text x="92" y="1352" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard non-Fast</text>
+  <rect x="408.8" y="1283" width="7" height="61" rx="3" fill="#E18F76"/>
+  <text x="428.8" y="1304" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">ANTHROPIC</text>
+  <text x="428.8" y="1329" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Claude Opus 5 · xhigh</text>
+  <text x="428.8" y="1352" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="745.6" y="1283" width="7" height="61" rx="3" fill="#89ADFB"/>
+  <text x="765.6" y="1304" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">GOOGLE</text>
+  <text x="765.6" y="1329" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Gemini 3.1 Pro Preview · High</text>
+  <text x="765.6" y="1352" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="1082.4" y="1283" width="7" height="61" rx="3" fill="#87C9A6"/>
+  <text x="1102.4" y="1304" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">OPENAI</text>
+  <text x="1102.4" y="1329" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">GPT-5.6 Sol · xhigh</text>
+  <text x="1102.4" y="1352" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="1419.2" y="1283" width="7" height="61" rx="3" fill="#A785FA"/>
+  <text x="1439.2" y="1304" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">Z.AI</text>
+  <text x="1439.2" y="1329" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">GLM-5.3 · max</text>
+  <text x="1439.2" y="1352" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+</svg>

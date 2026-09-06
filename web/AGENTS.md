@@ -23,9 +23,12 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - Start site branches from `web/maxq-site`; use `web/*` branches.
 - Commit source and all required `public/` assets before shipping.
 - Run the package build script before reporting a ship.
-- Keep all three hero slides flat on the page canvas.
-- Use .bezel only for product screenshots.
-- Keep and animate public/art/rocket.webp as a flipbook.
+- The home hero is the full-bleed launch canvas (`.launch` in `pages.ts`/`styles.css`). Keep the art flat on the canvas.
+- Use .bezel only for product screenshots on secondary routes. The home page frames captures in `.cine` (beats) and `.screen` (surfaces): locked aspect, cover-fit, no window chrome. Pastel art goes in `.plate` (blended, feathered, no frame). See `docs/BRAND.md` "Home, below the fold".
+- Home stills are cropped through Cue (`capturectl`) into `public/shots/*-cine.webp`; re-cut there, do not drop a raw screenshot with its own title bar into a frame.
+- The home page is the product explanation, not just the hero. `#how` steps, `#kit` tiles (`KIT`), `#trust` (`OWNS` / `REFUSES` / `PROOF`) must match `README.md` and `docs/*.md`. Change the docs first, then the page. Do not invent tools or claims.
+- Work on the web from `web/launch-canvas` (or a branch off it) and push before deploying. `origin/main` is behind the site; do not rebuild the home page from `main`.
+- Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` on Chromium/Firefox (played once and held). Safari/iOS use `public/art/maxq-launch.safari.mov` (premultiplied HEVC with alpha). GIF fallback if video fails, still for reduced motion. Wordmark is `public/namelogo.svg` as a CSS mask. See `docs/BRAND.md`.
 - Keep public/art/ops.webp for now.
 - Record the commit and deployment proof.
 
@@ -44,4 +47,3 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - Target Root Directory is web; target production branch is web/maxq-site.
 - File deployment is only a stopgap and must include all of public/ or images 404.
 - Leftover project maxq-site is git-linked, latest deploy ERROR, not live.
-- Flattened hero CSS already shipped live: .slide{margin:0} with no box. Branch web/hero-carousel-flatten.

@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2129" viewBox="0 0 1800 2129" role="img" aria-labelledby="title desc">
+  <title id="title">Subscription Absolute Scale Map</title>
+  <desc id="desc">Aligned log-scale dot plots show monthly fresh-input-equivalent frontier compute and monthly spend for native and hypothetical AI subscription points.</desc>
+  <rect width="1800" height="2129" fill="#0F1923"/>
+  <text x="72" y="62" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="800" fill="#EB9933" text-anchor="start" letter-spacing="1.8" opacity="1">OPENSECURITY RESEARCH  /  SUBSCRIPTION ECONOMICS  /  2026-08-18</text>
+  <text x="72" y="128" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="53" font-weight="850" fill="#F7F8FA" text-anchor="start" letter-spacing="-1.6" opacity="1">SUBSCRIPTION ABSOLUTE SCALE MAP</text>
+  <text x="72" y="174" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="25" font-weight="600" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">Capacity and spend, separated · Read the two numbers without hiding either inside a ratio</text>
+  <text x="72" y="214" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="400" fill="#7B8C9C" text-anchor="start" letter-spacing="0" opacity="1">Aligned log-scale dot plots. Native plans are filled; hypothetical stacks are open and explicitly labeled.</text>
+  <line x1="72" y1="246" x2="1728" y2="246" stroke="#EB9933" stroke-width="5"/>
+  <text x="785" y="288" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="19" font-weight="850" fill="#F7F8FA" text-anchor="middle" letter-spacing="1.4" opacity="1">MONTHLY FIE COMPUTE</text>
+  <text x="1455" y="288" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="19" font-weight="850" fill="#F7F8FA" text-anchor="middle" letter-spacing="1.4" opacity="1">MONTHLY SUBSCRIPTION SPEND</text>
+  <line x1="560" y1="330" x2="560" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="560" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">10M</text>
+  <line x1="698.3774559904623" y1="330" x2="698.3774559904623" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="698.3774559904623" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">50M</text>
+  <line x1="757.9733824513869" y1="330" x2="757.9733824513869" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="757.9733824513869" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">100M</text>
+  <line x1="896.3508384418492" y1="330" x2="896.3508384418492" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="896.3508384418492" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">500M</text>
+  <line x1="955.9467649027739" y1="330" x2="955.9467649027739" y2="1864" stroke="#2A3C4C" stroke-width="2" stroke-dasharray="6 7"/>
+  <text x="955.9467649027739" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">1B</text>
+  <line x1="1094.324220893236" y1="330" x2="1094.324220893236" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1094.324220893236" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">5B</text>
+  <line x1="1275.88860878638" y1="330" x2="1275.88860878638" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1275.88860878638" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$5</text>
+  <line x1="1325.243135585103" y1="330" x2="1325.243135585103" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1325.243135585103" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$10</text>
+  <line x1="1374.5976623838255" y1="330" x2="1374.5976623838255" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1374.5976623838255" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$20</text>
+  <line x1="1439.8407979689284" y1="330" x2="1439.8407979689284" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1439.8407979689284" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$50</text>
+  <line x1="1489.1953247676513" y1="330" x2="1489.1953247676513" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1489.1953247676513" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$100</text>
+  <line x1="1538.549851566374" y1="330" x2="1538.549851566374" y2="1864" stroke="#2A3C4C" stroke-width="2" stroke-dasharray="6 7"/>
+  <text x="1538.549851566374" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$200</text>
+  <line x1="1587.9043783650968" y1="330" x2="1587.9043783650968" y2="1864" stroke="#2A3C4C" stroke-width="2" stroke-dasharray="6 7"/>
+  <text x="1587.9043783650968" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$400</text>
+  <line x1="1637.2589051638197" y1="330" x2="1637.2589051638197" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1637.2589051638197" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$800</text>
+  <line x1="1686.6134319625426" y1="330" x2="1686.6134319625426" y2="1864" stroke="#1C2C3A" stroke-width="1"/>
+  <text x="1686.6134319625426" y="316" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#8FA6B8" text-anchor="middle" letter-spacing="0" opacity="1">$1,600</text>
+  <line x1="1020.633652895683" y1="574" x2="1080.2498358645498" y2="660" stroke="#F4AE4C" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.549851566374" y1="574" x2="1587.9043783650968" y2="660" stroke="#F4AE4C" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="904.6079956024328" y1="851" x2="964.2195417831865" y2="894" stroke="#E18F76" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.549851566374" y1="851" x2="1587.9043783650968" y2="894" stroke="#E18F76" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="904.6079956024328" y1="851" x2="1083.3918696118303" y2="937" stroke="#E18F76" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.549851566374" y1="851" x2="1686.6134319625426" y2="937" stroke="#E18F76" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="927.1032391954029" y1="1171" x2="986.6991656563278" y2="1214" stroke="#89ADFB" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.5462913008137" y1="1171" x2="1587.9008180995365" y2="1214" stroke="#89ADFB" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="927.1032391954029" y1="1171" x2="1046.2950921172524" y2="1257" stroke="#89ADFB" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.5462913008137" y1="1171" x2="1637.2553448982594" y2="1257" stroke="#89ADFB" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="910.5378334398862" y1="1448" x2="970.177489026563" y2="1491" stroke="#87C9A6" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.549851566374" y1="1448" x2="1587.9043783650968" y2="1491" stroke="#87C9A6" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="910.5378334398862" y1="1448" x2="1089.3329025549604" y2="1534" stroke="#87C9A6" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1538.549851566374" y1="1448" x2="1686.6134319625426" y2="1534" stroke="#87C9A6" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="980.4014231972495" y1="1725" x2="1039.9973496581742" y2="1768" stroke="#A785FA" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1522.6612427799942" y1="1725" x2="1572.0157695787168" y2="1768" stroke="#A785FA" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="980.4014231972495" y1="1725" x2="1099.5932761190988" y2="1811" stroke="#A785FA" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <line x1="1522.6612427799942" y1="1725" x2="1621.3702963774394" y2="1811" stroke="#A785FA" stroke-width="2" stroke-dasharray="8 7" opacity="0.25"/>
+  <text x="72" y="368" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#F4AE4C" text-anchor="start" letter-spacing="1.5" opacity="1">XAI / CURSOR</text>
+  <line x1="72" y1="380" x2="1720" y2="380" stroke="#F4AE4C" stroke-width="2" opacity="0.28"/>
+  <text x="96" y="407" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">X Premium†</text>
+  <line x1="560" y1="402" x2="742.2632049654637" y2="402" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="402" x2="1309.3545267987229" y2="402" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="742.2632049654637" cy="402" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1309.3545267987229" cy="402" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="755.2632049654637" y="407" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">83.3M</text>
+  <text x="1322.3545267987229" y="407" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$8</text>
+  <text x="96" y="450" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">SuperGrok</text>
+  <line x1="560" y1="445" x2="836.7549119809245" y2="445" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="445" x2="1403.468209801916" y2="445" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="836.7549119809245" cy="445" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1403.468209801916" cy="445" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="849.7549119809245" y="450" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">250.0M</text>
+  <text x="1416.468209801916" y="450" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$30</text>
+  <text x="96" y="493" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">X Premium+†</text>
+  <line x1="560" y1="488" x2="836.7549119809245" y2="488" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="488" x2="1423.9521891825484" y2="488" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="836.7549119809245" cy="488" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1423.9521891825484" cy="488" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="849.7549119809245" y="493" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">250.0M</text>
+  <text x="1436.9521891825484" y="493" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$40</text>
+  <text x="96" y="536" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">SuperGrok Plus</text>
+  <line x1="560" y1="531" x2="940.2675465773228" y2="531" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="531" x2="1489.1953247676513" y2="531" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="940.2675465773228" cy="531" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1489.1953247676513" cy="531" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="953.2675465773228" y="536" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">833.3M</text>
+  <text x="1502.1953247676513" y="536" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$100</text>
+  <text x="96" y="579" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Cursor Ultra</text>
+  <line x1="560" y1="574" x2="1020.633652895683" y2="574" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="574" x2="1538.549851566374" y2="574" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="1020.633652895683" cy="574" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1538.549851566374" cy="574" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="1033.633652895683" y="579" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">2.122B</text>
+  <text x="1551.549851566374" y="579" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$200</text>
+  <text x="96" y="622" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">SuperGrok Heavy</text>
+  <line x1="560" y1="617" x2="1087.5653971058277" y2="617" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="617" x2="1567.4203989844643" y2="617" stroke="#F4AE4C" stroke-width="2" opacity="0.25"/>
+  <circle cx="1087.5653971058277" cy="617" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <circle cx="1567.4203989844643" cy="617" r="8" fill="#F4AE4C" stroke="#F4AE4C" stroke-width="2"/>
+  <text x="1074.5653971058277" y="622" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">4.622B</text>
+  <text x="1580.4203989844643" y="622" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$300</text>
+  <text x="96" y="665" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">2x Cursor Ultra · NOT A SKU</text>
+  <line x1="560" y1="660" x2="1080.2498358645498" y2="660" stroke="#F4AE4C" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="660" x2="1587.9043783650968" y2="660" stroke="#F4AE4C" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1080.2498358645498" cy="660" r="8" fill="#0F1923" stroke="#F4AE4C" stroke-width="4"/>
+  <circle cx="1587.9043783650968" cy="660" r="8" fill="#0F1923" stroke="#F4AE4C" stroke-width="4"/>
+  <text x="1067.2498358645498" y="665" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="end" letter-spacing="0" opacity="1">4.245B</text>
+  <text x="1600.9043783650968" y="665" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#F4AE4C" text-anchor="start" letter-spacing="0" opacity="1">$400</text>
+  <text x="72" y="731" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#E18F76" text-anchor="start" letter-spacing="1.5" opacity="1">ANTHROPIC</text>
+  <line x1="72" y1="743" x2="1720" y2="743" stroke="#E18F76" stroke-width="2" opacity="0.28"/>
+  <text x="96" y="770" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Claude Pro</text>
+  <line x1="560" y1="765" x2="702.2442096420883" y2="765" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="765" x2="1374.5976623838255" y2="765" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <circle cx="702.2442096420883" cy="765" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="1374.5976623838255" cy="765" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <text x="715.2442096420883" y="770" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">52.3M</text>
+  <text x="1387.5976623838255" y="770" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">$20</text>
+  <text x="96" y="813" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Claude Max 5x</text>
+  <line x1="560" y1="808" x2="840.6873986231853" y2="808" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="808" x2="1489.1953247676513" y2="808" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <circle cx="840.6873986231853" cy="808" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="1489.1953247676513" cy="808" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <text x="853.6873986231853" y="813" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">261.7M</text>
+  <text x="1502.1953247676513" y="813" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">$100</text>
+  <text x="96" y="856" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Claude Max 20x</text>
+  <line x1="560" y1="851" x2="904.6079956024328" y2="851" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="851" x2="1538.549851566374" y2="851" stroke="#E18F76" stroke-width="2" opacity="0.25"/>
+  <circle cx="904.6079956024328" cy="851" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <circle cx="1538.549851566374" cy="851" r="8" fill="#E18F76" stroke="#E18F76" stroke-width="2"/>
+  <text x="917.6079956024328" y="856" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">550.4M</text>
+  <text x="1551.549851566374" y="856" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">$200</text>
+  <text x="96" y="899" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">2x Claude Max 20x · NOT A SKU</text>
+  <line x1="560" y1="894" x2="964.2195417831865" y2="894" stroke="#E18F76" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="894" x2="1587.9043783650968" y2="894" stroke="#E18F76" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="964.2195417831865" cy="894" r="8" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <circle cx="1587.9043783650968" cy="894" r="8" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <text x="977.2195417831865" y="899" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">1.101B</text>
+  <text x="1600.9043783650968" y="899" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="start" letter-spacing="0" opacity="1">$400</text>
+  <text x="96" y="942" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">8x Claude Max 20x · NOT A SKU</text>
+  <line x1="560" y1="937" x2="1083.3918696118303" y2="937" stroke="#E18F76" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="937" x2="1686.6134319625426" y2="937" stroke="#E18F76" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1083.3918696118303" cy="937" r="8" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <circle cx="1686.6134319625426" cy="937" r="8" fill="#0F1923" stroke="#E18F76" stroke-width="4"/>
+  <text x="1070.3918696118303" y="942" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="end" letter-spacing="0" opacity="1">4.403B</text>
+  <text x="1673.6134319625426" y="942" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#E18F76" text-anchor="end" letter-spacing="0" opacity="1">$1,600</text>
+  <text x="72" y="1008" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#89ADFB" text-anchor="start" letter-spacing="1.5" opacity="1">GOOGLE</text>
+  <line x1="72" y1="1020" x2="1720" y2="1020" stroke="#89ADFB" stroke-width="2" opacity="0.28"/>
+  <text x="96" y="1047" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Google AI Plus</text>
+  <line x1="560" y1="1042" x2="610.0581698061748" y2="1042" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1042" x2="1275.7460591270408" y2="1042" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <circle cx="610.0581698061748" cy="1042" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1275.7460591270408" cy="1042" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <text x="623.0581698061748" y="1047" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">17.9M</text>
+  <text x="1288.7460591270408" y="1047" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">$4.99</text>
+  <text x="96" y="1090" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Google AI Pro</text>
+  <line x1="560" y1="1085" x2="669.6540962670995" y2="1085" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1085" x2="1374.5620517148873" y2="1085" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <circle cx="669.6540962670995" cy="1085" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1374.5620517148873" cy="1085" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <text x="682.6540962670995" y="1090" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">35.8M</text>
+  <text x="1387.5620517148873" y="1090" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">$19.99</text>
+  <text x="96" y="1133" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Google AI Ultra 5x</text>
+  <line x1="560" y1="1128" x2="807.9354329098624" y2="1128" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1128" x2="1489.1882040585042" y2="1128" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <circle cx="807.9354329098624" cy="1128" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1489.1882040585042" cy="1128" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <text x="820.9354329098624" y="1133" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">178.8M</text>
+  <text x="1502.1882040585042" y="1133" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">$99.99</text>
+  <text x="96" y="1176" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">Google AI Ultra 20x</text>
+  <line x1="560" y1="1171" x2="927.1032391954029" y2="1171" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1171" x2="1538.5462913008137" y2="1171" stroke="#89ADFB" stroke-width="2" opacity="0.25"/>
+  <circle cx="927.1032391954029" cy="1171" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <circle cx="1538.5462913008137" cy="1171" r="8" fill="#89ADFB" stroke="#89ADFB" stroke-width="2"/>
+  <text x="940.1032391954029" y="1176" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">715.0M</text>
+  <text x="1551.5462913008137" y="1176" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">$199.99</text>
+  <text x="96" y="1219" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">2x Google AI Ultra 20x · NOT A SKU</text>
+  <line x1="560" y1="1214" x2="986.6991656563278" y2="1214" stroke="#89ADFB" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1214" x2="1587.9008180995365" y2="1214" stroke="#89ADFB" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="986.6991656563278" cy="1214" r="8" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <circle cx="1587.9008180995365" cy="1214" r="8" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <text x="999.6991656563278" y="1219" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">1.430B</text>
+  <text x="1600.9008180995365" y="1219" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="start" letter-spacing="0" opacity="1">$399.98</text>
+  <text x="96" y="1262" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">4x Google AI Ultra 20x · NOT A SKU</text>
+  <line x1="560" y1="1257" x2="1046.2950921172524" y2="1257" stroke="#89ADFB" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1257" x2="1637.2553448982594" y2="1257" stroke="#89ADFB" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1046.2950921172524" cy="1257" r="8" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <circle cx="1637.2553448982594" cy="1257" r="8" fill="#0F1923" stroke="#89ADFB" stroke-width="4"/>
+  <text x="1033.2950921172524" y="1262" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="end" letter-spacing="0" opacity="1">2.860B</text>
+  <text x="1624.2553448982594" y="1262" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#89ADFB" text-anchor="end" letter-spacing="0" opacity="1">$799.96</text>
+  <text x="72" y="1328" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#87C9A6" text-anchor="start" letter-spacing="1.5" opacity="1">OPENAI</text>
+  <line x1="72" y1="1340" x2="1720" y2="1340" stroke="#87C9A6" stroke-width="2" opacity="0.28"/>
+  <text x="96" y="1367" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">ChatGPT Plus</text>
+  <line x1="560" y1="1362" x2="653.0122536533265" y2="1362" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1362" x2="1374.5976623838255" y2="1362" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <circle cx="653.0122536533265" cy="1362" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="1374.5976623838255" cy="1362" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <text x="666.0122536533265" y="1367" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">29.5M</text>
+  <text x="1387.5976623838255" y="1367" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">$20</text>
+  <text x="96" y="1410" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">ChatGPT Pro 5x</text>
+  <line x1="560" y1="1405" x2="791.3313991989887" y2="1405" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1405" x2="1489.1953247676513" y2="1405" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <circle cx="791.3313991989887" cy="1405" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="1489.1953247676513" cy="1405" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <text x="804.3313991989887" y="1410" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">147.4M</text>
+  <text x="1502.1953247676513" y="1410" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">$100</text>
+  <text x="96" y="1453" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">ChatGPT Pro 20x</text>
+  <line x1="560" y1="1448" x2="910.5378334398862" y2="1448" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1448" x2="1538.549851566374" y2="1448" stroke="#87C9A6" stroke-width="2" opacity="0.25"/>
+  <circle cx="910.5378334398862" cy="1448" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <circle cx="1538.549851566374" cy="1448" r="8" fill="#87C9A6" stroke="#87C9A6" stroke-width="2"/>
+  <text x="923.5378334398862" y="1453" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">589.7M</text>
+  <text x="1551.549851566374" y="1453" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">$200</text>
+  <text x="96" y="1496" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">2x ChatGPT Pro 20x · NOT A SKU</text>
+  <line x1="560" y1="1491" x2="970.177489026563" y2="1491" stroke="#87C9A6" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1491" x2="1587.9043783650968" y2="1491" stroke="#87C9A6" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="970.177489026563" cy="1491" r="8" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <circle cx="1587.9043783650968" cy="1491" r="8" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <text x="983.177489026563" y="1496" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">1.180B</text>
+  <text x="1600.9043783650968" y="1496" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="start" letter-spacing="0" opacity="1">$400</text>
+  <text x="96" y="1539" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">8x ChatGPT Pro 20x · NOT A SKU</text>
+  <line x1="560" y1="1534" x2="1089.3329025549604" y2="1534" stroke="#87C9A6" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1534" x2="1686.6134319625426" y2="1534" stroke="#87C9A6" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1089.3329025549604" cy="1534" r="8" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <circle cx="1686.6134319625426" cy="1534" r="8" fill="#0F1923" stroke="#87C9A6" stroke-width="4"/>
+  <text x="1076.3329025549604" y="1539" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="end" letter-spacing="0" opacity="1">4.718B</text>
+  <text x="1673.6134319625426" y="1539" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#87C9A6" text-anchor="end" letter-spacing="0" opacity="1">$1,600</text>
+  <text x="72" y="1605" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="850" fill="#A785FA" text-anchor="start" letter-spacing="1.5" opacity="1">Z.AI</text>
+  <line x1="72" y1="1617" x2="1720" y2="1617" stroke="#A785FA" stroke-width="2" opacity="0.28"/>
+  <text x="96" y="1644" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">GLM Coding Lite</text>
+  <line x1="560" y1="1639" x2="751.918547170915" y2="1639" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1639" x2="1367.0956216349032" y2="1639" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <circle cx="751.918547170915" cy="1639" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <circle cx="1367.0956216349032" cy="1639" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <text x="764.918547170915" y="1644" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">93.2M</text>
+  <text x="1380.0956216349032" y="1644" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">$18</text>
+  <text x="96" y="1687" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">GLM Coding Pro</text>
+  <line x1="560" y1="1682" x2="907.6466470290342" y2="1682" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1682" x2="1465.8046752323487" y2="1682" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <circle cx="907.6466470290342" cy="1682" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <circle cx="1465.8046752323487" cy="1682" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <text x="920.6466470290342" y="1687" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">570.2M</text>
+  <text x="1478.8046752323487" y="1687" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">$72</text>
+  <text x="96" y="1730" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="650" fill="#F7F8FA" text-anchor="start" letter-spacing="0" opacity="1">GLM Coding Max</text>
+  <line x1="560" y1="1725" x2="980.4014231972495" y2="1725" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <line x1="1260" y1="1725" x2="1522.6612427799942" y2="1725" stroke="#A785FA" stroke-width="2" opacity="0.25"/>
+  <circle cx="980.4014231972495" cy="1725" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <circle cx="1522.6612427799942" cy="1725" r="8" fill="#A785FA" stroke="#A785FA" stroke-width="2"/>
+  <text x="993.4014231972495" y="1730" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">1.329B</text>
+  <text x="1535.6612427799942" y="1730" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">$160</text>
+  <text x="96" y="1773" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">2x GLM Coding Max · NOT A SKU</text>
+  <line x1="560" y1="1768" x2="1039.9973496581742" y2="1768" stroke="#A785FA" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1768" x2="1572.0157695787168" y2="1768" stroke="#A785FA" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1039.9973496581742" cy="1768" r="8" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <circle cx="1572.0157695787168" cy="1768" r="8" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <text x="1026.9973496581742" y="1773" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="end" letter-spacing="0" opacity="1">2.658B</text>
+  <text x="1585.0157695787168" y="1773" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">$320</text>
+  <text x="96" y="1816" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="15" font-weight="550" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1" font-style="italic">4x GLM Coding Max · NOT A SKU</text>
+  <line x1="560" y1="1811" x2="1099.5932761190988" y2="1811" stroke="#A785FA" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <line x1="1260" y1="1811" x2="1621.3702963774394" y2="1811" stroke="#A785FA" stroke-width="2" opacity="0.25" stroke-dasharray="7 6"/>
+  <circle cx="1099.5932761190988" cy="1811" r="8" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <circle cx="1621.3702963774394" cy="1811" r="8" fill="#0F1923" stroke="#A785FA" stroke-width="4"/>
+  <text x="1086.5932761190988" y="1816" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="end" letter-spacing="0" opacity="1">5.316B</text>
+  <text x="1634.3702963774394" y="1816" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="750" fill="#A785FA" text-anchor="start" letter-spacing="0" opacity="1">$640</text>
+  <text x="1110" y="1905" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="650" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">1B reference</text>
+  <text x="1695" y="1905" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="650" fill="#8FA6B8" text-anchor="end" letter-spacing="0" opacity="1">$200 / $400 references</text>
+  <text x="72" y="1939" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="650" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">† X Premium $8 and Premium+ $40 are archived March 2025 prices, not verified current.</text>
+  <rect x="0" y="1969" width="1800" height="160" fill="#121B26"/>
+  <line x1="0" y1="1969" x2="1800" y2="1969" stroke="#243140" stroke-width="1"/>
+  <text x="72" y="2008" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="700" fill="#F7F8FA" text-anchor="start" letter-spacing="1.8" opacity="1">MODEL NORMALIZATION · FRESH-INPUT-EQUIVALENT FRONTIER COMPUTE</text>
+  <text x="1728" y="2008" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="600" fill="#8FA6B8" text-anchor="end" letter-spacing="1.1" opacity="1">LIST-EQUIVALENT · NOT SERVING COST · 2026-08-18</text>
+  <rect x="72" y="2032" width="7" height="61" rx="3" fill="#F4AE4C"/>
+  <text x="92" y="2053" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">XAI / CURSOR</text>
+  <text x="92" y="2078" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Grok 4.6 · xhigh</text>
+  <text x="92" y="2101" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard non-Fast</text>
+  <rect x="408.8" y="2032" width="7" height="61" rx="3" fill="#E18F76"/>
+  <text x="428.8" y="2053" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">ANTHROPIC</text>
+  <text x="428.8" y="2078" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Claude Opus 5 · xhigh</text>
+  <text x="428.8" y="2101" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="745.6" y="2032" width="7" height="61" rx="3" fill="#89ADFB"/>
+  <text x="765.6" y="2053" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">GOOGLE</text>
+  <text x="765.6" y="2078" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">Gemini 3.1 Pro Preview · High</text>
+  <text x="765.6" y="2101" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="1082.4" y="2032" width="7" height="61" rx="3" fill="#87C9A6"/>
+  <text x="1102.4" y="2053" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">OPENAI</text>
+  <text x="1102.4" y="2078" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">GPT-5.6 Sol · xhigh</text>
+  <text x="1102.4" y="2101" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+  <rect x="1419.2" y="2032" width="7" height="61" rx="3" fill="#A785FA"/>
+  <text x="1439.2" y="2053" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="800" fill="#F7F8FA" text-anchor="start" letter-spacing="1.1" opacity="1">Z.AI</text>
+  <text x="1439.2" y="2078" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="17" font-weight="500" fill="#D5DDE6" text-anchor="start" letter-spacing="0" opacity="1">GLM-5.3 · max</text>
+  <text x="1439.2" y="2101" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="14" font-weight="400" fill="#8FA6B8" text-anchor="start" letter-spacing="0" opacity="1">standard</text>
+</svg>
