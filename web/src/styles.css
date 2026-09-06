@@ -164,6 +164,7 @@ a { color: inherit; }
 .display {
   margin: 0 0 1rem; font-weight: 800; letter-spacing: -.04em;
   font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.15; color: var(--text);
+  text-wrap: balance;
 }
 .lede { margin: 0 0 1.25rem; color: var(--sub); max-width: 36rem; }
 .grad {
@@ -532,7 +533,7 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 }
 .plate-box { justify-self: end; width: min(100%, 40rem); }
 @media (min-width: 960px) { .plate-box { transform: translate(6%, 0) scale(1.08); } }
-.plate-deck { width: min(100%, 26rem); justify-self: center; align-self: center; }
+.plate-deck { width: min(100%, 32rem); justify-self: center; align-self: center; }
 
 /* Beats. Copy rides on top in two columns; the real capture runs the full width beneath as one
    cinema frame. Nothing here is a card. */
@@ -642,7 +643,7 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
 }
 .panel-copy h3 {
   margin: 0 0 .7rem; font-size: clamp(1.5rem, 2.6vw, 2rem);
-  letter-spacing: -.03em; font-weight: 700;
+  letter-spacing: -.03em; font-weight: 700; text-wrap: balance;
 }
 .panel-copy .lede { margin-bottom: 1.1rem; }
 
@@ -779,11 +780,51 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .cine { margin-top: 1.6rem; }
 }
 
+/* ---- Phone ----------------------------------------------------------------------------
+   One column. The hero reads title → rocket → claim/CTAs → split → glass: the copy column is
+   flattened (display: contents) so its blocks and the stage share one grid and can be ordered.
+   Sparks and the floating diamonds are desktop atmosphere; on a phone they land on text. */
 @media (max-width: 720px) {
   .nav { display: none; }
-  .launch { min-height: auto; padding-top: .5rem; }
-  .launch-video, .launch-gif, .launch-still { height: min(56svh, 620px); }
-  .launch-stage { order: -1; align-items: center; }
-  .launch-copy { gap: 1.25rem; }
+  .topbar { gap: .75rem; padding: .7rem 0 .75rem; }
+  .brand .namelogo { height: 24px; max-height: 24px; }
+  .dia, .launch-sky { display: none; }
+
+  .launch { min-height: auto; padding-top: .75rem; }
+  .launch-grid { gap: 1.35rem; }
+  .launch-copy { display: contents; }
+  .blk-title { order: 1; }
+  .launch-stage { order: 2; align-items: center; min-height: 0; margin: -.25rem 0 -.5rem; }
+  .blk-claim { order: 3; }
+  .split { order: 4; }
+  .glass { order: 5; }
+  .launch-video, .launch-gif, .launch-still { height: min(46svh, 520px); }
+  .ignition { bottom: 4%; width: 78%; }
+  .launch-line { font-size: clamp(1.9rem, 9vw, 2.4rem); }
+  .wordmark { width: min(100%, 20rem); }
+  .blk-claim .claim { font-size: 1.1rem; }
   .split { grid-template-columns: 1fr; gap: .9rem; }
+  .glass-well { aspect-ratio: 2.2 / 1; }
+  .telemetry { gap: .45rem 1.4rem; font-size: 11px; }
+
+  .install-bar { margin: 1.2rem 0 .6rem; }
+  .how { padding: 3.5rem 0 2.5rem; gap: 1.5rem; }
+  .how::before { inset: -3rem calc(50% - 50vw) 0; opacity: .4; }
+  .steps li { padding: .85rem 0; }
+  .display { font-size: clamp(1.7rem, 8vw, 2.2rem); }
+  .beat { padding: 3rem 0 1rem; }
+  .beat-head { gap: 1rem; }
+  .beat-head .lede { margin-bottom: .9rem; }
+  .plate-deck { order: -1; width: min(100%, 18rem); margin-bottom: -1rem; }
+  .cine { margin-top: 1.5rem; }
+  .cine-frame { border-radius: 6px; }
+  .cine figcaption { font-size: 10px; }
+
+  .surfaces { padding: 2.5rem 0 2rem; }
+  .tabs { gap: .15rem; padding: .25rem; overflow: visible; }
+  .tab { flex: 1 1 0; justify-content: center; padding: .5rem .35rem; font-size: 12px; gap: .3rem; }
+  .tab .tab-num { display: none; }
+  .panel { gap: 1.25rem; }
+  .panel-copy .lede { margin-bottom: .9rem; }
+  .screen-frame { border-radius: 6px; }
 }

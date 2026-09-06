@@ -77,6 +77,14 @@ copy in operator register.
 - **Beats**: eyebrow + display headline in one column, lede + `The bot gets` / `You get` in the
   other, still beneath. `#door` puts the ops plate where the headline column would be.
 - **Surfaces** (`.screen`): locked 2:1 frame, cover-fit, no traffic lights; panels crossfade.
+  The MaxQ surface uses its own native 2:1 cut (`desktops-eva-wide.webp` 1600×800, y −100) so
+  the header text is never cover-cropped.
+
+## Phone (≤720px)
+
+One column. The hero reads title → rocket → claim and CTAs → split → glass; `.launch-copy` is
+`display: contents` so its blocks and the stage share one grid and take `order`. Sparks and the
+floating diamonds are off on phones (they land on text). Tabs fill the pill without their numbers.
 
 Re-cut a still through `capturectl` (create → import → `scene.setCanvas` + `layer.transform` →
 render), not by hand-cropping in a paint tool; keep offsets in the commit message.
