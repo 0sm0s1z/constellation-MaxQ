@@ -5,7 +5,7 @@ export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
 
-const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "trust", "surfaces", "start"]);
+const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "surfaces", "start"]);
 
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
@@ -224,6 +224,112 @@ const kitTile = (it: KitItem) => {
     ${it.tag ? `<span class="kit-tag">${escapeHtml(it.tag)}</span>` : ""}
     <span class="kit-tip" role="tooltip" id="${id}">${escapeHtml(it.tip)}</span>
   </li>`;
+};
+
+/* The console. Block two of the side door: the sheet at 127.0.0.1:7432 as live type, not a
+   raster. Three panels — desktops, resources, steer — each one you can put a hand on.
+   Numbers start where the EVA capture was (14 / 22 live, RAM 69%, CPU 61%) and move from there. */
+type Desktop = { id: number; live: boolean; wall: 1 | 2 | 3; win?: "browser" | "term" | "wide" };
+const DESKTOPS: Desktop[] = [
+  { id: 1, live: true, wall: 1 },
+  { id: 3, live: true, wall: 2, win: "browser" },
+  { id: 5, live: true, wall: 1 },
+  { id: 7, live: true, wall: 3 },
+  { id: 8, live: true, wall: 2, win: "term" },
+  { id: 9, live: true, wall: 1 },
+  { id: 11, live: false, wall: 3 },
+  { id: 16, live: false, wall: 2 },
+  { id: 22, live: true, wall: 1, win: "wide" },
+];
+type Proc = { name: string; gb: number; cpu: number; icon: KitIcon };
+const PROCS: Proc[] = [
+  { name: "chrome", gb: 3.4, cpu: 22, icon: "chrome" },
+  { name: "codex", gb: 2.1, cpu: 18, icon: "codex" },
+  { name: "claude", gb: 1.7, cpu: 11, icon: "claude" },
+  { name: "grok", gb: 1.2, cpu: 7, icon: "grok" },
+];
+const RAM_TOTAL_GB = 15.6;
+const RAM_BASE_GB = 2.3;
+const ramUsed = () => RAM_BASE_GB + PROCS.reduce((n, p) => n + p.gb, 0);
+
+const desktopTile = (d: Desktop, i: number) => `
+  <button class="dtile w${d.wall}${d.live ? " is-live" : ""}${i === 2 ? " is-current" : ""}" type="button" data-tile="${d.id}" ${d.live ? "" : "disabled"} aria-label="desktop :${d.id}${d.live ? "" : ", idle"}">
+    <span class="dtile-id">:${d.id}</span>
+    <span class="dtile-chip">${d.live ? "live" : "idle"}</span>
+    ${d.win ? `<span class="dtile-win ${d.win}"></span>` : ""}
+    <span class="dtile-dock"><i></i><i></i><i></i><i></i><i></i></span>
+  </button>`;
+
+const procRow = (p: Proc) => `
+  <li class="proc" data-proc="${p.name}" data-gb="${p.gb}" data-cpu="${p.cpu}">
+    <span class="proc-mark">${kitIcons[p.icon]}</span>
+    <code class="proc-name">${p.name}</code>
+    <span class="proc-gb">${p.gb.toFixed(1)} GB</span>
+    <button class="proc-kill" type="button" data-kill="${p.name}">kill</button>
+  </li>`;
+
+const renderConsole = () => {
+  const used = ramUsed();
+  const ramPct = Math.round((used / RAM_TOTAL_GB) * 100);
+  return `
+    <section class="console" id="console">
+      <div class="section-head console-head">
+        <div>
+          <p class="eyebrow">Through the side door</p>
+          <h2 class="display">Watch it. Meter it. Steer it.</h2>
+        </div>
+        <p class="lede">This is the sheet at <code>127.0.0.1:7432</code>, as live type. Every desktop on the box, the meters, the switches. Put a hand on it.</p>
+      </div>
+      <div class="console-grid" data-console>
+        <figure class="console-panel" data-kind="desktops">
+          <div class="console-bar"><span>desktops</span><span class="console-live" data-live-count>14 / 22 live</span></div>
+          <div class="sheet" data-sheet>${DESKTOPS.map(desktopTile).join("")}</div>
+          <figcaption><span>current <b data-current>:5</b></span><span>every X display · noVNC</span></figcaption>
+        </figure>
+
+        <figure class="console-panel" data-kind="resources">
+          <div class="console-bar"><span>resources</span><span class="console-clock" data-clock>11:00:14</span></div>
+          <div class="meters">
+            <div class="meter" data-meter="cpu"><span class="meter-k">cpu</span><span class="meter-v"><b data-meter-v>61</b>%</span><span class="bar"><i style="--v:61%"></i></span></div>
+            <div class="meter" data-meter="ram"><span class="meter-k">ram</span><span class="meter-v"><b data-meter-v>${ramPct}</b>% <small data-ram-gb>${used.toFixed(1)} / ${RAM_TOTAL_GB} GB</small></span><span class="bar"><i style="--v:${ramPct}%"></i></span></div>
+            <div class="meter" data-meter="load"><span class="meter-k">load</span><span class="meter-v"><b data-meter-v>5.5</b> <small>on 8 cores</small></span><span class="bar"><i style="--v:69%"></i></span></div>
+          </div>
+          <ul class="procs" data-procs>${PROCS.map(procRow).join("")}</ul>
+          <ol class="console-log" data-log aria-live="polite"></ol>
+          <figcaption><span>agent processes</span><button class="console-restore" type="button" data-restore hidden>restore</button></figcaption>
+        </figure>
+
+        <figure class="console-panel" data-kind="steer">
+          <div class="console-bar"><span>steer</span><span class="console-state">state <b>applied</b></span></div>
+          <ul class="switches">
+            <li class="switch">
+              <span class="switch-k">router</span>
+              <span class="chips" role="radiogroup" aria-label="router">
+                <button class="chip is-on" type="button" role="radio" aria-checked="true" data-route="auto">constellation auto</button>
+                <button class="chip" type="button" role="radio" aria-checked="false" data-route="seat">grok seat</button>
+              </span>
+              <span class="switch-note" data-route-note>cheapest token that still finishes</span>
+            </li>
+            <li class="switch">
+              <span class="switch-k">proxy</span>
+              <button class="toggle" type="button" role="switch" aria-checked="false" data-toggle="proxy"><i></i></button>
+              <span class="switch-note" data-toggle-note="proxy">off · <code>maxq proxy on</code></span>
+            </li>
+            <li class="switch">
+              <span class="switch-k">intercept</span>
+              <button class="toggle is-locked" type="button" role="switch" aria-checked="false" aria-disabled="true" data-toggle="intercept"><i></i></button>
+              <span class="switch-note" data-toggle-note="intercept">false · the CA is documented, not auto-trusted</span>
+            </li>
+            <li class="switch">
+              <span class="switch-k">skills</span>
+              <button class="chip chip-add" type="button" data-skill>+ install computer-use</button>
+              <span class="switch-note" data-skill-note>from the bot marketplace. no prompt essay.</span>
+            </li>
+          </ul>
+          <figcaption><span>127.0.0.1:7432</span><span>loopback only</span></figcaption>
+        </figure>
+      </div>
+    </section>`;
 };
 
 const kitGroup = (g: KitGroup) => `
@@ -484,6 +590,8 @@ export function renderHome(): string {
       </div>
       ${cine("/shots/desktops-eva-cine.webp", "MaxQ operator desktops: nine live sessions and the STREAM sidebar", 1600, 727, "maxq · the side door", "14 / 22 live")}
     </section>
+
+    ${renderConsole()}
 
     <section class="trust" id="trust">
       <div class="trust-copy">

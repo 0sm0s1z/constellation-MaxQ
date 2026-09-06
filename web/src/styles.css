@@ -18,6 +18,7 @@
   --blue: #89b4fa;
   --teal: #94e2d5;
   --yellow: #f9e2af;
+  --red: #f38ba8;
   --rule: color-mix(in srgb, var(--surface0) 80%, transparent);
   --glass: color-mix(in srgb, var(--mantle) 72%, transparent);
   --radius: 16px;
@@ -801,6 +802,155 @@ button.copy:hover, button.copy.ok { color: var(--green); border-color: var(--gre
   .kit-group h3 { white-space: normal; }
   .kit-tip { width: min(22rem, calc(100vw - 2.5rem)); max-width: none; }
 }
+
+/* ---- The console -----------------------------------------------------------------------
+   Block two of the side door. Three glass panels set as live type: the desktop sheet cycles,
+   meters breathe, kill drops the RAM bar, switches flip. Same head grid as the kit so 01 and 02
+   share a rhythm: beat, then a dense block you can touch. */
+.console { padding: 2.5rem 0 3.5rem; }
+.console-head { display: grid; gap: 1rem 3rem; align-items: end; margin-bottom: 2rem; }
+.console-head .display { margin-bottom: 0; }
+.console-head .lede { margin-bottom: 0; max-width: none; }
+@media (min-width: 900px) { .console-head { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } }
+.console-grid { display: grid; gap: 1.1rem; align-items: stretch; }
+@media (min-width: 960px) { .console-grid { grid-template-columns: 1.15fr 1fr .95fr; } }
+.console-panel {
+  --tint: var(--sky);
+  position: relative; margin: 0; display: flex; flex-direction: column; min-width: 0;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tint) 9%, transparent), transparent 60%),
+    color-mix(in srgb, var(--crust) 62%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25); backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: 0 24px 60px -32px rgba(0, 0, 0, .9), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .55s ease, transform .55s cubic-bezier(.2, 0, 0, 1), border-color .25s ease;
+}
+.console-panel[data-kind="resources"] { --tint: var(--peach); }
+.console-panel[data-kind="steer"] { --tint: var(--mauve); }
+.console-grid.is-live .console-panel { opacity: 1; transform: none; }
+.console-grid.is-live .console-panel:nth-child(2) { transition-delay: .12s; }
+.console-grid.is-live .console-panel:nth-child(3) { transition-delay: .24s; }
+.console-panel:hover, .console-panel:focus-within { border-color: color-mix(in srgb, var(--tint) 40%, var(--rule)); }
+.console-bar, .console-panel figcaption {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: .55rem .85rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--overlay1);
+}
+.console-bar { border-bottom: 1px solid var(--rule); }
+.console-bar span:first-child { color: var(--tint); }
+.console-panel figcaption { border-top: 1px solid var(--rule); margin-top: auto; text-transform: none; letter-spacing: .02em; }
+.console-panel figcaption b { color: var(--text); font-weight: 500; }
+.console-live { color: var(--green); text-transform: none; }
+.console-clock { color: var(--sub); font-variant-numeric: tabular-nums; }
+.console-state b { color: var(--green); font-weight: 500; text-shadow: 0 0 10px color-mix(in srgb, var(--green) 45%, transparent); }
+
+/* Desktops: nine buttons drawn in CSS. Current gets the peach ring; idle sits dim. */
+.sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; padding: .75rem; }
+.dtile {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 6px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--base); cursor: pointer; padding: 0;
+  transition: transform .25s cubic-bezier(.2, 0, 0, 1), box-shadow .25s ease, border-color .25s ease, opacity .25s ease;
+}
+.dtile.w1 { background: radial-gradient(90% 120% at 20% 110%, #2a2740, transparent 60%), radial-gradient(80% 80% at 90% 0%, #1c2033, #11111b 70%); }
+.dtile.w2 { background: radial-gradient(100% 100% at 80% 100%, #23283f, transparent 60%), radial-gradient(70% 90% at 10% 10%, #1e1e2e, #11111b 75%); }
+.dtile.w3 { background: radial-gradient(120% 80% at 50% 120%, #2b2340, transparent 62%), #14141f; }
+.dtile:not(.is-live) { opacity: .38; cursor: default; }
+.dtile.is-current { border-color: color-mix(in srgb, var(--peach) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--peach) 35%, transparent), 0 10px 28px -14px var(--peach); transform: translateY(-2px); }
+.dtile-id {
+  position: absolute; top: .3rem; left: .35rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 9.5px; color: var(--text); opacity: .85;
+}
+.dtile-chip {
+  position: absolute; top: .3rem; right: .35rem;
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 8px; letter-spacing: .04em;
+  padding: .05rem .3rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 22%, transparent); color: var(--green);
+}
+.dtile:not(.is-live) .dtile-chip { background: color-mix(in srgb, var(--overlay0) 25%, transparent); color: var(--overlay1); }
+.dtile-win { position: absolute; border-radius: 2px; background: color-mix(in srgb, var(--base) 85%, transparent); border: 1px solid color-mix(in srgb, var(--text) 12%, transparent); }
+.dtile-win::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.dtile-win.browser { inset: 26% 12% 22% 12%; }
+.dtile-win.term { inset: 22% 38% 18% 8%; background: #0b0b12; }
+.dtile-win.wide { inset: 30% 6% 20% 6%; }
+.dtile-dock { position: absolute; left: 50%; bottom: .22rem; transform: translateX(-50%); display: flex; gap: 2px; }
+.dtile-dock i { width: 3px; height: 3px; border-radius: 1px; background: var(--overlay0); }
+.dtile-dock i:nth-child(1) { background: var(--peach); } .dtile-dock i:nth-child(3) { background: var(--mauve); } .dtile-dock i:nth-child(5) { background: var(--sky); }
+
+/* Resources: two meters, a process list with a kill button per row, a three-line log. */
+.meters { display: grid; gap: .55rem; padding: .8rem .85rem .35rem; }
+.meter { display: grid; grid-template-columns: 2.6rem 1fr; grid-template-rows: auto auto; column-gap: .6rem; align-items: baseline; }
+.meter-k { grid-row: 1 / span 2; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; color: var(--overlay1); text-transform: uppercase; letter-spacing: .08em; align-self: center; }
+.meter-v { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.meter-v b { color: var(--text); font-weight: 500; font-size: 1.05rem; transition: color .4s ease; }
+.meter-v small { font-size: 10.5px; color: var(--overlay1); margin-left: .35rem; }
+.meter .bar { display: block; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--surface0) 70%, transparent); overflow: hidden; margin-top: .3rem; }
+.meter .bar i { display: block; height: 100%; width: var(--v, 0%); border-radius: inherit; background: linear-gradient(90deg, var(--sky), var(--peach)); box-shadow: 0 0 12px -2px var(--peach); transition: width .7s cubic-bezier(.2, 0, 0, 1); }
+.meter.is-hot .bar i { background: linear-gradient(90deg, var(--peach), var(--red)); }
+.meter.is-hot .meter-v b { color: var(--red); }
+.procs { list-style: none; margin: .5rem 0 0; padding: 0 .85rem; }
+.proc {
+  display: grid; grid-template-columns: 1.15rem 1fr auto auto; gap: .55rem; align-items: center;
+  padding: .42rem 0; border-top: 1px solid var(--rule);
+  transition: opacity .4s ease, transform .4s cubic-bezier(.2, 0, 0, 1);
+}
+.proc.is-dead { opacity: 0; transform: translateX(10px); pointer-events: none; }
+.proc-mark { color: var(--sub); display: grid; place-items: center; }
+.proc-mark svg { width: .95rem; height: .95rem; }
+.proc-name { font-size: 12px; color: var(--text); }
+.proc-gb { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; color: var(--overlay1); font-variant-numeric: tabular-nums; }
+.proc-kill {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10.5px; letter-spacing: .06em;
+  padding: .18rem .5rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  background: color-mix(in srgb, var(--red) 10%, transparent); color: var(--red);
+  transition: background .18s ease, box-shadow .18s ease;
+}
+.proc-kill:hover, .proc-kill:focus-visible { background: color-mix(in srgb, var(--red) 24%, transparent); box-shadow: 0 0 16px -6px var(--red); outline: none; }
+.console-log { list-style: none; margin: auto 0 .6rem; padding-top: .5rem; padding: 0 .85rem; min-height: 1.4rem; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; color: var(--overlay1); }
+.console-panel[data-kind="resources"] figcaption { margin-top: 0; }
+.console-log li { animation: log-in .35s ease both; }
+.console-log li:first-child { color: var(--peach); }
+@keyframes log-in { from { opacity: 0; transform: translateY(-4px); } }
+.console-restore { font: inherit; color: var(--sky); background: none; border: 0; padding: 0; cursor: pointer; letter-spacing: inherit; }
+.console-restore:hover { text-decoration: underline; }
+
+/* Steer: router chips, proxy switch, a locked intercept switch, a skill install. */
+.switches { list-style: none; margin: 0; padding: .35rem .85rem .6rem; }
+.switch { display: grid; grid-template-columns: 4.6rem 1fr; gap: .2rem .7rem; align-items: center; padding: .62rem 0; border-top: 1px solid var(--rule); }
+.switch:first-child { border-top: 0; }
+.switch-k { font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; color: var(--overlay1); text-transform: uppercase; letter-spacing: .08em; }
+.switch-note { grid-column: 2; font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 10.5px; color: var(--overlay1); line-height: 1.4; }
+.switch-note code { font-size: inherit; color: var(--sky); }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chip {
+  font-family: IBM Plex Mono, ui-monospace, monospace; font-size: 11px; letter-spacing: .02em;
+  padding: .25rem .6rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--glass); color: var(--sub);
+  transition: color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--text) 20%, transparent); }
+.chip.is-on { color: var(--mauve); border-color: color-mix(in srgb, var(--mauve) 55%, transparent); background: color-mix(in srgb, var(--mauve) 14%, transparent); box-shadow: 0 0 16px -8px var(--mauve); }
+.chip-add { color: var(--sky); border-color: color-mix(in srgb, var(--sky) 35%, transparent); justify-self: start; }
+.chip-add.is-busy { color: var(--overlay1); animation: chip-pulse 1s ease infinite; }
+.chip-add.is-done { color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); cursor: default; }
+@keyframes chip-pulse { 50% { opacity: .55; } }
+.toggle {
+  position: relative; width: 2.3rem; height: 1.25rem; border-radius: 999px; padding: 0; cursor: pointer; justify-self: start;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: color-mix(in srgb, var(--surface0) 70%, transparent);
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.toggle i { position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 6px); height: calc(1.25rem - 6px); border-radius: 50%; background: var(--overlay1); transition: transform .22s cubic-bezier(.2, 0, 0, 1), background .2s ease; }
+.toggle[aria-checked="true"] { background: color-mix(in srgb, var(--green) 28%, transparent); border-color: color-mix(in srgb, var(--green) 60%, transparent); box-shadow: 0 0 16px -6px var(--green); }
+.toggle[aria-checked="true"] i { transform: translateX(1.05rem); background: var(--green); }
+.toggle.is-locked { cursor: not-allowed; opacity: .7; }
+.toggle.is-locked::after { content: ""; position: absolute; right: .3rem; top: 50%; width: 5px; height: 6px; transform: translateY(-50%); border: 1.5px solid var(--overlay1); border-top-width: 1px; border-radius: 1px 1px 0 0; }
+.toggle.is-shake { animation: shake .32s ease; }
+@keyframes shake { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
 
 /* ---- Invariants + proof ----------------------------------------------------------------
    Owns / refuses as two dl columns; the real `maxq prove` report set as live type beside it. */

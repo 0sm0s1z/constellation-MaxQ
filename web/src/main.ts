@@ -266,6 +266,214 @@ function bindDesk(root: HTMLElement) {
   });
 }
 
+/* The console is block two of the side door. Nothing here is a screenshot: the desktop sheet cycles
+   its current display, the meters breathe, kill removes a process and the RAM bar drops by its
+   RSS, the switches flip. Hover or focus a panel and its clock stops; leave and it resumes. */
+const SHEET_PERIOD_MS = 2600;
+const METER_PERIOD_MS = 1400;
+const RAM_TOTAL_GB = 15.6;
+const RAM_BASE_GB = 2.3;
+function bindConsole(root: HTMLElement) {
+  const grid = root.querySelector<HTMLElement>("[data-console]");
+  if (!grid) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  /* Desktops */
+  const sheet = grid.querySelector<HTMLElement>("[data-sheet]");
+  const tiles = [...grid.querySelectorAll<HTMLButtonElement>("[data-tile]")];
+  const liveTiles = tiles.filter((t) => t.classList.contains("is-live"));
+  const current = grid.querySelector<HTMLElement>("[data-current]");
+  let cur = Math.max(0, liveTiles.findIndex((t) => t.classList.contains("is-current")));
+  let sheetTimer = 0;
+  const showTile = (n: number) => {
+    if (!liveTiles.length) return;
+    cur = ((n % liveTiles.length) + liveTiles.length) % liveTiles.length;
+    liveTiles.forEach((t, k) => t.classList.toggle("is-current", k === cur));
+    if (current) current.textContent = `:${liveTiles[cur].dataset.tile}`;
+  };
+  const sheetStop = () => window.clearInterval(sheetTimer);
+  const sheetPlay = () => {
+    sheetStop();
+    if (reduced) return;
+    sheetTimer = window.setInterval(() => showTile(cur + 1), SHEET_PERIOD_MS);
+  };
+  liveTiles.forEach((t, k) => {
+    t.addEventListener("mouseenter", () => showTile(k));
+    t.addEventListener("focus", () => showTile(k));
+    t.addEventListener("click", () => showTile(k));
+  });
+  if (sheet) {
+    sheet.addEventListener("mouseenter", sheetStop);
+    sheet.addEventListener("mouseleave", sheetPlay);
+    sheet.addEventListener("focusin", sheetStop);
+    sheet.addEventListener("focusout", sheetPlay);
+  }
+
+  /* Resources */
+  const procs = grid.querySelector<HTMLElement>("[data-procs]");
+  const log = grid.querySelector<HTMLElement>("[data-log]");
+  const restore = grid.querySelector<HTMLButtonElement>("[data-restore]");
+  const clock = grid.querySelector<HTMLElement>("[data-clock]");
+  const cpuMeter = grid.querySelector<HTMLElement>('[data-meter="cpu"]');
+  const ramMeter = grid.querySelector<HTMLElement>('[data-meter="ram"]');
+  const ramGb = grid.querySelector<HTMLElement>("[data-ram-gb]");
+  const procsHome = procs?.innerHTML ?? "";
+  let cpu = 61;
+  let meterTimer = 0;
+  const setMeter = (m: HTMLElement | null, pct: number) => {
+    if (!m) return;
+    const v = Math.max(0, Math.min(100, Math.round(pct)));
+    const bar = m.querySelector<HTMLElement>(".bar i");
+    const num = m.querySelector<HTMLElement>("[data-meter-v]");
+    if (bar) bar.style.setProperty("--v", `${v}%`);
+    if (num) num.textContent = String(v);
+    m.classList.toggle("is-hot", v >= 80);
+  };
+  const liveProcs = () => [...(procs?.querySelectorAll<HTMLElement>(".proc:not(.is-dead)") ?? [])];
+  const ramUsed = () => RAM_BASE_GB + liveProcs().reduce((n, p) => n + Number(p.dataset.gb ?? 0), 0);
+  const cpuFloor = () => 6 + liveProcs().reduce((n, p) => n + Number(p.dataset.cpu ?? 0), 0);
+  const paintRam = () => {
+    const used = ramUsed();
+    setMeter(ramMeter, (used / RAM_TOTAL_GB) * 100);
+    if (ramGb) ramGb.textContent = `${used.toFixed(1)} / ${RAM_TOTAL_GB} GB`;
+  };
+  const loadMeter = grid.querySelector<HTMLElement>('[data-meter="load"]');
+  const paintLoad = () => {
+    if (!loadMeter) return;
+    const load = (cpu / 100) * 8;
+    const bar = loadMeter.querySelector<HTMLElement>(".bar i");
+    const num = loadMeter.querySelector<HTMLElement>("[data-meter-v]");
+    if (bar) bar.style.setProperty("--v", `${Math.round(cpu)}%`);
+    if (num) num.textContent = load.toFixed(1);
+  };
+  const tick = () => {
+    const floor = cpuFloor();
+    cpu = Math.max(floor - 4, Math.min(floor + 9, cpu + (Math.random() * 8 - 4)));
+    setMeter(cpuMeter, cpu);
+    paintLoad();
+    if (clock) {
+      const d = new Date();
+      clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+  };
+  const meterStop = () => window.clearInterval(meterTimer);
+  const meterPlay = () => {
+    meterStop();
+    if (reduced) return;
+    meterTimer = window.setInterval(tick, METER_PERIOD_MS);
+  };
+  const note = (text: string) => {
+    if (!log) return;
+    const li = document.createElement("li");
+    li.textContent = text;
+    log.prepend(li);
+    while (log.children.length > 3) log.lastElementChild?.remove();
+  };
+  const bindKills = () => {
+    procs?.querySelectorAll<HTMLButtonElement>("[data-kill]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const row = b.closest<HTMLElement>(".proc");
+        if (!row || row.classList.contains("is-dead")) return;
+        row.classList.add("is-dead");
+        const gb = Number(row.dataset.gb ?? 0).toFixed(1);
+        paintRam();
+        cpu = Math.max(cpuFloor(), cpu - Number(row.dataset.cpu ?? 0));
+        setMeter(cpuMeter, cpu);
+        paintLoad();
+        note(`killed ${row.dataset.proc} · freed ${gb} GB`);
+        if (restore) restore.hidden = false;
+        window.setTimeout(() => row.remove(), reduced ? 0 : 420);
+        if (liveProcs().length === 0) note("nothing left to kill. the box is still up.");
+      });
+    });
+  };
+  bindKills();
+  restore?.addEventListener("click", () => {
+    if (!procs) return;
+    procs.innerHTML = procsHome;
+    bindKills();
+    paintRam();
+    cpu = 61;
+    setMeter(cpuMeter, cpu);
+    paintLoad();
+    note("restored · agents back on the box");
+    restore.hidden = true;
+  });
+  if (procs) {
+    const panel = procs.closest<HTMLElement>(".console-panel");
+    panel?.addEventListener("mouseenter", meterStop);
+    panel?.addEventListener("mouseleave", meterPlay);
+  }
+
+  /* Steer */
+  const routeNote = grid.querySelector<HTMLElement>("[data-route-note]");
+  const routes = [...grid.querySelectorAll<HTMLButtonElement>("[data-route]")];
+  const ROUTE_NOTES: Record<string, string> = {
+    auto: "cheapest token that still finishes",
+    seat: "one seat, your key, your bill",
+  };
+  routes.forEach((r) => r.addEventListener("click", () => {
+    routes.forEach((o) => {
+      const on = o === r;
+      o.classList.toggle("is-on", on);
+      o.setAttribute("aria-checked", on ? "true" : "false");
+    });
+    if (routeNote) routeNote.textContent = ROUTE_NOTES[r.dataset.route ?? ""] ?? "";
+  }));
+  const TOGGLE_NOTES: Record<string, [string, string]> = {
+    proxy: ["off · <code>maxq proxy on</code>", "on · CONNECT only · <code>maxq proxy off</code>"],
+    intercept: ["false · the CA is documented, not auto-trusted", "false · needs the CA on the box. not from here."],
+  };
+  grid.querySelectorAll<HTMLButtonElement>("[data-toggle]").forEach((t) => {
+    const key = t.dataset.toggle ?? "";
+    const noteEl = grid.querySelector<HTMLElement>(`[data-toggle-note="${key}"]`);
+    t.addEventListener("click", () => {
+      if (t.classList.contains("is-locked")) {
+        t.classList.remove("is-shake");
+        void t.offsetWidth;
+        t.classList.add("is-shake");
+        if (noteEl) noteEl.innerHTML = TOGGLE_NOTES[key]?.[1] ?? "";
+        return;
+      }
+      const on = t.getAttribute("aria-checked") !== "true";
+      t.setAttribute("aria-checked", on ? "true" : "false");
+      if (noteEl) noteEl.innerHTML = TOGGLE_NOTES[key]?.[on ? 1 : 0] ?? "";
+    });
+  });
+  const skill = grid.querySelector<HTMLButtonElement>("[data-skill]");
+  const skillNote = grid.querySelector<HTMLElement>("[data-skill-note]");
+  skill?.addEventListener("click", () => {
+    if (skill.classList.contains("is-done")) return;
+    skill.classList.add("is-busy");
+    skill.textContent = "installing…";
+    window.setTimeout(() => {
+      skill.classList.remove("is-busy");
+      skill.classList.add("is-done");
+      skill.textContent = "computer-use ✓";
+      if (skillNote) skillNote.textContent = "the bot reads it next task. no restart.";
+    }, reduced ? 0 : 900);
+  });
+
+  /* Reveal + start clocks when the block is on screen */
+  const start = () => {
+    grid.classList.add("is-live");
+    showTile(cur);
+    paintRam();
+    tick();
+    sheetPlay();
+    meterPlay();
+  };
+  if (reduced) { start(); return; }
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) {
+      start();
+      io.disconnect();
+    }
+  }, { threshold: 0.2 });
+  io.observe(grid);
+}
+
 let drawn: Route | null = null;
 function draw() {
   const app = document.getElementById("app");
@@ -279,6 +487,7 @@ function draw() {
     bindCarousel(app);
     bindLaunch(app);
     bindDesk(app);
+    bindConsole(app);
   }
   const id = (location.hash || "").replace("#", "");
   if (id && id !== "home" && document.getElementById(id)) {
