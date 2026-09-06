@@ -6,7 +6,7 @@
   "outputDirectory": "dist",
   "headers": [
     {
-      "source": "/art/maxq-launch.mov",
+      "source": "/art/maxq-launch.safari.mov",
       "headers": [
         { "key": "Content-Type", "value": "video/mp4" }
       ]

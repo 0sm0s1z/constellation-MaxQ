@@ -157,7 +157,7 @@ function renderLaunch(): string {
   const alt = "MaxQ launch: a rocket lifting off a laptop";
   const still = `<img class="launch-still" src="/art/maxq-launch-still.webp" alt="${alt}" width="1024" height="1180" />`;
   const sources = prefersHevcAlpha()
-    ? `<source src="/art/maxq-launch.mov" type='video/mp4; codecs="hvc1"' />`
+    ? `<source src="/art/maxq-launch.safari.mov" type='video/mp4; codecs="hvc1"' />`
     : `<source src="/art/maxq-launch.webm" type="video/webm" />`;
   const stage = reduceMotion
     ? still

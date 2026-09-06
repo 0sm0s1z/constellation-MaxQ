@@ -25,7 +25,7 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - Run the package build script before reporting a ship.
 - The home hero is the full-bleed launch canvas (`.launch` in `pages.ts`/`styles.css`). Keep the art flat on the canvas.
 - Use .bezel only for product screenshots.
-- Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` on Chromium/Firefox (played once and held). Safari/iOS use `public/art/maxq-launch.mov` (HEVC with alpha). GIF fallback if video fails, still for reduced motion. Wordmark is `public/namelogo.svg` as a CSS mask. See `docs/BRAND.md`.
+- Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` on Chromium/Firefox (played once and held). Safari/iOS use `public/art/maxq-launch.safari.mov` (premultiplied HEVC with alpha). GIF fallback if video fails, still for reduced motion. Wordmark is `public/namelogo.svg` as a CSS mask. See `docs/BRAND.md`.
 - Keep public/art/ops.webp for now.
 - Record the commit and deployment proof.
 

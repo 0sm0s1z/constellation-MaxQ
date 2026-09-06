@@ -58,7 +58,7 @@ else is staggered against it in `styles.css` (`.r1`–`.r7`, `.is-live`, `.is-ap
 
 - Hero launch uses Cue-exported `public/art/maxq-launch.webm` (1024×1180, 24fps, VP9
   with alpha) on Chromium/Firefox. Safari and iOS drop VP9 alpha (opaque black +
-  bloom), so they get `public/art/maxq-launch.mov` (HEVC `hvc1` with alpha, Apple
+  bloom), so they get `public/art/maxq-launch.safari.mov` (premultiplied HEVC `hvc1`
   `PresetHEVCHighestQualityWithAlpha`). GIF fallback if the video errors; still
   for reduced motion. Do not put the WebM `<source>` in the Safari video element
   or WebKit will pick it and paint a black rectangle.
