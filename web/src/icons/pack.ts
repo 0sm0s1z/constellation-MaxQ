@@ -13,7 +13,7 @@
  * - grok: grok.com favicon swirl (Feb 2025 identity)
  * - codex: OpenAI blossom (Simple Icons `openai`)
  * - opencode: sst/opencode favicon window, plate stripped
- * - maxq: product icon (geometric Q + orbit + peach satellite; same as `public/loader.svg`)
+ * - maxq: official icon (`q-logo-icon.svg` / `brand/maxq-mark.svg`); Q is currentColor, peach satellite stays
  * - desktops, resources: MaxQ surfaces — pack originals
  * - gost: no public mark; nested CONNECT chevrons
  */

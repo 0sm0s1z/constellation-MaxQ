@@ -93,7 +93,7 @@ The pretty page has to also answer "what do I get". Home order: launch → insta
   the desk, the bench, the side door. Group headers share a locked row template so the lists
   start on one line. Tiles are hairline rows: Mocha-tinted mark, name, optional tag. Purpose
   is a one-line glass hover (`tip`), not a mono role under the name. `maxq-api` uses the
-  product icon (geometric Q + orbit), not the wordmark. Facts come from
+  official icon (`q-logo-icon.svg`), not the wordmark. Facts come from
   `README.md`, `docs/CLIS.md`, `docs/THEME.md`, `docs/API.md` — update those first, then the tiles.
   Tags stay honest: Ghostty is `config-only`, GOST is `off by default`.
 - **Trust** (`#trust`): owns / refuses as two `dl` columns beside the real `maxq prove` report
