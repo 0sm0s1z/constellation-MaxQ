@@ -22,6 +22,8 @@ const shot = (src: string, alt: string, caption: string, w: number, h: number) =
 
 const escapeAttr = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const bezel = (src: string, alt: string, caption: string, kind: "laptop" | "phone" = "laptop", w = 1280, h = 800) => `
   <figure class="bezel ${kind}">
@@ -130,42 +132,58 @@ const plate = (src: string, alt: string, kind: string) => `
   <figure class="plate ${kind}"><img src="${src}" alt="${escapeAttr(alt)}" width="1280" height="853" loading="lazy" /></figure>`;
 
 /* The kit. What `maxq apply` actually puts on the box, grouped the way the box is used.
-   Marks are the Mocha icon pack in `src/icons` (real identity paths, currentColor).
-   Facts follow README + docs/CLIS.md + docs/THEME.md + docs/API.md. */
-type KitItem = { name: string; role: string; tag?: string; icon: KitIcon };
+   Marks are the Mocha icon pack in `src/icons`. Each tile has a one-line purpose (`tip`)
+   for the glass hover. Facts follow README + docs/CLIS.md + docs/THEME.md + docs/API.md. */
+type KitTint = "mauve" | "peach" | "sky" | "green" | "pink" | "lavender" | "rosewater" | "blue" | "teal" | "yellow";
+type KitItem = { name: string; icon: KitIcon; tint: KitTint; tip: string; tag?: string };
 type KitGroup = { id: string; eyebrow: string; title: string; note: string; items: KitItem[] };
 const KIT: KitGroup[] = [
   {
     id: "desk", eyebrow: "The desk", title: "The bot's tools",
-    note: "Theme, launcher, terminal, browser. Set once, the same on every box.",
+    note: "Theme, terminal, launcher, browser. The same every box.",
     items: [
-      { name: "Catppuccin Mocha", role: "wallpaper · GTK · cursors", tag: "theme", icon: "catppuccin" },
-      { name: "Chrome", role: "official Mocha theme, per profile", tag: "$HOME only", icon: "chrome" },
-      { name: "Ghostty", role: "Mocha config block + theme", tag: "config-only", icon: "ghostty" },
-      { name: "rofi", role: "app launcher on Super + Space", tag: "launcher", icon: "rofi" },
+      { name: "Catppuccin Mocha", icon: "catppuccin", tint: "mauve", tag: "theme",
+        tip: "The desk's skin. Wallpaper, GTK, cursors — Mocha on every box." },
+      { name: "Chrome", icon: "chrome", tint: "yellow", tag: "$HOME only",
+        tip: "The bot's browser, already Mocha. Profiles stay in $HOME." },
+      { name: "Ghostty", icon: "ghostty", tint: "lavender", tag: "config-only",
+        tip: "The terminal it lives in. One Mocha block; your config around it stays." },
+      { name: "rofi", icon: "rofi", tint: "pink", tag: "launcher",
+        tip: "Super + Space. The launcher the bot already knows how to drive." },
     ],
   },
   {
-    id: "bench", eyebrow: "The bench", title: "Operator CLIs in $HOME/bin",
-    note: "Official linux amd64 builds, MaxQ-marked so revert knows what it owns.",
+    id: "bench", eyebrow: "The bench", title: "The operator CLIs",
+    note: "The agents' tools. Revert knows which it owns.",
     items: [
-      { name: "herdr", role: "session mux for coding agents", icon: "herdr" },
-      { name: "Grok CLI", role: "grok", icon: "grok" },
-      { name: "Codex", role: "codex", icon: "codex" },
-      { name: "Claude Code", role: "claude", icon: "claude" },
-      { name: "OpenCode", role: "opencode", icon: "opencode" },
-      { name: "Vercel fx", role: "fx", icon: "vercel" },
-      { name: "Tailscale", role: "tailscale · tailscaled", icon: "tailscale" },
+      { name: "herdr", icon: "herdr", tint: "yellow",
+        tip: "An agentic multiplexer. You and your agents share the same terminals, over the network." },
+      { name: "Grok CLI", icon: "grok", tint: "sky",
+        tip: "Grok from the shell. Search, query, a model the bot can call." },
+      { name: "Codex", icon: "codex", tint: "teal",
+        tip: "OpenAI's coding agent, on the box. It can write and run." },
+      { name: "Claude Code", icon: "claude", tint: "peach",
+        tip: "Anthropic's coding agent. Same bench, another pair of hands." },
+      { name: "OpenCode", icon: "opencode", tint: "blue",
+        tip: "A coding agent that lives on the box. No cloud seat required." },
+      { name: "Vercel fx", icon: "vercel", tint: "pink",
+        tip: "Tiny tools from the shell. The bot can call a function without opening a browser." },
+      { name: "Tailscale", icon: "tailscale", tint: "green",
+        tip: "The box on your tailnet. Reach the desk without opening the house." },
     ],
   },
   {
-    id: "door", eyebrow: "The side door", title: "Your controls, on loopback",
-    note: "A thin local control surface. Not an admin suite.",
+    id: "door", eyebrow: "The side door", title: "Your controls",
+    note: "Loopback. Not an admin suite.",
     items: [
-      { name: "maxq-api", role: "127.0.0.1:7432 · status · apply · revert", tag: "loopback", icon: "maxq" },
-      { name: "Desktops", role: "every X display · VNC / noVNC", tag: "live", icon: "desktops" },
-      { name: "Resources", role: "RAM · CPU · agent profiles · kill", tag: "telemetry", icon: "resources" },
-      { name: "GOST", role: "local CONNECT proxy · no MITM", tag: "off by default", icon: "gost" },
+      { name: "maxq-api", icon: "maxq", tint: "peach", tag: "loopback",
+        tip: "Status, apply, revert. Binds 127.0.0.1 — not the public internet." },
+      { name: "Desktops", icon: "desktops", tint: "lavender", tag: "live",
+        tip: "Every X display on one sheet. Watch the hands, not the transcript." },
+      { name: "Resources", icon: "resources", tint: "sky", tag: "telemetry",
+        tip: "RAM, CPU, the agent processes. Kill from here when chat isn't enough." },
+      { name: "GOST", icon: "gost", tint: "yellow", tag: "off by default",
+        tip: "A local CONNECT proxy. Off until you flip it. No MITM by default." },
     ],
   },
 ];
@@ -197,12 +215,16 @@ const REFUSES = [
   ["your TLS", "intercept=false until you flip it; the CA is documented, not auto-trusted"],
 ];
 
-const kitTile = (it: KitItem) => `
-  <li class="kit-tile">
+const kitTile = (it: KitItem) => {
+  const id = `kit-tip-${it.icon}`;
+  return `
+  <li class="kit-tile" data-tint="${it.tint}" tabindex="0" aria-describedby="${id}">
     <span class="kit-mark">${kitIcons[it.icon]}</span>
-    <span class="kit-text"><strong>${it.name}</strong><span>${it.role}</span></span>
-    ${it.tag ? `<span class="kit-tag">${it.tag}</span>` : ""}
+    <strong>${escapeHtml(it.name)}</strong>
+    ${it.tag ? `<span class="kit-tag">${escapeHtml(it.tag)}</span>` : ""}
+    <span class="kit-tip" role="tooltip" id="${id}">${escapeHtml(it.tip)}</span>
   </li>`;
+};
 
 const kitGroup = (g: KitGroup) => `
   <div class="kit-group" data-kit="${g.id}">
@@ -436,7 +458,7 @@ export function renderHome(): string {
           <p class="eyebrow">What lands on the box</p>
           <h2 class="display">Everything the bot needs. Nothing it shouldn't have.</h2>
         </div>
-        <p class="lede">This is the inventory <code>maxq apply</code> puts in place. All of it under <code>$HOME</code>. A tool with no official linux amd64 build is skipped and recorded in <code>clis.txt</code>, not faked.</p>
+        <p class="lede">What <code>maxq apply</code> puts on the box. Tools for the bot. A door for you. All of it under <code>$HOME</code>.</p>
       </div>
       <div class="kit-grid">${KIT.map(kitGroup).join("")}</div>
     </section>

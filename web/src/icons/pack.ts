@@ -1,8 +1,8 @@
 /**
  * Kit icon pack. One Mocha-tinted mark per tile in `#kit`.
  *
- * Treatment: real identity path, `fill`/`stroke="currentColor"`. Column colour
- * comes from `.kit-group[data-kit] .kit-mark`. Do not fall back to monograms.
+ * Treatment: real identity path, `fill`/`stroke="currentColor"`. Tile colour
+ * comes from `data-tint` on each `.kit-tile`. Do not fall back to monograms.
  *
  * Provenance
  * - catppuccin: official cat silhouette from catppuccin/catppuccin `logo_dev.svg`
@@ -13,7 +13,7 @@
  * - grok: grok.com favicon swirl (Feb 2025 identity)
  * - codex: OpenAI blossom (Simple Icons `openai`)
  * - opencode: sst/opencode favicon window, plate stripped
- * - maxq: orbital Q (product mark; peach satellite stays brand)
+ * - maxq: product icon (geometric Q + orbit + peach satellite; same as `public/loader.svg`)
  * - desktops, resources: MaxQ surfaces — pack originals
  * - gost: no public mark; nested CONNECT chevrons
  */

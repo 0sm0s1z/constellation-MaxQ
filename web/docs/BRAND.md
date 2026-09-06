@@ -90,12 +90,12 @@ The pretty page has to also answer "what do I get". Home order: launch → insta
 `maxq` commands as chips) → `#desk` → `#kit` → `#door` → `#trust` → `#surfaces` → `#start`.
 
 - **Kit** (`#kit`, `KIT` in `pages.ts`): the inventory `maxq apply` lands, in three groups —
-  the desk (theme, Chrome, Ghostty, rofi), the bench (CLIs in `$HOME/bin`), the side door
-  (`maxq-api`, desktops, resources, GOST). Tiles are hairline rows: mark, name, mono role, tag.
-  Marks are the Mocha icon pack in `src/icons` (real identity paths, `currentColor`,
-  typed in `src/icons/pack.ts`). No monograms. Facts come from
+  the desk, the bench, the side door. Group headers share a locked row template so the lists
+  start on one line. Tiles are hairline rows: Mocha-tinted mark, name, optional tag. Purpose
+  is a one-line glass hover (`tip`), not a mono role under the name. `maxq-api` uses the
+  product icon (geometric Q + orbit), not the wordmark. Facts come from
   `README.md`, `docs/CLIS.md`, `docs/THEME.md`, `docs/API.md` — update those first, then the tiles.
-  Tags are honest: Ghostty is `config-only`, GOST is `off by default`.
+  Tags stay honest: Ghostty is `config-only`, GOST is `off by default`.
 - **Trust** (`#trust`): owns / refuses as two `dl` columns beside the real `maxq prove` report
   (`PROOF`) set as live type in a `.proof` terminal — never a raster of the terminal.
 - **Start** (`#start`): the closing call, install line and two buttons. Same `.term` as the bar.
