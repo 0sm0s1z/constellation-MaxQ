@@ -39,7 +39,7 @@ Flattened CSS already shipped live: `.slide { margin: 0; }` with no box.
 
 ## Art and motion
 
-- Keep `public/art/rocket.webp`; animate it as a flipbook.
+- Hero launch uses Cue-exported `public/art/maxq-launch.webm` (GIF fallback, still for reduced motion).
 - Replace `public/art/desk.webp`; it was taken from the Catppuccin website.
 - Keep `public/art/ops.webp` for now.
 - New generated art belongs under `public/art/` and must be committed.

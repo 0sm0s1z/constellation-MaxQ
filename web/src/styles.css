@@ -390,212 +390,15 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .slides { margin: 0; overflow: visible; }
 .slide { margin: 0; overflow: visible; }
 .rocket-slide { overflow: visible; }
-.slide img { display: block; width: 100%; height: auto; }
+.slide img, .slide video { display: block; width: 100%; height: auto; }
+.rocket-hero-anim, .rocket-hero-gif {
+  display: block; margin: 0; background: transparent;
+}
+.rocket-hero-still { display: none; width: 100%; height: auto; background: transparent; }
 .slide figcaption {
   padding-top: .55rem;
   font-family: IBM Plex Mono, ui-monospace, monospace;
   font-size: 11px; color: var(--overlay1);
-}
-.rocket-stage {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-}
-
-.rocket-stage .rocket-plate {
-  display: block;
-  width: 100%;
-  height: auto;
-  position: relative;
-  z-index: 0;
-}
-
-.rocket-stage .rocket-sprite {
-  position: absolute;
-  left: 40%;
-  top: 26%;
-  width: 10%;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 3;
-  filter:
-    drop-shadow(0 0 14px color-mix(in srgb, var(--peach) 55%, transparent))
-    drop-shadow(0 8px 20px color-mix(in srgb, var(--mauve) 40%, transparent));
-}
-
-.rocket-fly {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  animation: rocket-lift 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-lift {
-  0%, 10% { transform: translate(0, 0); }
-  100% { transform: translate(16%, -38%); }
-}
-
-.rocket-stage .rocket-glow {
-  mix-blend-mode: plus-lighter;
-  opacity: 0;
-  filter: blur(14px) saturate(1.38);
-  transform: translate(0, 5%) scale(1.16);
-  transform-origin: 50% 80%;
-  animation: rocket-body-glow 5.5s ease-in-out infinite alternate;
-}
-
-/* Endpoint-aligned flame still: tip under nozzle; reveal tip→pad (rocket-path.css overrides). */
-.rocket-stage .rocket-flame {
-  --trail-reveal: 18%;
-  position: absolute;
-  left: 2%;
-  top: 28%;
-  width: 46%;
-  max-width: none;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-  z-index: 2;
-  opacity: 0;
-  transform-origin: 0 0;
-  transform: rotate(-9.5deg);
-  mix-blend-mode: plus-lighter;
-  filter:
-    saturate(1.08)
-    drop-shadow(0 0 8px rgba(250,179,135,.38))
-    drop-shadow(0 0 18px rgba(255,236,214,.16));
-  -webkit-mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  mask-image: linear-gradient(
-    to bottom left,
-    #000 0%,
-    #000 var(--trail-reveal),
-    rgba(0,0,0,.75) calc(var(--trail-reveal) + 3%),
-    transparent calc(var(--trail-reveal) + 10%)
-  );
-  animation: rocket-flame-reveal 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-flame-reveal {
-  0%, 5% {
-    opacity: .62;
-    --trail-reveal: 18%;
-  }
-  16% {
-    opacity: .9;
-    --trail-reveal: 48%;
-  }
-  36% {
-    opacity: .98;
-    --trail-reveal: 72%;
-  }
-  56% {
-    opacity: 1;
-    --trail-reveal: 88%;
-  }
-  100% {
-    opacity: 1;
-    --trail-reveal: 100%;
-  }
-}
-
-/* Compact nozzle hot spot moves with the rocket. */
-.rocket-fly::after {
-  content: "";
-  position: absolute;
-  left: 44.5%;
-  top: 44.2%;
-  width: 2.6%;
-  height: 7%;
-  transform-origin: 50% 0;
-  transform: translate(-50%, 0) rotate(31deg) scaleY(.7);
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0;
-  mix-blend-mode: plus-lighter;
-  background: radial-gradient(
-    ellipse at 50% 4%,
-    rgba(255,255,248,.98) 0%,
-    rgba(255,235,210,.88) 28%,
-    rgba(250,179,135,.48) 54%,
-    transparent 78%
-  );
-  filter: blur(1.8px) drop-shadow(0 0 8px rgba(250,179,135,.72));
-  animation: rocket-nozzle-core 5.5s ease-in-out infinite alternate;
-}
-
-@keyframes rocket-nozzle-core {
-  0%, 5% { opacity: .72; transform: translate(-50%, 0) rotate(31deg) scaleY(.65); }
-  16% { opacity: .85; transform: translate(-50%, 0) rotate(31deg) scaleY(.9); }
-  100% { opacity: .92; transform: translate(-50%, 0) rotate(31deg) scaleY(1.08); }
-}
-
-@keyframes rocket-body-glow {
-  0%, 8% { opacity: 0; }
-  28% { opacity: .22; }
-  100% { opacity: .58; }
-}
-
-
-/* Base launch cloud at the keyboard/pad — static from the first frame. */
-.rocket-pad-fx {
-  position: absolute;
-  left: 44.5%;
-  top: 55.5%;
-  width: 30%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  overflow: visible;
-}
-.rocket-pad-fx .pad-puff {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  height: auto;
-  opacity: .78;
-  transform: translate(-50%, -50%) scale(1.05);
-  mix-blend-mode: normal;
-  filter:
-    saturate(1.1)
-    blur(.55px)
-    drop-shadow(0 0 12px rgba(250,179,135,.28));
-  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
-  mask-image: radial-gradient(ellipse at 50% 55%, #000 50%, transparent 88%);
-  animation: none;
-}
-.rocket-pad-fx .pad-puff-b {
-  width: 78%;
-  left: 62%;
-  top: 44%;
-  opacity: .70;
-  transform: translate(-50%, -50%) scale(.92);
-  filter: saturate(1.08) blur(.35px) drop-shadow(0 0 10px rgba(245,194,231,.22));
-}
-.rocket-pad-fx .pad-puff-c {
-  width: 92%;
-  left: 38%;
-  top: 58%;
-  opacity: .74;
-  transform: translate(-50%, -50%) scale(1);
-  filter: saturate(1.1) blur(.55px) drop-shadow(0 0 12px rgba(203,166,247,.2));
-}
-.rocket-pad-fx .pad-puff-d {
-  width: 68%;
-  left: 54%;
-  top: 62%;
-  opacity: .66;
-  transform: translate(-50%, -50%) scale(.88);
-  filter: saturate(1.06) blur(.7px);
 }
 
 .dots {
@@ -612,11 +415,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (prefers-reduced-motion: reduce) {
   .hero-visual .bezel { transition: none !important; transform: none !important; }
   html { animation: none; }
-  .rocket-fly { animation: none; transform: none; }
-  .rocket-stage .rocket-glow,
-  .rocket-stage .rocket-flame,
-  .rocket-fly::after { animation: none; opacity: 0; }
-  .rocket-pad-fx .pad-puff { animation: none; opacity: 0; }
+  .rocket-hero-anim { display: none !important; }
+  .rocket-hero-still { display: block; }
   .dia, .cursor { animation: none; }
   .loader { display: none !important; }
 }

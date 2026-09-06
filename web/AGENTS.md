@@ -25,7 +25,7 @@ Scripts: `dev`, `build` (`tsc --noEmit && vite build`), `preview`.
 - Run the package build script before reporting a ship.
 - Keep all three hero slides flat on the page canvas.
 - Use .bezel only for product screenshots.
-- Keep and animate public/art/rocket.webp as a flipbook.
+- Hero launch graphic is Cue-exported `public/art/maxq-launch.webm` (GIF fallback if video fails, still for reduced motion).
 - Keep public/art/ops.webp for now.
 - Record the commit and deployment proof.
 

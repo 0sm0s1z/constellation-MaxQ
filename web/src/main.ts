@@ -114,6 +114,22 @@ function bindCarousel(root: HTMLElement) {
     io.observe(box);
   }
   show(0);
+  bindRocketHero(box);
+}
+
+function bindRocketHero(root: HTMLElement) {
+  const video = root.querySelector<HTMLVideoElement>("video.rocket-hero-anim");
+  const gif = root.querySelector<HTMLImageElement>("img.rocket-hero-gif");
+  if (!video || !gif) return;
+  const showGif = () => {
+    const src = gif.dataset.src;
+    if (src && gif.getAttribute("src") !== src) gif.src = src;
+    gif.hidden = false;
+    video.remove();
+  };
+  video.addEventListener("error", showGif);
+  const source = video.querySelector("source");
+  source?.addEventListener("error", showGif);
 }
 
 function draw() {
