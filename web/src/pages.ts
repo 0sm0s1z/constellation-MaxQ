@@ -102,9 +102,11 @@ const cine = (src: string, alt: string, w: number, h: number, left: string, righ
     <figcaption><span>${left}</span><span>${right}</span></figcaption>
   </figure>`;
 
-/* The bot's desk is a 16:9 screen, not a cinema crop: wallpaper + windows, a Mocha menubar,
-   and the real Plank dock sliding up so the still reads as a computer. */
+/* The bot's desk below the fold is a macOS-dark window: traffic-light chrome, then a 16:9
+   screen that starts on the wallpaper's pastel line (host titlebar cropped off). Hero glass
+   keeps the thinner wall + dock overlay and does not use this frame. */
 const DESK_WALL = { src: "/shots/bots-desk-wall.webp", w: 1093, h: 670 };
+const DESK_STAGE = { src: "/shots/bots-desk-stage.webp", w: 1093, h: 558 };
 const DESK_DOCK = { src: "/shots/bots-desk-dock.webp", w: 1093, h: 76 };
 const deskBar = () => `
   <div class="desk-menubar" aria-hidden="true">
@@ -114,11 +116,16 @@ const deskBar = () => `
   </div>`;
 const deskStage = (left: string, right: string) => `
   <figure class="desk">
-    <div class="desk-screen" data-desk>
-      ${deskBar()}
-      <img class="desk-wall" src="${DESK_WALL.src}" alt="The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot" width="${DESK_WALL.w}" height="${DESK_WALL.h}" loading="lazy" />
-      <img class="desk-dock" src="${DESK_DOCK.src}" alt="" width="${DESK_DOCK.w}" height="${DESK_DOCK.h}" />
-      <span class="desk-hint"><kbd>Super</kbd><span>+</span><kbd>Space</kbd> launcher</span>
+    <div class="desk-window">
+      <div class="desk-chrome" aria-hidden="true">
+        <span></span><span></span><span></span>
+        <span class="desk-chrome-title">box@grokbot</span>
+      </div>
+      <div class="desk-screen" data-desk>
+        <img class="desk-wall" src="${DESK_STAGE.src}" alt="The bot's MaxQ desk: mocha wallpaper, rofi launcher, Ghostty at box@grokbot" width="${DESK_STAGE.w}" height="${DESK_STAGE.h}" loading="lazy" />
+        <img class="desk-dock" src="${DESK_DOCK.src}" alt="" width="${DESK_DOCK.w}" height="${DESK_DOCK.h}" />
+        <span class="desk-hint"><kbd>Super</kbd><span>+</span><kbd>Space</kbd> launcher</span>
+      </div>
     </div>
     <figcaption><span>${left}</span><span>${right}</span></figcaption>
   </figure>`;

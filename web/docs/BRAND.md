@@ -71,12 +71,11 @@ copy in operator register.
   a soft pastel pool sits under it. No frame, no chrome.
 - **Cinema stills** (`.cine`): locked 2.2:1 for captures that are already a surface
   (`desktops-eva-cine.webp` 1600×727). Cover-fit, hairline, 8px radius, mono caption.
-- **The bot's desk** (`.desk`): not a cinema crop. A 16:9 screen (`.desk-screen`) with a Mocha
-  menubar, the wallpaper/windows still (`bots-desk-wall.webp`, host chrome and VNC edges trimmed),
-  and the real Plank dock as a separate asset (`bots-desk-dock.webp`, top-feathered) that slides
-  up on view. The hero glass uses the same wall + dock overlay on slide 01. Do not cover-crop
-  the dock off; that is what makes the still a computer. Host chrome ("Teach a task", the
-  operator name bar) stays out.
+- **The bot's desk** (`.desk`): a macOS-dark window (traffic lights + `box@grokbot`) around a
+  16:9 screen. The still starts on the wallpaper's pastel line (`bots-desk-stage.webp`); host
+  titlebar is cropped out. Plank dock (`bots-desk-dock.webp`) slides up on view. Hero glass
+  keeps the thinner overlay (`bots-desk-wall.webp` + dock, Mocha menubar) and does **not** use
+  the Apple frame.
 
 - **Beats**: eyebrow + display headline in one column, lede + `The bot gets` / `You get` in the
   other, still beneath. `#door` puts the ops plate where the headline column would be.
