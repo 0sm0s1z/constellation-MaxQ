@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Processes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/processes.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>PROCESSES</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main wide">
+      <header class="proc-hero">
+        <div>
+          <p class="op-kicker">Runtime</p>
+          <h1>Processes</h1>
+          <p>Inspect running processes. Stop is explicit, confirmed, and blocked for critical MaxQ services.</p>
+        </div>
+        <div class="proc-toolbar">
+          <label class="proc-filter">
+            <span>Filter</span>
+            <input id="proc-filter" type="search" placeholder="pid, user, command…" autocomplete="off">
+          </label>
+          <label class="proc-auto">
+            <input id="proc-auto" type="checkbox" checked>
+            <span>Auto 5s</span>
+          </label>
+          <button type="button" id="proc-refresh" class="primary">Refresh</button>
+        </div>
+      </header>
+
+
+      <section id="proc-oom" class="proc-oom card" role="status" aria-label="Memory / OOM">
+        <div class="proc-oom-grid">
+          <div><span>available</span><strong id="proc-ram-avail">—</strong></div>
+          <div><span>used / total</span><strong id="proc-ram-used">—</strong></div>
+          <div><span>pressure</span><strong id="proc-ram-pct">—</strong></div>
+          <div><span>swap</span><strong id="proc-ram-swap">—</strong></div>
+        </div>
+        <p id="proc-oom-note" class="proc-oom-note">Prefer Actions over killing live desks. Do not enable swap without Matthew.</p>
+        <div class="proc-oom-links">
+          <a href="/actions#report-ram" class="proc-pressure-cta secondary">Report RAM</a>
+          <a href="/actions#clear-ram" class="proc-pressure-cta">Clear RAM</a>
+          <a href="/actions#freeze-quiet-desks" class="proc-pressure-cta secondary">Freeze quiet</a>
+          <a href="/actions">All Actions</a>
+        </div>
+      </section>
+
+      <section id="proc-pressure" class="proc-pressure" hidden role="status">
+        <p id="proc-pressure-text">RAM pressure</p>
+        <a href="/actions#clear-ram" class="proc-pressure-cta">Clear RAM</a>
+      </section>
+
+      <section class="card proc-meta">
+        <div><span>shown</span><strong id="proc-count">—</strong></div>
+        <div><span>api self</span><strong id="proc-self">—</strong></div>
+        <div><span>updated</span><strong id="proc-updated">—</strong></div>
+        <div><span>status</span><strong id="proc-status">idle</strong></div>
+      </section>
+
+      <section class="card proc-table-wrap">
+        <table class="proc-table" aria-label="Process list">
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>User</th>
+              <th>CPU%</th>
+              <th>Mem%</th>
+              <th>Flags</th>
+              <th>Command</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="proc-body">
+            <tr><td colspan="7" class="proc-empty">loading…</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <p id="proc-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/processes.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{}); MaxQProcesses.boot();});</script>
+</body>
+</html>

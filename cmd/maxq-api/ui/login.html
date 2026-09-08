@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Operator Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>LOGIN</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>stub</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">
+      <span class="warn">operator_auth</span>
+      <span class="sep">·</span>
+      <span>default OFF — demo stays open</span>
+    </div>
+    <main class="op-main">
+      <div class="stub">
+        <h1>Operator password</h1>
+        <p>Live glass keeps <code>operator_auth = false</code> so the demo remains open. Set a password from <a href="/box">Box → operator auth</a>, then enable only when you intend to lock EVA :7432. Safe procedure: <code>auth-pass.md</code>.</p>
+        <form id="login-form" class="p2-form" style="display:grid;gap:.75rem;margin-top:1rem">
+          <label>Password
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="disabled while operator_auth=false">
+          </label>
+          <button type="submit" class="primary" disabled title="Auth flag is off">Sign in (disabled)</button>
+        </form>
+        <p id="login-msg" class="msg" style="margin-top:.75rem">Auth wall is OFF. No password required.</p>
+        <a class="back-home" href="/">← Operator Home</a>
+      </div>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", async () => {
+      try { await MaxQShell.bootShell(); } catch (_) {}
+      try {
+        const st = await fetch("/api/auth/status").then(r => r.json());
+        const msg = document.getElementById("login-msg");
+        const btn = document.querySelector("#login-form button");
+        const input = document.getElementById("password");
+        if (st.operator_auth) {
+          btn.disabled = false;
+          btn.removeAttribute("title");
+          btn.textContent = "Sign in";
+          input.placeholder = "operator password";
+          msg.textContent = st.has_hash
+            ? "Auth wall is ON. Enter the operator password."
+            : "Auth wall is ON but no password hash is configured — login will fail.";
+        } else {
+          msg.textContent = "Auth wall is OFF (operator_auth=false). No password required.";
+        }
+      } catch (e) {
+        document.getElementById("login-msg").textContent = "Could not read /api/auth/status";
+      }
+      document.getElementById("login-form").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const password = document.getElementById("password").value;
+        const r = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        const body = await r.json().catch(() => ({}));
+        const msg = document.getElementById("login-msg");
+        if (!r.ok) {
+          msg.textContent = body.error || ("HTTP " + r.status);
+          return;
+        }
+        if (body.skipped) {
+          msg.textContent = "operator_auth=false — login skipped; glass stays open.";
+          return;
+        }
+        const next = new URLSearchParams(location.search).get("next") || "/";
+        location.href = next;
+      });
+    });
+  </script>
+</body>
+</html>

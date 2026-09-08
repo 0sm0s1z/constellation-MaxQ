@@ -1,0 +1,142 @@
+/* Shared polish for Vault / AI / Skills / Handoff pages */
+.p2-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.p2-hero h1 {
+  margin: 0 0 .35rem; font-size: 1.85rem; font-weight: 650;
+  letter-spacing: -.035em;
+}
+.p2-hero p { margin: 0; color: var(--sub); max-width: 40rem; }
+.p2-toolbar {
+  display: flex; align-items: flex-end; gap: .65rem; flex-wrap: wrap;
+}
+.p2-meta {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem; padding: .85rem 1rem; margin-bottom: 1rem;
+}
+.p2-meta div { display: grid; gap: .2rem; }
+.p2-meta span {
+  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--mauve);
+}
+.p2-meta strong {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+}
+.p2-table-wrap { overflow: auto; padding: 0; }
+.p2-table {
+  width: 100%; border-collapse: collapse; font-size: .86rem;
+}
+.p2-table th, .p2-table td {
+  padding: .55rem .75rem; border-bottom: 1px solid var(--rule);
+  text-align: left; vertical-align: top;
+}
+.p2-table th {
+  position: sticky; top: 0; z-index: 1;
+  background: color-mix(in srgb, var(--base) 92%, var(--mantle));
+  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--mauve); font-weight: 600;
+}
+.p2-table td.mono { font-family: var(--mono); font-size: 12px; }
+.p2-empty { color: var(--overlay1); text-align: center; padding: 1.5rem !important; }
+.p2-badge {
+  display: inline-flex; align-items: center;
+  padding: .1rem .4rem; border-radius: 999px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  border: 1px solid var(--rule); color: var(--sub);
+}
+.p2-badge.ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
+.p2-badge.warn { color: var(--peach); border-color: color-mix(in srgb, var(--peach) 40%, transparent); }
+.p2-badge.secret { color: var(--sky); border-color: color-mix(in srgb, var(--sky) 40%, transparent); }
+.p2-badge.dim { color: var(--overlay1); }
+.p2-badge.bind {
+  color: var(--sky);
+  border-color: color-mix(in srgb, var(--sky) 35%, transparent);
+  background: color-mix(in srgb, var(--sky) 8%, transparent);
+}
+.p2-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: .85rem;
+}
+.p2-card {
+  padding: 1rem 1.05rem; border: 1px solid var(--rule);
+  border-radius: var(--radius); background: var(--glass);
+  display: grid; gap: .45rem;
+}
+.p2-card h3 {
+  margin: 0; font-size: 1rem; letter-spacing: -.02em;
+}
+.p2-card p {
+  margin: 0; color: var(--sub); font-size: .86rem;
+}
+.p2-card .path {
+  font-family: var(--mono); font-size: 11px; color: var(--overlay1);
+  word-break: break-all;
+}
+.p2-card .row {
+  display: flex; gap: .35rem; flex-wrap: wrap; align-items: center;
+}
+.p2-form {
+  display: grid; gap: .85rem;
+}
+.p2-form label {
+  display: grid; gap: .3rem; font-size: .82rem; color: var(--sub);
+}
+.p2-form select, .p2-form input[type="url"], .p2-form input[type="text"] {
+  margin: 0; width: 100%;
+  background: var(--mantle); border: 1px solid var(--surface1);
+  border-radius: 8px; color: var(--text); padding: .5rem .65rem;
+}
+.p2-sites {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: .75rem;
+}
+.p2-steps {
+  display: grid; gap: .75rem; counter-reset: step;
+}
+.p2-step {
+  display: grid; grid-template-columns: auto 1fr; gap: .85rem;
+  padding: .9rem 1rem; border: 1px solid var(--rule);
+  border-radius: 12px; background: color-mix(in srgb, var(--base) 80%, transparent);
+}
+.p2-step .n {
+  width: 2rem; height: 2rem; border-radius: 999px;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--mauve); border: 1px solid color-mix(in srgb, var(--mauve) 35%, transparent);
+}
+.p2-step h3 { margin: 0 0 .2rem; font-size: .95rem; }
+.p2-step p { margin: 0; color: var(--sub); font-size: .86rem; }
+.p2-links { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+.p2-links a {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .7rem; border-radius: 8px;
+  border: 1px solid var(--rule); text-decoration: none; color: var(--sub);
+  font-size: .82rem;
+}
+.p2-links a:hover { color: var(--text); border-color: var(--surface1); }
+.p2-hint {
+  margin: 0 0 .75rem; color: var(--sub); font-size: .86rem;
+}
+.masked {
+  font-family: var(--mono); letter-spacing: .18em; color: var(--overlay1);
+}
+@media (max-width: 720px) {
+  .p2-meta { grid-template-columns: 1fr 1fr; }
+}
+
+/* Deep-link highlight from Home/Processes Clear RAM CTA */
+.p2-card.is-target {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--peach) 18%, transparent);
+}
+
+/* Handoff desk status pills */
+.ho-status{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;letter-spacing:.04em;border:1px solid rgba(205,214,244,.14);color:var(--subtext0)}
+.ho-status.live{color:var(--green);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+.ho-status.current{color:var(--mauve);border-color:color-mix(in srgb,var(--mauve) 40%,transparent)}
+.ho-status.frozen{color:var(--peach);border-color:color-mix(in srgb,var(--peach) 45%,transparent)}
+
+.p2-meta strong a { color: inherit; text-decoration: underline dashed; }
+.p2-meta strong a:hover { color: var(--mauve); }

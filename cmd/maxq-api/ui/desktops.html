@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Desktops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/desktops.css">
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <main class="workspace">
+    <header class="op-topbar desk-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>DESKTOPS</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div class="top-status">
+        <div id="op-conn" class="op-conn" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span data-label>…</span>
+        </div>
+        <span class="divider"></span>
+        <span class="pulse"></span>
+        <span id="top-live">0 live</span>
+        <span class="divider"></span>
+        <span id="top-display">display —</span>
+      </div>
+    </header>
+
+    <div id="op-proof" class="op-proof desk-proof" aria-label="Proof strip">loading…</div>
+
+    <section id="global-view" class="view global-view" aria-label="Global desktop feed">
+      <div class="feed-shell glass">
+        <div class="section-head">
+          <div>
+            <span class="section-kicker">GLOBAL</span>
+            <h2>Security feed</h2>
+          </div>
+          <div id="page-label" class="page-label">1 / 1</div>
+        </div>
+        <div id="desktop-grid" class="desktop-grid" data-count="1"><div class="idle-screen loading-state" id="desktops-loading"><div class="idle-mark"><strong>Loading</strong><span>desktops telemetry</span></div></div></div>
+      </div>
+
+      <aside class="telemetry glass">
+        <div class="telemetry-head">
+          <span class="section-kicker">STREAM</span>
+          <span id="telemetry-time" class="telemetry-time">—</span>
+        </div>
+        <div class="metric-grid">
+          <article><span>CPU</span><strong id="metric-cpu">—</strong><small id="metric-cpu-detail"></small></article>
+          <article class="metric-ram"><span>RAM</span><strong id="metric-ram">—</strong><small id="metric-ram-detail"></small><div id="stream-actions-ram" class="metric-actions"></div></article>
+          <article><span>LOAD</span><strong id="metric-load">—</strong><small id="metric-load-detail"></small></article>
+          <article><span>GOST</span><strong id="metric-gost">—</strong><small id="metric-gost-detail"></small></article>
+        </div>
+        <div id="stream-actions" class="stream-actions" aria-label="Stream actions"></div>
+        <div id="action-runs" class="action-runs" aria-live="polite" aria-label="Action runs"></div>
+        <div class="status-list">
+          <div><span>MaxQ</span><strong id="metric-state">—</strong></div>
+          <div><span>This display</span><strong id="metric-display">—</strong></div>
+          <div><span>Current desktop</span><strong id="metric-current">—</strong></div>
+          <div><span>Last switch</span><strong id="metric-switch">—</strong></div>
+          <div><span>Live desktops</span><strong id="metric-live">—</strong></div>
+          <div><span>noVNC ready</span><strong id="metric-viewers">—</strong></div>
+        </div>
+        <div class="status-list sysinfo" aria-label="System information">
+          <div><span>CPU model</span><strong id="sys-cpu-model">—</strong></div>
+          <div><span>Cores</span><strong id="sys-cores">—</strong></div>
+          <div><span>Host</span><strong id="sys-hostname">—</strong></div>
+          <div><span>Kernel</span><strong id="sys-kernel">—</strong></div>
+          <div><span>Uptime</span><strong id="sys-uptime">—</strong></div>
+        </div>
+        <div class="activity">
+          <span class="activity-dot"></span>
+          <p id="activity-copy">Waiting for desktop telemetry.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section id="crew-view" class="view crew-view" aria-label="Crew desktop view" hidden>
+      <nav id="crew-rail" class="crew-rail glass" aria-label="Desktop switcher"></nav>
+
+      <div class="crew-stage glass">
+        <div class="crew-stage-head">
+          <div>
+            <span class="section-kicker">CREW</span>
+            <h2 id="crew-title">:1</h2>
+          </div>
+          <div id="crew-status" class="desktop-state">idle</div>
+        </div>
+        <div id="crew-viewer" class="crew-viewer"></div>
+      </div>
+
+      <aside class="crew-panel glass">
+        <div>
+          <span class="section-kicker">CONTROL</span>
+          <h3 id="crew-panel-title">Desktop :1</h3>
+        </div>
+        <div class="crew-actions">
+          <button id="open-viewer" type="button">Open in new tab ↗</button>
+          <button id="copy-viewer" type="button">Copy viewer URL</button>
+          <button id="suspend-desktop" type="button" title="Freeze this desktop (SIGSTOP). Does not wipe or kill.">Freeze · SIGSTOP</button>
+          <button id="resume-desktop" type="button" title="Wake this desktop (SIGCONT)">Wake · SIGCONT</button>
+        </div>
+        <p id="crew-control-hint" class="crew-hint">Freeze pauses processes — it is not a wipe or stop-window.</p>
+        <div id="crew-stream-actions" class="stream-actions" aria-label="Crew actions"></div>
+        <div class="status-list compact">
+          <div><span>Viewer</span><strong id="crew-viewer-port">—</strong></div>
+          <div><span>VNC</span><strong id="crew-vnc-port">—</strong></div>
+          <div><span>State</span><strong id="crew-live">—</strong></div>
+          <div><span>Current</span><strong id="crew-current">—</strong></div>
+          <div><span>CPU</span><strong id="crew-cpu">—</strong></div>
+          <div><span>RAM</span><strong id="crew-ram">—</strong></div>
+          <div><span>Load</span><strong id="crew-load">—</strong></div>
+          <div><span>GOST</span><strong id="crew-gost">—</strong></div>
+        </div>
+        <section class="crew-chat" aria-label="Entitlement chats">
+          <div class="crew-chat-head">
+            <span class="section-kicker">CHAT</span>
+            <span id="crew-chat-count" class="page-label">none</span>
+          </div>
+          <div id="crew-chat-list" class="crew-chat-list"></div>
+        </section>
+        <p id="crew-url" class="viewer-url"></p>
+      </aside>
+    </section>
+
+    <div class="control-strip glass" role="toolbar" aria-label="Desktop controls">
+      <div class="strip-left">
+        <div class="segmented" aria-label="View mode">
+          <button id="mode-global" class="active" type="button">Global</button>
+          <button id="mode-crew" type="button">Crew</button>
+        </div>
+        <div id="filter-chips" class="chip-row" role="group" aria-label="Desktop filter">
+          <button type="button" data-filter="all" class="chip active">All</button>
+          <button type="button" data-filter="live" class="chip live">Live</button>
+          <button type="button" data-filter="ready" class="chip novnc">noVNC</button>
+          <button type="button" data-filter="idle" class="chip">Idle</button>
+          <button type="button" data-filter="paused" class="chip">Paused</button>
+        </div>
+      </div>
+      <div class="strip-center">
+        <div class="carousel-controls">
+          <button id="page-prev" class="circle" type="button" aria-label="Previous desktop page">←</button>
+          <span id="strip-page">1 / 1</span>
+          <button id="page-next" class="circle" type="button" aria-label="Next desktop page">→</button>
+        </div>
+      </div>
+      <div class="strip-right">
+        <label class="count-control" for="jump-desktop">
+          <span>Screen</span>
+          <select id="jump-desktop">
+            <option value="">All</option>
+          </select>
+        </label>
+        <label class="count-control" for="visible-count">
+          <span>Visible</span>
+          <select id="visible-count">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+          </select>
+        </label>
+        <button id="refresh-desktops" class="refresh-btn" type="button" title="Refresh desktops">Refresh</button>
+      </div>
+    </div>
+
+    <p id="toast" class="toast" hidden></p>
+  </main>
+
+  <script src="/shell.js"></script>
+  <script src="/desktops.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{})});</script>
+</body>
+</html>
