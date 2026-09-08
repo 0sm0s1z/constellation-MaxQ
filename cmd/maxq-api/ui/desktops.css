@@ -9,9 +9,9 @@
 }
 *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:var(--crust);color:var(--text);font:14px/1.45 "IBM Plex Sans",ui-sans-serif,system-ui,sans-serif}
 body{min-height:100vh;overflow:hidden;background:
-radial-gradient(circle at 12% 14%,rgba(203,166,247,.10),transparent 28rem),
-radial-gradient(circle at 84% 72%,rgba(137,180,250,.08),transparent 34rem),var(--crust)}
-button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;opacity:.18}.ambient-a{width:22rem;height:22rem;background:var(--mauve);top:-8rem;left:18%}.ambient-b{width:28rem;height:28rem;background:var(--blue);right:-10rem;bottom:-12rem}
+radial-gradient(circle at 12% 14%,rgba(203,166,247,.06),transparent 28rem),
+radial-gradient(circle at 84% 72%,rgba(137,180,250,.04),transparent 34rem),var(--crust)}
+button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;opacity:.1}.ambient-a{width:22rem;height:22rem;background:var(--mauve);top:-8rem;left:18%}.ambient-b{width:28rem;height:28rem;background:var(--blue);right:-10rem;bottom:-12rem}
 .workspace{height:100vh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px;padding:0 0 16px;position:relative;z-index:1}
 .glass{background:linear-gradient(145deg,rgba(49,50,68,.58),rgba(24,24,37,.63));border:1px solid var(--stroke);box-shadow:var(--shadow);backdrop-filter:blur(24px) saturate(125%);-webkit-backdrop-filter:blur(24px) saturate(125%)}
 .topbar{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 4px}.identity{display:flex;align-items:center;gap:12px}.back{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--stroke);background:rgba(49,50,68,.5);color:var(--subtext0);text-decoration:none;transition:.18s ease}.back:hover{color:var(--mauve);border-color:rgba(203,166,247,.42);transform:translateX(-1px)}
@@ -33,8 +33,8 @@ button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur
 
 
 /* Operator shell integration */
-.desk-topbar{position:sticky;top:0;border-radius:0;margin:0;min-height:52px;padding:.7rem 1.25rem;background:var(--glass);border-bottom:1px solid var(--rule);backdrop-filter:blur(18px) saturate(120%);-webkit-backdrop-filter:blur(18px) saturate(120%)}
-.desk-proof{margin:0 20px;border:1px solid var(--rule);border-radius:12px;background:var(--glass);padding:.45rem 1rem}
+.desk-topbar{position:sticky;top:0;z-index:20;border-radius:0;margin:0;min-height:48px;padding:.55rem 1.5rem;background:color-mix(in srgb,var(--crust) 88%,transparent);border-bottom:1px solid var(--border,rgba(205,214,244,.07));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.desk-proof{margin:0;border:0;border-radius:0;border-bottom:1px solid color-mix(in srgb,var(--text,#cdd6f4) 4%,transparent);background:transparent;padding:.28rem 1.5rem}
 .workspace > .view,.workspace > .control-strip{margin-left:20px;margin-right:20px}
 .workspace > .control-strip{margin-bottom:4px}
 .section-kicker{font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif}
@@ -90,18 +90,20 @@ button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur
 .idle-screen.viewer-frozen .idle-mark span:last-child{color:var(--overlay1);font-size:11px}
 
 
-/* Catppuccin × shadcn — subtle mauve hairline, no rainbow */
-.desk-topbar { border-bottom: 1px solid var(--border, rgba(205,214,244,.10)) !important; }
+/* Catppuccin × shadcn — quiet hairline + folded proof */
+.desk-topbar { border-bottom: 1px solid var(--border, rgba(205,214,244,.07)) !important; }
 .desk-topbar::after {
   content: "";
   position: absolute; left: 0; right: 0; bottom: 0;
-  height: 1.5px;
-  opacity: .5;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mauve) 55%, transparent), color-mix(in srgb, var(--lavender) 70%, transparent), color-mix(in srgb, var(--mauve) 55%, transparent), transparent);
+  height: 1px;
+  opacity: .42;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mauve) 40%, transparent), color-mix(in srgb, var(--lavender) 50%, transparent), color-mix(in srgb, var(--mauve) 40%, transparent), transparent);
   pointer-events: none;
 }
 .desk-proof {
-  display: flex; flex-wrap: wrap; gap: .35rem .45rem;
+  display: flex; flex-wrap: wrap; gap: .15rem .55rem;
+  font-size: 10px; letter-spacing: .04em;
+  color: color-mix(in srgb, var(--overlay1,#7f849c) 78%, transparent);
 }
 .refresh-btn, .chip, .segmented button, .circle {
   transition: border-color .15s ease, color .15s ease, background .15s ease, transform .15s ease;

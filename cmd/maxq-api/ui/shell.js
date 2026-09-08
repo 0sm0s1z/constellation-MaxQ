@@ -56,7 +56,7 @@ function renderProof(status) {
     const span = document.createElement("span");
     if (p.ok) span.className = "ok";
     else if (p.warn || (!p.mute && p.value === "FAIL")) span.className = "warn";
-    else if (p.mute) span.className = "chip-mauve";
+    else if (p.mute) span.className = "mute";
     span.textContent = p.key ? p.key + "=" + p.value : p.value;
     if (p.warn) {
       span.title =

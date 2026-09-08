@@ -1,12 +1,12 @@
 .proc-hero {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.85rem;
 }
 .proc-hero h1 {
-  margin: 0 0 .35rem; font-size: 1.85rem; font-weight: 650;
-  letter-spacing: -.035em;
+  margin: 0 0 .45rem; font-size: clamp(1.85rem, 2.4vw, 2.2rem); font-weight: 650;
+  letter-spacing: -.038em; line-height: 1.12;
 }
-.proc-hero p { margin: 0; color: var(--sub); max-width: 36rem; }
+.proc-hero p { margin: 0; color: var(--muted-foreground); max-width: 36rem; font-size: .95rem; line-height: 1.55; }
 .proc-toolbar {
   display: flex; align-items: flex-end; gap: .65rem; flex-wrap: wrap;
 }
@@ -28,15 +28,15 @@
 .proc-auto input { width: auto; margin: 0; }
 .proc-meta {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .75rem; padding: .85rem 1rem;
+  gap: .85rem; padding: 1.05rem 1.2rem;
 }
-.proc-meta div { display: grid; gap: .2rem; }
+.proc-meta div { display: grid; gap: .28rem; }
 .proc-meta span {
-  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--muted-foreground);
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted-foreground); font-weight: 550;
 }
 .proc-meta strong {
-  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  font-family: var(--font); font-size: .9rem; font-weight: 550; letter-spacing: -.015em;
 }
 .proc-table-wrap { overflow: auto; padding: 0; }
 .proc-table {
@@ -49,8 +49,8 @@
 .proc-table th {
   position: sticky; top: 0; z-index: 1;
   background: color-mix(in srgb, var(--base) 92%, var(--mantle));
-  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--muted-foreground); font-weight: 600;
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted-foreground); font-weight: 550;
 }
 .proc-table td.num, .proc-table th.num { text-align: right; font-family: var(--mono); }
 .proc-table td.pid, .proc-table td.user, .proc-table td.cpu, .proc-table td.mem {
