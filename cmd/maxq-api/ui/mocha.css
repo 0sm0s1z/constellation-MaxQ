@@ -645,3 +645,58 @@ code { font-family: var(--mono); font-size: .9em; color: var(--lavender); }
   .op-identity { display: none; }
   .op-main { padding-top: 1.15rem; }
 }
+
+/* ═══════════════════════════════════════════
+   Elegant-more — Home micro-polish + motion
+   ═══════════════════════════════════════════ */
+
+/* Launchpad: quieter icon wells, refined foot */
+.tile-icon {
+  width: 2.15rem; height: 2.15rem;
+  border-radius: calc(var(--radius) - 1px);
+  background: color-mix(in srgb, var(--mauve) 8%, var(--muted));
+  border: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
+  color: color-mix(in srgb, var(--mauve) 82%, var(--foreground));
+}
+.tile-icon svg { width: .9rem; height: .9rem; opacity: .92; }
+.tile-name { font-size: .96rem; font-weight: 600; letter-spacing: -.022em; }
+.tile-desc { font-size: .84rem; line-height: 1.5; color: color-mix(in srgb, var(--muted-foreground) 92%, transparent); }
+.tile-foot {
+  margin: .35rem 0 0;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--overlay0) 88%, transparent);
+}
+.tile.live .tile-foot,
+.tile-foot.live {
+  color: color-mix(in srgb, var(--green) 72%, var(--muted-foreground));
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.tile {
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+/* Shared motion — hover/focus only; honor reduced motion */
+.btn, button.primary, button.ghost, button.danger,
+.btn-solid, .btn-ghost, .btn-primary, .btn-outline, .btn-secondary,
+.hs-cta-link, .home-demo-links a, .proc-pressure-cta,
+.tile, .p2-card, .card,
+.home-fleet a.fleet-chip,
+input, select, .input {
+  transition-property: background-color, color, border-color, box-shadow, opacity, transform;
+  transition-duration: .16s;
+  transition-timing-function: ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tile:hover, .tile:focus-visible { transform: none; }
+  .op-conn.ok .dot { animation: none; box-shadow: none; }
+}

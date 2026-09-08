@@ -172,3 +172,62 @@
   background: var(--card);
   border-radius: var(--radius);
 }
+
+/* Elegant-more — Processes hero/card rhythm + quieter chrome */
+.proc-hero { margin-bottom: 1.85rem; }
+.proc-hero h1 {
+  font-size: clamp(1.85rem, 2.4vw, 2.2rem);
+  letter-spacing: -.038em;
+  line-height: 1.12;
+}
+.proc-filter span, .proc-auto span {
+  font-size: .62rem !important;
+  letter-spacing: .14em !important;
+  text-transform: uppercase;
+  color: var(--muted-foreground) !important;
+  font-weight: 550;
+}
+.proc-filter input {
+  border: 1px solid var(--input, var(--border)) !important;
+  background: var(--background, var(--mantle)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.proc-auto {
+  transition: border-color .16s ease, background .16s ease;
+}
+.proc-meta {
+  margin-bottom: 1.25rem;
+  gap: .85rem;
+  padding: 1.05rem 1.2rem;
+}
+.proc-table th {
+  font-family: var(--font) !important;
+}
+.badge {
+  font-family: var(--font) !important;
+  letter-spacing: .06em !important;
+  font-weight: 550 !important;
+}
+.proc-oom-grid span {
+  font-size: .62rem !important;
+  letter-spacing: .14em !important;
+  font-weight: 550;
+  opacity: 1 !important;
+  color: var(--muted-foreground);
+}
+.proc-oom-grid strong {
+  font-family: var(--font) !important;
+  font-size: .9rem !important;
+  font-weight: 550;
+  letter-spacing: -.015em;
+}
+.proc-oom-note { color: var(--muted-foreground); }
+.proc-pressure-cta, .proc-stop, .proc-toolbar button {
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease, opacity .16s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .proc-filter input, .proc-pressure-cta, .proc-stop, .proc-toolbar button {
+    transition-duration: 0.01ms !important;
+  }
+}

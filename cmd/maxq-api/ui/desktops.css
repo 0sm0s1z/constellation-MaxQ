@@ -127,3 +127,414 @@ button.action-btn.primary {
   color: var(--crust);
   border-color: transparent;
 }
+
+/* ═══════════════════════════════════════════
+   Elegant-more — Desktops / Crew match Home
+   Same type scale, quieter chips, softer bezels, less ambient
+   ═══════════════════════════════════════════ */
+
+/* Ambient: dial way down — almost no noise */
+body {
+  background:
+    radial-gradient(circle at 12% 14%, rgba(203,166,247,.035), transparent 26rem),
+    radial-gradient(circle at 84% 72%, rgba(137,180,250,.025), transparent 32rem),
+    var(--crust) !important;
+  font: 14.5px/1.55 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: -0.005em;
+}
+.ambient { opacity: .05 !important; filter: blur(120px) !important; }
+.ambient-a { width: 18rem; height: 18rem; }
+.ambient-b { width: 22rem; height: 22rem; }
+
+/* Soft glass — less heavy shadow, Home-like radius */
+.glass {
+  background: color-mix(in srgb, var(--card, #1e1e2e) 88%, transparent) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(115%) !important;
+}
+.feed-shell, .telemetry, .crew-rail, .crew-stage, .crew-panel {
+  border-radius: calc(var(--radius, .5rem) + 4px) !important;
+}
+.workspace { gap: 8px; padding-bottom: 14px; }
+
+/* Topbar identity / status — Home type rhythm */
+.identity h1 { font-size: 1.15rem !important; font-weight: 650; letter-spacing: -.03em; }
+.eyebrow, .section-kicker {
+  font-size: 10px !important;
+  letter-spacing: .16em !important;
+  font-weight: 550 !important;
+  color: color-mix(in srgb, var(--muted-foreground, #7f849c) 88%, transparent) !important;
+  text-transform: uppercase;
+}
+.section-head h2, .crew-stage h2, .crew-panel h3 {
+  font-weight: 600 !important;
+  letter-spacing: -.028em !important;
+  color: var(--foreground, var(--text));
+}
+.section-head h2 { font-size: 1.05rem !important; }
+.crew-stage h2 { font-size: 1.1rem !important; }
+.crew-panel h3 { font-size: 1rem !important; }
+.page-label, .telemetry-time {
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: 10px !important;
+  letter-spacing: .04em;
+  color: color-mix(in srgb, var(--overlay1) 85%, transparent) !important;
+}
+.top-status {
+  font-size: 11px !important;
+  color: var(--muted-foreground, var(--overlay1)) !important;
+  gap: 8px;
+}
+.top-status .pulse { width: 6px; height: 6px; opacity: .85; }
+
+/* STREAM tiles / metrics — quieter */
+.metric-grid { gap: 8px; }
+.metric-grid article {
+  padding: 10px 11px !important;
+  border-radius: var(--radius, .5rem) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  background: color-mix(in srgb, var(--muted, #181825) 55%, transparent) !important;
+  min-height: 60px;
+  transition: border-color .16s ease, background .16s ease;
+}
+.metric-grid article:hover {
+  border-color: color-mix(in srgb, var(--mauve) 22%, transparent);
+}
+.metric-grid span {
+  font-size: 9px !important;
+  letter-spacing: .14em !important;
+  text-transform: uppercase;
+  color: var(--muted-foreground, var(--overlay1)) !important;
+  font-weight: 550;
+}
+.metric-grid strong {
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: .95rem !important;
+  font-weight: 550 !important;
+  letter-spacing: -.015em;
+  margin-top: 3px !important;
+}
+.metric-grid small {
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: 10px !important;
+  color: color-mix(in srgb, var(--overlay1) 90%, transparent) !important;
+}
+.status-list > div {
+  padding: 8px 1px !important;
+  border-bottom-color: color-mix(in srgb, var(--text) 5%, transparent) !important;
+}
+.status-list span {
+  font-size: 10px !important;
+  letter-spacing: .02em;
+  color: var(--muted-foreground, var(--overlay1)) !important;
+}
+.status-list strong {
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: 11px !important;
+  font-weight: 550 !important;
+}
+.activity {
+  border-radius: var(--radius, .5rem) !important;
+  border-color: var(--border, rgba(205,214,244,.07)) !important;
+  background: color-mix(in srgb, var(--muted) 40%, transparent) !important;
+  padding: 10px 11px !important;
+}
+.activity p { font-size: 11px !important; line-height: 1.45; }
+
+/* Desktop STREAM tiles — softer bezels */
+.desktop-tile {
+  border-radius: calc(var(--radius, .5rem) + 2px) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease !important;
+}
+.desktop-tile:hover {
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+  box-shadow: var(--elev, 0 8px 28px rgba(0,0,0,.28)) !important;
+  transform: translateY(-1px);
+}
+.desktop-tile.current {
+  border-color: color-mix(in srgb, var(--mauve) 40%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mauve) 12%, transparent) !important;
+}
+.tile-label {
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  font-weight: 550 !important;
+  font-size: 11px !important;
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  letter-spacing: -.01em;
+  background: color-mix(in srgb, var(--crust) 78%, transparent) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  box-shadow: none !important;
+}
+.tile-badges span {
+  border-radius: 999px !important;
+  padding: 3px 6px !important;
+  font-size: 9px !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 550;
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  background: color-mix(in srgb, var(--crust) 72%, transparent) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  box-shadow: none !important;
+}
+.crew-viewer {
+  border-radius: calc(var(--radius, .5rem) + 2px) !important;
+  border-color: var(--border, rgba(205,214,244,.07)) !important;
+}
+
+/* Filters / chips / control strip — quieter, Home-like */
+.control-strip {
+  height: 52px !important;
+  border-radius: calc(var(--radius, .5rem) + 10px) !important;
+  padding: 5px 10px !important;
+  box-shadow: none !important;
+}
+.chip {
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  background: transparent !important;
+  color: var(--muted-foreground, var(--overlay1)) !important;
+  border-radius: 999px !important;
+  padding: 4px 9px !important;
+  font-size: 10px !important;
+  font-weight: 500;
+  letter-spacing: .03em;
+  transition: border-color .16s ease, color .16s ease, background .16s ease !important;
+}
+.chip:hover {
+  color: var(--foreground, var(--text)) !important;
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+  background: color-mix(in srgb, var(--mauve) 8%, transparent) !important;
+}
+.chip.active {
+  background: color-mix(in srgb, var(--mauve) 14%, transparent) !important;
+  color: var(--mauve) !important;
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+}
+.chip.live::after { width: 4px; height: 4px; margin-left: 4px; opacity: .85; }
+.segmented {
+  background: color-mix(in srgb, var(--muted) 50%, transparent) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  padding: 2px !important;
+}
+.segmented button {
+  color: var(--muted-foreground, var(--overlay1)) !important;
+  padding: 6px 12px !important;
+  font-size: 11px;
+  font-weight: 500;
+  transition: background .16s ease, color .16s ease !important;
+}
+.segmented button.active {
+  background: color-mix(in srgb, var(--mauve) 14%, transparent) !important;
+  color: var(--mauve) !important;
+  box-shadow: none !important;
+}
+.circle {
+  width: 32px; height: 32px;
+  border-color: var(--border, rgba(205,214,244,.07)) !important;
+  background: transparent !important;
+  transition: border-color .16s ease, color .16s ease, transform .16s ease !important;
+}
+.circle:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--mauve) 32%, transparent) !important;
+  color: var(--mauve) !important;
+  transform: none;
+}
+.refresh-btn, .count-control select {
+  border-color: var(--border, rgba(205,214,244,.07)) !important;
+  background: transparent !important;
+  font-size: 11px !important;
+  border-radius: 999px !important;
+  transition: border-color .16s ease, color .16s ease, background .16s ease !important;
+}
+.refresh-btn:hover {
+  border-color: color-mix(in srgb, var(--rosewater) 40%, transparent) !important;
+  color: var(--rosewater) !important;
+  background: color-mix(in srgb, var(--rosewater) 6%, transparent) !important;
+}
+.action-btn {
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  border-radius: calc(var(--radius, .5rem) - 2px) !important;
+  padding: 4px 9px !important;
+  font-size: 10px !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-weight: 550;
+  transition: border-color .16s ease, color .16s ease, background .16s ease !important;
+}
+.action-btn:hover {
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+  color: var(--mauve) !important;
+  background: color-mix(in srgb, var(--mauve) 8%, transparent) !important;
+}
+
+/* Crew rail — quieter */
+.crew-rail {
+  padding: 10px 6px !important;
+  gap: 6px !important;
+}
+.rail-button {
+  width: 38px; height: 38px;
+  border-radius: calc(var(--radius, .5rem) + 2px) !important;
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 550;
+  letter-spacing: .02em;
+  transition: background .16s ease, color .16s ease, border-color .16s ease !important;
+}
+.rail-button:hover {
+  background: color-mix(in srgb, var(--surface0) 45%, transparent) !important;
+  color: var(--foreground, var(--text)) !important;
+}
+.rail-button.active {
+  background: color-mix(in srgb, var(--mauve) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+  color: var(--mauve) !important;
+  box-shadow: none !important;
+}
+.rail-button .pip { width: 5px; height: 5px; top: 3px; right: 3px; }
+.rail-button.ready .pip {
+  box-shadow: 0 0 0 2px var(--mantle) !important;
+  background: var(--teal);
+}
+
+/* Crew actions — softer */
+.crew-actions button {
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  background: transparent !important;
+  border-radius: calc(var(--radius, .5rem) - 2px) !important;
+  padding: 7px 10px !important;
+  font-size: .82rem;
+  font-weight: 500;
+  transition: border-color .16s ease, color .16s ease, background .16s ease !important;
+}
+.crew-actions button:hover {
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent) !important;
+  color: var(--mauve) !important;
+  background: color-mix(in srgb, var(--mauve) 6%, transparent) !important;
+}
+.crew-actions button.primary,
+button.action-btn.primary {
+  background: var(--rosewater) !important;
+  color: var(--crust) !important;
+  border-color: transparent !important;
+}
+.desktop-state {
+  font-family: var(--font, "IBM Plex Sans", sans-serif) !important;
+  font-size: 9px !important;
+  letter-spacing: .14em !important;
+  font-weight: 550;
+}
+.viewer-url {
+  font-size: 10px !important;
+  color: color-mix(in srgb, var(--overlay0) 90%, transparent) !important;
+}
+.crew-hint {
+  font-size: 10px !important;
+  color: color-mix(in srgb, var(--overlay1) 85%, transparent) !important;
+  line-height: 1.45;
+}
+
+/* Crew CHAT — refined typography */
+.crew-chat {
+  gap: 8px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+}
+.crew-chat-head {
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground, var(--overlay1));
+  font-weight: 550;
+}
+.chat-thread {
+  padding: 10px 11px !important;
+  border-radius: var(--radius, .5rem) !important;
+  border: 1px solid var(--border, rgba(205,214,244,.07)) !important;
+  background: color-mix(in srgb, var(--muted) 45%, transparent) !important;
+  gap: 3px 10px !important;
+  transition: border-color .16s ease, background .16s ease;
+}
+.chat-thread:hover {
+  border-color: color-mix(in srgb, var(--mauve) 18%, transparent);
+}
+.chat-thread .chat-site {
+  font-size: 9px !important;
+  letter-spacing: .14em !important;
+  font-weight: 550 !important;
+  color: color-mix(in srgb, var(--peach) 75%, var(--muted-foreground)) !important;
+}
+.chat-thread .chat-title {
+  font-size: .82rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -.015em;
+  line-height: 1.35 !important;
+  color: var(--foreground, var(--text)) !important;
+}
+.chat-thread .chat-url {
+  font-family: var(--mono, "IBM Plex Mono", monospace) !important;
+  font-size: 10px !important;
+  color: color-mix(in srgb, var(--overlay0) 92%, transparent) !important;
+  letter-spacing: 0;
+}
+.chat-thread .chat-preview {
+  font-size: .78rem !important;
+  line-height: 1.5 !important;
+  color: color-mix(in srgb, var(--subtext0) 88%, transparent) !important;
+  margin-top: 2px;
+  -webkit-line-clamp: 3;
+  max-height: 4.6em;
+}
+.chat-thread .chat-msg {
+  font-size: .78rem !important;
+  line-height: 1.45 !important;
+  color: color-mix(in srgb, var(--subtext0) 90%, transparent) !important;
+  padding: 6px 8px !important;
+  border-radius: calc(var(--radius, .5rem) - 2px) !important;
+  border: 1px solid color-mix(in srgb, var(--text) 5%, transparent) !important;
+  background: color-mix(in srgb, var(--crust) 35%, transparent) !important;
+}
+.chat-thread .chat-msg:last-child {
+  color: var(--foreground, var(--text)) !important;
+  border-color: color-mix(in srgb, var(--mauve) 18%, transparent) !important;
+  background: color-mix(in srgb, var(--mauve) 5%, transparent) !important;
+}
+.chat-empty {
+  padding: 20px 12px !important;
+  color: var(--muted-foreground, var(--overlay1)) !important;
+  font-size: .82rem !important;
+  letter-spacing: -.01em;
+}
+
+/* Action run cards quieter */
+.action-run-card {
+  border-radius: var(--radius, .5rem) !important;
+  border-color: var(--border, rgba(205,214,244,.07)) !important;
+  background: color-mix(in srgb, var(--muted) 40%, transparent) !important;
+  font-size: 11px !important;
+}
+
+/* Desk topbar already folded — keep hairline quiet */
+.desk-topbar {
+  min-height: 48px !important;
+  padding: .55rem 1.5rem !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-tile:hover, .desktop-tile { transform: none !important; }
+  .circle:hover:not(:disabled) { transform: none !important; }
+  .pulse, .activity-dot, .rail-button.busy .pip, .op-conn.ok .dot {
+    animation: none !important;
+  }
+  .chip, .segmented button, .circle, .refresh-btn, .action-btn,
+  .rail-button, .crew-actions button, .desktop-tile, .chat-thread,
+  .metric-grid article {
+    transition-duration: 0.01ms !important;
+  }
+}

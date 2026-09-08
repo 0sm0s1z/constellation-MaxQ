@@ -18,21 +18,21 @@
     .home-status-head {
       display: flex; flex-wrap: wrap; gap: .55rem 1rem;
       align-items: center; justify-content: space-between;
-      padding: .85rem 1.2rem;
+      padding: .65rem 1.2rem;
       border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--accent) 22%, var(--card));
+      background: color-mix(in srgb, var(--accent) 9%, var(--card));
     }
     .home-demo-main {
       display: flex; flex-wrap: wrap; gap: .3rem .65rem; align-items: baseline;
       min-width: 0;
     }
     .home-demo-kicker {
-      font-size: .65rem; letter-spacing: .14em; text-transform: uppercase;
-      color: var(--muted-foreground); font-weight: 550;
+      font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;
+      color: color-mix(in srgb, var(--muted-foreground) 88%, transparent); font-weight: 550;
     }
     .home-demo-line {
-      font-family: var(--font); font-size: .84rem; color: var(--foreground);
-      letter-spacing: -.01em;
+      font-family: var(--font); font-size: .82rem; color: var(--foreground);
+      letter-spacing: -.01em; font-weight: 450;
     }
     .home-demo-line .dim { color: var(--muted-foreground); opacity: .7; }
     .home-demo-line .warn { color: var(--peach); }
