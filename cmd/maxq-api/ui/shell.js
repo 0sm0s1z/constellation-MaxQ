@@ -46,8 +46,6 @@ function renderProof(status) {
       warn: true,
     });
   }
-  const muteCycle = ["chip-mauve", "chip-sky", "chip-teal"];
-  let muteIdx = 0;
   parts.forEach((p, i) => {
     if (i) {
       const sep = document.createElement("span");
@@ -58,10 +56,7 @@ function renderProof(status) {
     const span = document.createElement("span");
     if (p.ok) span.className = "ok";
     else if (p.warn || (!p.mute && p.value === "FAIL")) span.className = "warn";
-    else if (p.mute) {
-      span.className = muteCycle[muteIdx % muteCycle.length];
-      muteIdx += 1;
-    }
+    else if (p.mute) span.className = "chip-mauve";
     span.textContent = p.key ? p.key + "=" + p.value : p.value;
     if (p.warn) {
       span.title =

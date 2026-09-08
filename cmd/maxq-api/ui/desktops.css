@@ -90,18 +90,16 @@ button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur
 .idle-screen.viewer-frozen .idle-mark span:last-child{color:var(--overlay1);font-size:11px}
 
 
-/* Catppuccin visual pass — site accent bar + soft control polish */
-.desk-topbar { border-bottom: 0 !important; }
+/* Catppuccin × shadcn — subtle mauve hairline, no rainbow */
+.desk-topbar { border-bottom: 1px solid var(--border, rgba(205,214,244,.10)) !important; }
 .desk-topbar::after {
   content: "";
   position: absolute; left: 0; right: 0; bottom: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--rosewater), var(--pink), var(--mauve), var(--blue), var(--sky), var(--teal), var(--green), var(--yellow), var(--peach), var(--rosewater));
-  background-size: 200% 100%;
-  animation: desk-accent-shift 20s linear infinite;
+  height: 1.5px;
+  opacity: .5;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mauve) 55%, transparent), color-mix(in srgb, var(--lavender) 70%, transparent), color-mix(in srgb, var(--mauve) 55%, transparent), transparent);
   pointer-events: none;
 }
-@keyframes desk-accent-shift { to { background-position: 200% 0; } }
 .desk-proof {
   display: flex; flex-wrap: wrap; gap: .35rem .45rem;
 }

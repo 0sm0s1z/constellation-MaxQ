@@ -18,7 +18,7 @@
 .p2-meta div { display: grid; gap: .2rem; }
 .p2-meta span {
   font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mauve);
+  color: var(--muted-foreground);
 }
 .p2-meta strong {
   font-family: var(--mono); font-size: 12px; font-weight: 500;
@@ -35,7 +35,7 @@
   position: sticky; top: 0; z-index: 1;
   background: color-mix(in srgb, var(--base) 92%, var(--mantle));
   font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mauve); font-weight: 600;
+  color: var(--muted-foreground); font-weight: 600;
 }
 .p2-table td.mono { font-family: var(--mono); font-size: 12px; }
 .p2-empty { color: var(--overlay1); text-align: center; padding: 1.5rem !important; }
@@ -59,8 +59,8 @@
   gap: .85rem;
 }
 .p2-card {
-  padding: 1rem 1.05rem; border: 1px solid var(--rule);
-  border-radius: var(--radius); background: var(--glass);
+  padding: 1rem 1.05rem; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--card);
   display: grid; gap: .45rem;
 }
 .p2-card h3 {
@@ -142,88 +142,51 @@
 .p2-meta strong a:hover { color: var(--mauve); }
 
 
-/* Catppuccin visual pass — shared page polish */
+/* Catppuccin × shadcn — calm shared page polish (no carnival rails) */
 .p2-card {
-  position: relative;
-  background:
-    linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--base) 90%, transparent),
-      color-mix(in srgb, var(--mantle) 85%, transparent)
-    );
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--mauve) 22%, transparent),
-    0 8px 22px rgba(0,0,0,.16);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
 }
-.p2-card::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 12px; bottom: 12px;
-  width: 3px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mauve) 55%, transparent);
+.p2-card::before { content: none !important; display: none !important; }
+.p2-meta {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
 }
-.p2-card[data-accent="peach"]::before { background: color-mix(in srgb, var(--peach) 65%, transparent); }
-.p2-card[data-accent="sky"]::before { background: color-mix(in srgb, var(--sky) 65%, transparent); }
-.p2-card[data-accent="green"]::before { background: color-mix(in srgb, var(--green) 65%, transparent); }
-.p2-card[data-accent="pink"]::before { background: color-mix(in srgb, var(--pink) 65%, transparent); }
-.p2-card[data-accent="lavender"]::before { background: color-mix(in srgb, var(--lavender) 65%, transparent); }
-.p2-card[data-accent="teal"]::before { background: color-mix(in srgb, var(--teal) 65%, transparent); }
-.p2-card[data-accent="blue"]::before { background: color-mix(in srgb, var(--blue) 65%, transparent); }
-.p2-card[data-accent="yellow"]::before { background: color-mix(in srgb, var(--yellow) 65%, transparent); }
-
-.p2-badge.ok {
-  background: color-mix(in srgb, var(--green) 12%, transparent);
+.p2-meta span { color: var(--muted-foreground) !important; }
+.p2-meta strong { color: var(--foreground); }
+.p2-table th {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted) 90%, var(--card));
 }
-.p2-badge.warn {
-  background: color-mix(in srgb, var(--peach) 12%, transparent);
-}
-.p2-badge.secret {
-  background: color-mix(in srgb, var(--sky) 12%, transparent);
-}
-.p2-badge.pink {
-  color: var(--pink);
-  border-color: color-mix(in srgb, var(--pink) 40%, transparent);
-  background: color-mix(in srgb, var(--pink) 10%, transparent);
-}
-.p2-badge.lavender {
-  color: var(--lavender);
-  border-color: color-mix(in srgb, var(--lavender) 40%, transparent);
-  background: color-mix(in srgb, var(--lavender) 10%, transparent);
-}
-.p2-badge.teal {
-  color: var(--teal);
-  border-color: color-mix(in srgb, var(--teal) 40%, transparent);
-  background: color-mix(in srgb, var(--teal) 10%, transparent);
-}
-.p2-badge.yellow {
-  color: var(--yellow);
-  border-color: color-mix(in srgb, var(--yellow) 40%, transparent);
-  background: color-mix(in srgb, var(--yellow) 10%, transparent);
-}
-
 .p2-toolbar button.primary,
 .p2-toolbar .btn-solid {
-  border-radius: 999px;
+  border-radius: calc(var(--radius) - 2px);
 }
 .p2-links a {
-  border-radius: 999px;
-  border-color: color-mix(in srgb, var(--text) 18%, transparent);
+  border-radius: calc(var(--radius) - 2px);
+  border-color: var(--border);
 }
 .p2-links a:hover {
-  color: var(--mauve);
-  border-color: color-mix(in srgb, var(--mauve) 45%, transparent);
-  background: color-mix(in srgb, var(--mauve) 8%, transparent);
+  color: var(--accent-foreground);
+  border-color: color-mix(in srgb, var(--mauve) 35%, var(--border));
+  background: var(--accent);
+}
+.p2-step {
+  background: var(--card);
+  border-color: var(--border);
+  border-radius: var(--radius);
 }
 .p2-step .n {
-  background: color-mix(in srgb, var(--mauve) 12%, transparent);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent);
 }
-.p2-meta {
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--sky) 22%, transparent),
-    0 8px 22px rgba(0,0,0,.14);
+.p2-card.is-target {
+  outline: 2px solid color-mix(in srgb, var(--peach) 70%, transparent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--peach) 12%, transparent);
 }
-.p2-meta div:nth-child(1) span { color: var(--mauve); }
-.p2-meta div:nth-child(2) span { color: var(--peach); }
-.p2-meta div:nth-child(3) span { color: var(--sky); }
-.p2-meta div:nth-child(4) span { color: var(--green); }

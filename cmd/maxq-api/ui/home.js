@@ -82,18 +82,26 @@ function renderHomeFleet(data) {
   }
 }
 
+function isEmptyStreamVal(text) {
+  const t = String(text == null ? "" : text).trim();
+  return !t || t === "—" || t === "--" || t === "…" || t === "...";
+}
+
 function setStream(id, text, href) {
   const el = document.getElementById(id);
   if (!el) return;
-  if (href) {
+  const empty = isEmptyStreamVal(text);
+  const display = empty ? "—" : text;
+  el.classList.toggle("is-empty", empty);
+  if (href && !empty) {
     el.textContent = "";
     const a = document.createElement("a");
     a.href = href;
-    a.textContent = text;
+    a.textContent = display;
     a.title = href;
     el.appendChild(a);
   } else {
-    el.textContent = text;
+    el.textContent = display;
   }
 }
 

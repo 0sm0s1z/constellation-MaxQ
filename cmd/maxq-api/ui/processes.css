@@ -33,7 +33,7 @@
 .proc-meta div { display: grid; gap: .2rem; }
 .proc-meta span {
   font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mauve);
+  color: var(--muted-foreground);
 }
 .proc-meta strong {
   font-family: var(--mono); font-size: 12px; font-weight: 500;
@@ -50,7 +50,7 @@
   position: sticky; top: 0; z-index: 1;
   background: color-mix(in srgb, var(--base) 92%, var(--mantle));
   font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mauve); font-weight: 600;
+  color: var(--muted-foreground); font-weight: 600;
 }
 .proc-table td.num, .proc-table th.num { text-align: right; font-family: var(--mono); }
 .proc-table td.pid, .proc-table td.user, .proc-table td.cpu, .proc-table td.mem {
@@ -150,16 +150,25 @@
 }
 
 
-/* Catppuccin visual pass */
-.proc-meta div:nth-child(1) span { color: var(--mauve); }
-.proc-meta div:nth-child(2) span { color: var(--peach); }
-.proc-meta div:nth-child(3) span { color: var(--sky); }
-.proc-meta div:nth-child(4) span { color: var(--green); }
-.proc-toolbar button.primary { border-radius: 999px; }
-.proc-auto {
-  border-radius: 999px;
-  border-color: color-mix(in srgb, var(--lavender) 28%, var(--rule));
-  background: color-mix(in srgb, var(--lavender) 8%, var(--base));
+/* Catppuccin × shadcn — calm processes polish */
+.proc-meta {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
-.proc-filter input { border-radius: 999px; }
-.proc-table th { color: var(--lavender); }
+.proc-meta span { color: var(--muted-foreground) !important; }
+.proc-toolbar button.primary { border-radius: calc(var(--radius) - 2px); }
+.proc-auto {
+  border-radius: calc(var(--radius) - 2px);
+  border-color: var(--border);
+  background: var(--muted);
+}
+.proc-filter input { border-radius: calc(var(--radius) - 2px); }
+.proc-table th { color: var(--muted-foreground); }
+.proc-pressure-cta {
+  border-radius: calc(var(--radius) - 2px);
+}
+.proc-oom {
+  background: var(--card);
+  border-radius: var(--radius);
+}

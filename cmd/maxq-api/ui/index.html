@@ -9,134 +9,104 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/mocha.css">
   <style>
-    /* Home STREAM strip — Catppuccin pressure cues, site-family pills */
+    /* Home panels — shadcn card family, muted labels, elegant empty */
     .home-stream {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
       gap: .65rem;
       align-items: stretch;
       padding: .95rem 1.1rem;
-      margin: 0 0 1.25rem;
+      margin: 0 0 1.1rem;
     }
     .hs-cell { display: grid; gap: .2rem; min-width: 0; }
     .hs-label {
-      font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--lavender);
+      font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted-foreground); font-weight: 550;
     }
-    .hs-cell[data-key="agent"] .hs-label { color: var(--mauve); }
-    .hs-cell[data-key="live"] .hs-label { color: var(--green); }
-    .hs-cell[data-key="cpu"] .hs-label { color: var(--sky); }
-    .hs-cell[data-key="ram"] .hs-label { color: var(--peach); }
-    .hs-cell[data-key="gost"] .hs-label { color: var(--teal); }
-    .hs-cell[data-key="state"] .hs-label { color: var(--pink); }
     .hs-val {
       font-family: var(--mono); font-size: 12px; font-weight: 500;
-      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    .hs-val.is-empty,
+    .hs-val:empty::after {
+      color: var(--muted-foreground);
+      font-weight: 450;
+    }
+    .hs-val.is-empty { opacity: .72; }
     .hs-cell.pressure .hs-val { color: var(--peach); }
     .hs-cell.pressure {
-      border-radius: 10px;
+      border-radius: calc(var(--radius) - 2px);
       padding: .2rem .4rem;
       margin: -.2rem -.4rem;
-      background: color-mix(in srgb, var(--peach) 14%, transparent);
-      border: 1px solid color-mix(in srgb, var(--peach) 40%, transparent);
-      box-shadow: 0 0 18px color-mix(in srgb, var(--peach) 12%, transparent);
+      background: color-mix(in srgb, var(--peach) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--peach) 28%, transparent);
     }
     .hs-cta {
       display: flex; flex-wrap: wrap; gap: .4rem;
       align-items: center; justify-content: flex-end;
     }
-    .hs-cta-link {
-      display: inline-flex; align-items: center;
-      padding: .38rem .85rem; border-radius: 999px;
-      font-size: .78rem; font-weight: 600; text-decoration: none;
-      color: var(--crust);
-      background: var(--rosewater);
-      border: 1px solid transparent;
-    }
-    .hs-cta-link.secondary {
-      color: var(--text);
-      background: transparent;
-      border: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
-    }
-    .hs-cta-link:hover { filter: brightness(1.06); }
-    .hs-cta-link.secondary:hover {
-      border-color: var(--text);
-      filter: none;
-      background: color-mix(in srgb, var(--text) 6%, transparent);
-    }
     .home-fleet {
-      display: flex; flex-wrap: wrap; gap: .45rem;
+      display: flex; flex-wrap: wrap; gap: .4rem;
       align-items: center;
       padding: .7rem 1rem;
-      margin: -0.55rem 0 1.15rem;
+      margin: -.4rem 0 1rem;
     }
     .home-fleet-label {
-      font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--mauve); margin-right: .25rem;
+      font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted-foreground); margin-right: .2rem; font-weight: 550;
     }
     .home-fleet a.fleet-chip {
       display: inline-flex; align-items: center; gap: .25rem;
-      padding: .22rem .55rem; border-radius: 999px;
+      padding: .18rem .5rem; border-radius: 999px;
       font-family: var(--mono); font-size: 11px; font-weight: 500;
-      text-decoration: none; color: var(--text);
-      background: color-mix(in srgb, var(--green) 14%, transparent);
-      border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+      text-decoration: none; color: var(--foreground);
+      background: color-mix(in srgb, var(--green) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--green) 28%, transparent);
     }
     .home-fleet a.fleet-chip.current {
-      background: color-mix(in srgb, var(--lavender) 22%, transparent);
-      border-color: color-mix(in srgb, var(--lavender) 50%, transparent);
-      color: var(--lavender);
+      background: var(--accent);
+      border-color: color-mix(in srgb, var(--mauve) 32%, transparent);
+      color: var(--accent-foreground);
     }
     .home-fleet a.fleet-chip.frozen {
       color: var(--peach);
-      background: color-mix(in srgb, var(--peach) 12%, transparent);
-      border-color: color-mix(in srgb, var(--peach) 35%, transparent);
+      background: color-mix(in srgb, var(--peach) 10%, transparent);
+      border-color: color-mix(in srgb, var(--peach) 28%, transparent);
     }
-    .home-fleet .fleet-empty { font-size: .8rem; color: var(--overlay1); }
+    .home-fleet .fleet-empty { font-size: .8rem; color: var(--muted-foreground); }
     .home-agent-chat {
-      flex-basis: 100%; margin-top: .15rem;
-      font-family: var(--mono); font-size: 11px; color: var(--overlay1);
+      flex-basis: 100%; margin-top: .1rem;
+      font-family: var(--mono); font-size: 11px; color: var(--muted-foreground);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .hs-val a, a.hs-val {
-      color: inherit; text-decoration: none; border-bottom: 1px dashed color-mix(in srgb, var(--mauve) 45%, transparent);
+      color: inherit; text-decoration: none;
+      border-bottom: 1px dashed color-mix(in srgb, var(--mauve) 35%, transparent);
     }
-    .hs-val a:hover, a.hs-val:hover { color: var(--mauve); border-bottom-color: var(--mauve); }
+    .hs-val a:hover, a.hs-val:hover {
+      color: var(--accent-foreground); border-bottom-color: var(--accent-foreground);
+    }
 
     .home-demo {
       display: flex; flex-wrap: wrap; gap: .55rem .9rem;
       align-items: center; justify-content: space-between;
-      padding: .8rem 1.05rem; margin: 0 0 .85rem;
+      padding: .75rem 1rem; margin: 0 0 .85rem;
+      background: color-mix(in srgb, var(--accent) 40%, var(--card));
     }
     .home-demo-main {
-      display: flex; flex-wrap: wrap; gap: .35rem .75rem; align-items: baseline;
+      display: flex; flex-wrap: wrap; gap: .35rem .7rem; align-items: baseline;
       min-width: 0;
     }
     .home-demo-kicker {
-      font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--green); font-weight: 600;
+      font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted-foreground); font-weight: 600;
     }
     .home-demo-line {
-      font-family: var(--mono); font-size: 12px; color: var(--text);
+      font-family: var(--mono); font-size: 12px; color: var(--foreground);
     }
-    .home-demo-line .dim { color: var(--overlay1); }
+    .home-demo-line .dim { color: var(--muted-foreground); }
     .home-demo-line .warn { color: var(--peach); }
-    .home-demo-links { display: flex; flex-wrap: wrap; gap: .4rem; }
-    .home-demo-links a {
-      font-size: .75rem; font-weight: 600; text-decoration: none;
-      padding: .32rem .75rem; border-radius: 999px;
-      color: var(--text);
-      background: transparent;
-      border: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
-    }
-    .home-demo-links a:first-child {
-      color: var(--crust);
-      background: var(--rosewater);
-      border-color: transparent;
-    }
-    .home-demo-links a:hover { border-color: var(--text); }
-    .home-demo-links a:first-child:hover { background: #fff; border-color: transparent; }
+    .home-demo-links { display: flex; flex-wrap: wrap; gap: .35rem; }
     @media (max-width: 900px) {
       .home-stream { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .hs-cta { grid-column: 1 / -1; justify-content: flex-start; }
@@ -167,14 +137,14 @@
 
     <main class="op-main">
       <div class="op-hero">
-        <p class="op-kicker">Operator Glass</p>
+        <p class="op-kicker">Operator</p>
         <h1>Co-pilot the bot box.</h1>
         <p>Home is a launcher. Morning demo: Desktops + Actions first; leave frozen desks paused until you need them.</p>
       </div>
 
 
 
-      <section id="home-demo-banner" class="home-demo card" data-accent="green" aria-label="Morning demo readiness" hidden>
+      <section id="home-demo-banner" class="home-demo card" aria-label="Morning demo readiness" hidden>
         <div class="home-demo-main">
           <span class="home-demo-kicker">Morning demo</span>
           <span id="home-demo-line" class="home-demo-line">loading…</span>
@@ -186,30 +156,30 @@
         </div>
       </section>
 
-      <section id="home-stream" class="home-stream card" data-accent="peach" aria-label="Live stream status">
+      <section id="home-stream" class="home-stream card" aria-label="Live stream status">
         <div class="hs-cell" data-key="agent">
           <span class="hs-label">Agent</span>
-          <strong id="hs-agent" class="hs-val">…</strong>
+          <strong id="hs-agent" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cell" data-key="live">
           <span class="hs-label">Live · VNC</span>
-          <strong id="hs-live" class="hs-val">…</strong>
+          <strong id="hs-live" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cell" data-key="cpu">
           <span class="hs-label">CPU</span>
-          <strong id="hs-cpu" class="hs-val">…</strong>
+          <strong id="hs-cpu" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cell" data-key="ram" id="hs-ram-cell">
           <span class="hs-label">RAM · avail</span>
-          <strong id="hs-ram" class="hs-val">…</strong>
+          <strong id="hs-ram" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cell" data-key="gost">
           <span class="hs-label">GOST</span>
-          <strong id="hs-gost" class="hs-val">…</strong>
+          <strong id="hs-gost" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cell" data-key="state">
           <span class="hs-label">State</span>
-          <strong id="hs-state" class="hs-val">…</strong>
+          <strong id="hs-state" class="hs-val is-empty">waiting</strong>
         </div>
         <div class="hs-cta" id="hs-cta" hidden>
           <a href="/actions#clear-ram" class="hs-cta-link" id="hs-cta-clear">Clear RAM</a>
@@ -218,14 +188,14 @@
         </div>
       </section>
 
-      <section id="home-fleet" class="home-fleet card" data-accent="lavender" aria-label="Awake desktops" hidden>
+      <section id="home-fleet" class="home-fleet card" aria-label="Awake desktops" hidden>
         <span class="home-fleet-label">Awake</span>
         <span id="home-fleet-chips" class="fleet-empty">…</span>
         <span id="home-agent-chat" class="home-agent-chat" hidden></span>
       </section>
 
       <nav class="launch-grid" aria-label="Operator apps">
-        <a class="tile" data-accent="mauve" href="/desktops">
+        <a class="tile" href="/desktops">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
           </span>
@@ -234,7 +204,7 @@
           <p class="tile-foot" id="tile-desktops-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="peach" href="/actions">
+        <a class="tile" href="/actions">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
           </span>
@@ -243,7 +213,7 @@
           <p class="tile-foot" id="tile-actions-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="sky" href="/processes">
+        <a class="tile" href="/processes">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/></svg>
           </span>
@@ -252,7 +222,7 @@
           <p class="tile-foot" id="tile-processes-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="green" href="/files">
+        <a class="tile" href="/files">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20h16V8l-4-4H4z"/><path d="M12 12v5M9.5 14.5 12 12l2.5 2.5"/></svg>
           </span>
@@ -261,7 +231,7 @@
           <p class="tile-foot" id="tile-files-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="pink" href="/sessions">
+        <a class="tile" href="/sessions">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.2"/><path d="M5 19c1.5-3.2 4-4.8 7-4.8S17.5 15.8 19 19"/></svg>
           </span>
@@ -270,7 +240,7 @@
           <p class="tile-foot" id="tile-sessions-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="lavender" href="/handoff">
+        <a class="tile" href="/handoff">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 7h7v7M14 7l-8 8"/><path d="M17 17H10v-7M10 17l8-8"/></svg>
           </span>
@@ -279,7 +249,7 @@
           <p class="tile-foot" id="tile-handoff-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="teal" href="/vault">
+        <a class="tile" href="/vault">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
           </span>
@@ -288,7 +258,7 @@
           <p class="tile-foot" id="tile-vault-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="yellow" href="/ai">
+        <a class="tile" href="/ai">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
           </span>
@@ -297,7 +267,7 @@
           <p class="tile-foot" id="tile-ai-foot">…</p>
         </a>
 
-        <a class="tile" data-accent="blue" href="/skills">
+        <a class="tile" href="/skills">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 4.5 7v5c0 4.5 3.2 7.4 7.5 9 4.3-1.6 7.5-4.5 7.5-9V7z"/></svg>
           </span>
@@ -306,7 +276,7 @@
           <p class="tile-foot" id="tile-skills-foot">…</p>
         </a>
 
-        <a class="tile muted" data-accent="rosewater" href="/box">
+        <a class="tile muted" href="/box">
           <span class="tile-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M12 12v8M3 8.5l9 3.5 9-3.5"/></svg>
           </span>
