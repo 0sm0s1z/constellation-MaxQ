@@ -386,9 +386,52 @@ function renderCrewChat(d) {
     const url = document.createElement("span");
     url.className = "chat-url";
     url.textContent = chat.url || "";
+    const msgs = chatBodyMessages(chat);
+    if (msgs.length) {
+      site.textContent = (chat.site || "chat") + " · " + msgs.length;
+    }
     el.append(site, title, url);
+    if (msgs.length) {
+      const stack = document.createElement("div");
+      stack.className = "chat-msgs";
+      for (const line of msgs) {
+        const body = document.createElement("div");
+        body.className = "chat-msg";
+        body.textContent = line;
+        stack.appendChild(body);
+      }
+      el.append(stack);
+    } else {
+      const snippet = chatBodySnippet(chat);
+      if (snippet) {
+        const body = document.createElement("span");
+        body.className = "chat-preview";
+        body.textContent = snippet;
+        el.append(body);
+      }
+    }
     list.appendChild(el);
   }
+}
+
+function chatBodyMessages(chat) {
+  if (!chat || typeof chat !== "object") return [];
+  const msgs = Array.isArray(chat.messages) ? chat.messages : [];
+  const out = [];
+  for (const m of msgs) {
+    const t = String(m || "").trim();
+    if (t) out.push(t);
+  }
+  // Cap visible stack for glass density (API already caps ~5).
+  return out.slice(-4);
+}
+
+function chatBodySnippet(chat) {
+  if (!chat || typeof chat !== "object") return "";
+  const preview = String(chat.preview || "").trim();
+  if (preview) return preview;
+  const msgs = chatBodyMessages(chat);
+  return msgs.length ? msgs[msgs.length - 1] : "";
 }
 
 function renderCrewTelemetry() {
