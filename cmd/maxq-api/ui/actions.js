@@ -49,7 +49,8 @@ const MaxQActions = (() => {
       grid.innerHTML = '<article class="p2-card"><h3>No actions</h3><p>Catalog empty.</p></article>';
       return;
     }
-    grid.innerHTML = list.map((a) => {
+    const accents = ["mauve", "peach", "sky", "green", "pink", "lavender", "teal", "yellow", "blue"];
+    grid.innerHTML = list.map((a, idx) => {
       const badges = [];
       badges.push(`<span class="p2-badge ${a.armed ? "ok" : "warn"}">${a.armed ? "armed" : "unarmed"}</span>`);
       badges.push(`<span class="p2-badge dim">${escapeHtml(a.kind || "")}</span>`);
@@ -63,7 +64,8 @@ const MaxQActions = (() => {
       } else if (!a.armed) {
         unarmedHint = '<p class="p2-hint">Unarmed — configure before run.</p>';
       }
-      return `<article class="p2-card" data-id="${escapeHtml(a.id)}">
+      const accent = accents[idx % accents.length];
+      return `<article class="p2-card" data-accent="${accent}" data-id="${escapeHtml(a.id)}">
         <h3>${escapeHtml(a.label || a.id)}</h3>
         <p>${escapeHtml(a.description || "")}</p>
         ${unarmedHint}

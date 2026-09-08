@@ -2,6 +2,15 @@
 
 let lastHomeStatus = null;
 
+
+function setDesktopsTileLive(liveCount) {
+  const tile = document.querySelector('a.tile[href="/desktops"]');
+  const foot = document.getElementById("tile-desktops-foot");
+  const live = Number(liveCount) > 0;
+  if (tile) tile.classList.toggle("live", live);
+  if (foot) foot.classList.toggle("live", live);
+}
+
 function setFoot(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -215,8 +224,10 @@ async function refreshHome() {
     const current = items.find((d) => d.current);
     const cur = current ? current.display : "—";
     setFoot("tile-desktops-foot", live + " live · " + ready + " vnc · current " + cur + frozenSeg(desks.system));
+    setDesktopsTileLive(live);
   } else {
     setFoot("tile-desktops-foot", "unavailable");
+    setDesktopsTileLive(0);
   }
 
   // Actions — catalog armed count
@@ -317,6 +328,7 @@ async function pollHomeStream() {
     const current = items.find((d) => d.current);
     const cur = current ? current.display : "—";
     setFoot("tile-desktops-foot", live + " live · " + ready + " vnc · current " + cur + frozenSeg(desks.system));
+    setDesktopsTileLive(live);
   }
 }
 

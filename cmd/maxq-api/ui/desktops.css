@@ -3,6 +3,7 @@
   --crust:#11111b; --mantle:#181825; --base:#1e1e2e; --surface0:#313244; --surface1:#45475a;
   --overlay0:#6c7086; --overlay1:#7f849c; --subtext0:#a6adc8; --text:#cdd6f4;
   --mauve:#cba6f7; --blue:#89b4fa; --green:#a6e3a1; --peach:#fab387; --red:#f38ba8;
+  --pink:#f5c2e7; --lavender:#b4befe; --rosewater:#f5e0dc; --teal:#94e2d5; --yellow:#f9e2af;
   --glass:rgba(30,30,46,.68); --glass-strong:rgba(24,24,37,.82); --stroke:rgba(205,214,244,.11);
   --shadow:0 24px 80px rgba(0,0,0,.34);
 }
@@ -87,3 +88,42 @@ button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur
 .idle-mark strong{font-size:1.35rem;letter-spacing:.04em}
 .idle-mark span{display:block}
 .idle-screen.viewer-frozen .idle-mark span:last-child{color:var(--overlay1);font-size:11px}
+
+
+/* Catppuccin visual pass — site accent bar + soft control polish */
+.desk-topbar { border-bottom: 0 !important; }
+.desk-topbar::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--rosewater), var(--pink), var(--mauve), var(--blue), var(--sky), var(--teal), var(--green), var(--yellow), var(--peach), var(--rosewater));
+  background-size: 200% 100%;
+  animation: desk-accent-shift 20s linear infinite;
+  pointer-events: none;
+}
+@keyframes desk-accent-shift { to { background-position: 200% 0; } }
+.desk-proof {
+  display: flex; flex-wrap: wrap; gap: .35rem .45rem;
+}
+.refresh-btn, .chip, .segmented button, .circle {
+  transition: border-color .15s ease, color .15s ease, background .15s ease, transform .15s ease;
+}
+.refresh-btn:hover { border-color: color-mix(in srgb, var(--rosewater) 55%, transparent); color: var(--rosewater); }
+.chip.active {
+  background: color-mix(in srgb, var(--mauve) 18%, transparent);
+  color: var(--mauve);
+  border-color: color-mix(in srgb, var(--mauve) 40%, transparent);
+}
+.segmented button.active {
+  background: color-mix(in srgb, var(--lavender) 18%, transparent);
+  color: var(--lavender);
+}
+.action-btn {
+  border-radius: 999px !important;
+}
+.crew-actions button.primary,
+button.action-btn.primary {
+  background: var(--rosewater);
+  color: var(--crust);
+  border-color: transparent;
+}

@@ -148,3 +148,18 @@
 @media (max-width: 720px) {
   .proc-oom-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* Catppuccin visual pass */
+.proc-meta div:nth-child(1) span { color: var(--mauve); }
+.proc-meta div:nth-child(2) span { color: var(--peach); }
+.proc-meta div:nth-child(3) span { color: var(--sky); }
+.proc-meta div:nth-child(4) span { color: var(--green); }
+.proc-toolbar button.primary { border-radius: 999px; }
+.proc-auto {
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--lavender) 28%, var(--rule));
+  background: color-mix(in srgb, var(--lavender) 8%, var(--base));
+}
+.proc-filter input { border-radius: 999px; }
+.proc-table th { color: var(--lavender); }
