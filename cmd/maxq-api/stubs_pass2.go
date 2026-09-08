@@ -60,6 +60,8 @@ type vaultResponse struct {
 type skillCard struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	When        string    `json:"when,omitempty"`
+	Excerpt     string    `json:"excerpt,omitempty"`
 	Path        string    `json:"path"`
 	HasAgents   bool      `json:"has_agents"`
 	HasSkillMD  bool      `json:"has_skill_md"`
@@ -224,14 +226,19 @@ func handleStubSkills(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if card.HasSkillMD {
-			name, desc := parseSkillFrontmatter(filepath.Join(dir, "SKILL.md"))
+			name, desc, when, excerpt := parseSkillMarkdown(filepath.Join(dir, "SKILL.md"))
 			if name != "" {
 				card.Name = name
 			}
 			card.Description = desc
+			card.When = when
+			card.Excerpt = excerpt
 		}
 		if card.Description == "" {
 			card.Description = "Shared MaxQ skill (no description in SKILL.md)."
+		}
+		if card.When == "" {
+			card.When = skillWhenFromDescription(card.Description)
 		}
 		cards = append(cards, card)
 	}
@@ -315,16 +322,32 @@ func humanAge(now, then time.Time) string {
 }
 
 func parseSkillFrontmatter(path string) (name, description string) {
+	name, description, _, _ = parseSkillMarkdown(path)
+	return name, description
+}
+
+func skillWhenFromDescription(desc string) string {
+	d := strings.TrimSpace(desc)
+	lower := strings.ToLower(d)
+	if !strings.HasPrefix(lower, "use when ") {
+		return ""
+	}
+	when := strings.TrimSpace(d[len("use when "):])
+	when = strings.TrimRight(when, ".")
+	return when
+}
+
+func parseSkillMarkdown(path string) (name, description, when, excerpt string) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", ""
+		return "", "", "", ""
 	}
 	defer f.Close()
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 256*1024)
 	if !sc.Scan() || strings.TrimSpace(sc.Text()) != "---" {
-		return "", ""
+		return "", "", "", ""
 	}
 
 	for sc.Scan() {
@@ -338,7 +361,7 @@ func parseSkillFrontmatter(path string) (name, description string) {
 		}
 		key = strings.TrimSpace(strings.ToLower(key))
 		val = strings.TrimSpace(val)
-		val = strings.Trim(val, `"'`)
+		val = strings.Trim(val, "\"'")
 		switch key {
 		case "name":
 			name = val
@@ -346,7 +369,30 @@ func parseSkillFrontmatter(path string) (name, description string) {
 			description = val
 		}
 	}
-	return name, description
+	when = skillWhenFromDescription(description)
+
+	var body []string
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			if len(body) > 0 {
+				break
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		body = append(body, line)
+	}
+	if len(body) > 0 {
+		excerpt = strings.Join(body, " ")
+		runes := []rune(excerpt)
+		if len(runes) > 220 {
+			excerpt = string(runes[:217]) + "…"
+		}
+	}
+	return name, description, when, excerpt
 }
 
 func summarizeLiveDesktops() handoffDesktopBrief {

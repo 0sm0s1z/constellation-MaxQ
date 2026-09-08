@@ -109,6 +109,17 @@ const MaxQActions = (() => {
         : "Confirm resume frozen desks? SIGCONT all paused live desks except the current agent display.";
     } else if (id === "clear-ram") {
       confirmMsg = "Clear RAM via OpenCode? Protects current agent desktop, maxq-api, and live/busy desks.";
+    } else if (id === "freeze-quiet-desks") {
+      let n = null;
+      try {
+        const desks = await MaxQShell.getJSON("/desktops", "application/json");
+        const list = (desks && desks.desktops) || [];
+        const quiet = list.filter((d) => d && d.live && !d.suspended && !d.current);
+        n = quiet.length;
+      } catch (_) { /* fall through */ }
+      confirmMsg = n != null
+        ? ("Confirm freeze " + n + " quiet? SIGSTOP non-current idle/quiet desks. Skips current agent, busy, already frozen. Never auto-fire.")
+        : "Confirm freeze quiet desks? SIGSTOP non-current idle/quiet desks. Skips current agent, busy, already frozen. Never auto-fire.";
     }
     if (!window.confirm(confirmMsg)) return;
     if (btn) btn.disabled = true;
