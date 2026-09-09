@@ -123,8 +123,9 @@ func TestDesktopViewerMetadata(t *testing.T) {
 		t.Fatalf("desktop 1 metadata=%+v", one)
 	}
 	two := resp.Desktops[1]
-	if !two.Current || two.VNC != 5902 || two.ViewerPort != 6081 || two.Token != 0 {
-		t.Fatalf("desktop 2 metadata=%+v", two)
+	wantV2, _ := desktopViewerPortResolve(2, 5902)
+	if !two.Current || two.VNC != 5902 || two.ViewerPort != wantV2 || two.Token != 0 {
+		t.Fatalf("desktop 2 metadata=%+v want viewer_port=%d", two, wantV2)
 	}
 	three := resp.Desktops[2]
 	if three.ViewerPort != 6082 {
@@ -420,5 +421,75 @@ func TestHandoffDesktopBriefSuspendedJSON(t *testing.T) {
 	}
 	if int(v.(float64)) != 6 {
 		t.Fatalf("suspended_count=%v want 6", v)
+	}
+}
+
+
+func TestDesktopViewerCmdlineHelpers(t *testing.T) {
+	dedicated := "/usr/bin/python3 /usr/bin/websockify --web=/usr/share/novnc --heartbeat=30 0.0.0.0:6081 localhost:5902"
+	tokenGW := "/usr/bin/python3 /usr/bin/websockify --web=/usr/share/novnc --heartbeat=30 --token-plugin TokenFile --token-source /tmp/sand-novnc-tokens.d 0.0.0.0:6081"
+	altDedicated := "websockify --web=/usr/share/novnc 0.0.0.0:6181 localhost:5902"
+
+	if !desktopViewerCmdlineHasListen(dedicated, 6081) {
+		t.Fatal("dedicated should listen on 6081")
+	}
+	if !desktopViewerCmdlineHasListen(tokenGW, 6081) {
+		t.Fatal("token gateway should listen on 6081")
+	}
+	if desktopViewerCmdlineHasListen(dedicated, 6181) {
+		t.Fatal("dedicated 6081 should not match listen 6181")
+	}
+
+	if !desktopViewerCmdlineDedicatedTarget(dedicated, 5902) {
+		t.Fatal("dedicated should match localhost:5902")
+	}
+	if desktopViewerCmdlineDedicatedTarget(tokenGW, 5902) {
+		t.Fatal("token gateway must not match dedicated target")
+	}
+	if desktopViewerCmdlineDedicatedTarget(dedicated, 5900) {
+		t.Fatal("wrong vnc port must not match")
+	}
+	if !desktopViewerCmdlineDedicatedTarget(altDedicated, 5902) {
+		t.Fatal("alt dedicated should match")
+	}
+	if desktopViewerCmdlineDedicatedTarget("", 5902) {
+		t.Fatal("empty cmdline must be false")
+	}
+}
+
+func TestDesktopViewerPortResolveDecision(t *testing.T) {
+	type tc struct {
+		name                  string
+		n                     int
+		prefMatch, altMatch   bool
+		prefListen, altListen bool
+		wantPort              int
+		wantMatched           bool
+	}
+	cases := []tc{
+		{name: "preferred dedicated", n: 2, prefMatch: true, wantPort: 6081, wantMatched: true},
+		{name: "alt dedicated", n: 2, altMatch: true, wantPort: 6181, wantMatched: true},
+		{name: "preferred free", n: 2, wantPort: 6081, wantMatched: false},
+		{name: "foreign preferred alt free", n: 2, prefListen: true, wantPort: 6181, wantMatched: false},
+		{name: "foreign preferred alt match", n: 2, prefListen: true, altMatch: true, altListen: true, wantPort: 6181, wantMatched: true},
+		{name: "both foreign", n: 2, prefListen: true, altListen: true, wantPort: 6081, wantMatched: false},
+		{name: "slot1 preferred free", n: 1, wantPort: 6080, wantMatched: false},
+		{name: "slot1 foreign uses alt", n: 1, prefListen: true, wantPort: 6180, wantMatched: false},
+		{name: "invalid slot", n: 0, wantPort: 0, wantMatched: false},
+	}
+	for _, c := range cases {
+		gotPort, gotMatch := desktopViewerPortResolveDecision(c.n, c.prefMatch, c.altMatch, c.prefListen, c.altListen)
+		if gotPort != c.wantPort || gotMatch != c.wantMatched {
+			t.Fatalf("%s: got (%d,%v) want (%d,%v)", c.name, gotPort, gotMatch, c.wantPort, c.wantMatched)
+		}
+	}
+}
+
+func TestDesktopViewerAltPort(t *testing.T) {
+	cases := map[int]int{0: 0, 1: 6180, 2: 6181, 3: 6182, 21: 6200}
+	for n, want := range cases {
+		if got := desktopViewerAltPort(n); got != want {
+			t.Fatalf("desktopViewerAltPort(%d)=%d want %d", n, got, want)
+		}
 	}
 }

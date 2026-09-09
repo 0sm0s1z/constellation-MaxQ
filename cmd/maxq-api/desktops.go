@@ -122,22 +122,20 @@ func (s *server) desktops() desktopsResp {
 		if live {
 			liveCount++
 		}
-		vport := desktopViewerPort(n)
-		viewerOK := live && desktopViewerListening(vport)
+		vnc := desktopVNCPort(n)
+		vport, matched := desktopViewerPortResolve(n, vnc)
+		viewerOK := live && matched
 		item := xvfbDesktop{
 			Number:     n,
 			Display:    fmt.Sprintf(":%d", n),
 			Live:       live,
 			Current:    n == current,
-			VNC:        5900 + n,
+			VNC:        vnc,
 			ViewerPort: vport,
 			ViewerOK:   viewerOK,
 			// Token left 0 / omitempty: each desk has a dedicated websockify
 			// port, so a shared token gateway path is unused and previously
 			// broke embedded previews when the UI appended ?token=N.
-		}
-		if n == 1 {
-			item.VNC = 5900
 		}
 		if viewerOK {
 			viewerReady++
@@ -262,15 +260,25 @@ func desktopViewerListening(port int) bool {
 	return true
 }
 
-// desktopViewerPort returns a unique noVNC HTTP port for slot n.
-// Desktop 1 stays on the historical 6080; others use 6080+(n-1) so idle/missing
-// slots no longer all collide on 6081. This is address metadata only — Live
-// still gates whether a viewer is expected to answer.
+// desktopViewerPort returns the preferred noVNC HTTP port for slot n.
+// Desktop 1 stays on the historical 6080; others use 6080+(n-1). When that
+// preferred port is occupied by a foreign listener (e.g. sand token-gateway
+// websockify on 6081), desktopViewerPortResolve may advertise the alt port
+// 6180+(n-1) instead.
 func desktopViewerPort(n int) int {
 	if n < 1 {
 		return 0
 	}
 	return 6080 + (n - 1)
+}
+
+// desktopViewerAltPort is the fallback noVNC HTTP port when the preferred
+// viewer port is taken by a non-matching (foreign) listener.
+func desktopViewerAltPort(n int) int {
+	if n < 1 {
+		return 0
+	}
+	return 6180 + (n - 1)
 }
 
 // desktopVNCPort matches desktops() address metadata: slot 1 stays on historical
@@ -283,6 +291,115 @@ func desktopVNCPort(n int) int {
 		return 5900
 	}
 	return 5900 + n
+}
+
+// desktopViewerCmdlineHasListen reports whether a websockify cmdline listens on port.
+func desktopViewerCmdlineHasListen(cmd string, port int) bool {
+	if port < 1 || cmd == "" {
+		return false
+	}
+	needle := fmt.Sprintf("0.0.0.0:%d", port)
+	alt := fmt.Sprintf(":%d", port)
+	return strings.Contains(cmd, needle) ||
+		strings.Contains(cmd, " "+alt+" ") ||
+		strings.HasSuffix(strings.TrimSpace(cmd), alt)
+}
+
+// desktopViewerCmdlineDedicatedTarget is true when cmdline targets localhost:vncPort
+// as the RFB backend (MaxQ dedicated viewer). Token-plugin gateways without that
+// target return false.
+func desktopViewerCmdlineDedicatedTarget(cmd string, vncPort int) bool {
+	if cmd == "" || vncPort < 1 {
+		return false
+	}
+	if !strings.Contains(cmd, "websockify") {
+		return false
+	}
+	return strings.Contains(cmd, fmt.Sprintf("localhost:%d", vncPort))
+}
+
+// desktopViewerCmdline scans /proc/*/cmdline for a websockify listening on port.
+// Returns the cmdline with nulls replaced by spaces, or "".
+func desktopViewerCmdline(port int) string {
+	if port < 1 {
+		return ""
+	}
+	ents, err := os.ReadDir("/proc")
+	if err != nil {
+		return ""
+	}
+	for _, e := range ents {
+		name := e.Name()
+		if name == "" || name[0] < '0' || name[0] > '9' {
+			continue
+		}
+		raw, err := os.ReadFile("/proc/" + name + "/cmdline")
+		if err != nil || len(raw) == 0 {
+			continue
+		}
+		cmd := strings.ReplaceAll(string(raw), "\x00", " ")
+		if !strings.Contains(cmd, "websockify") {
+			continue
+		}
+		if !desktopViewerCmdlineHasListen(cmd, port) {
+			continue
+		}
+		return strings.TrimSpace(cmd)
+	}
+	return ""
+}
+
+// desktopViewerMatches is true only when a websockify on port exists and its
+// cmdline contains localhost:vncPort (dedicated MaxQ viewer). Token-plugin
+// gateways without that RFB target return false.
+func desktopViewerMatches(port, vncPort int) bool {
+	cmd := desktopViewerCmdline(port)
+	if cmd == "" {
+		return false
+	}
+	return desktopViewerCmdlineDedicatedTarget(cmd, vncPort)
+}
+
+// desktopViewerPortResolveDecision is the pure port-selection policy used by
+// desktopViewerPortResolve (extracted so unit tests need no live websockify).
+func desktopViewerPortResolveDecision(n int, preferredMatch, altMatch, preferredListen, altListen bool) (port int, matched bool) {
+	preferred := desktopViewerPort(n)
+	if preferred < 1 {
+		return 0, false
+	}
+	alt := desktopViewerAltPort(n)
+	if preferredMatch {
+		return preferred, true
+	}
+	if altMatch {
+		return alt, true
+	}
+	if !preferredListen {
+		return preferred, false // free, not started
+	}
+	// Foreign listener on preferred (e.g. sand token gateway on 6081).
+	if !altListen || altMatch {
+		return alt, altMatch
+	}
+	return preferred, false
+}
+
+// desktopViewerPortResolve picks the HTTP viewer port for slot n.
+// Prefer 6080+(n-1) when a dedicated MaxQ viewer matches; otherwise fall back
+// to 6180+(n-1) when the preferred port is foreign-occupied.
+func desktopViewerPortResolve(n, vncPort int) (port int, matched bool) {
+	preferred := desktopViewerPort(n)
+	if preferred < 1 {
+		return 0, false
+	}
+	alt := desktopViewerAltPort(n)
+	return desktopViewerPortResolveDecision(
+		n,
+		desktopViewerMatches(preferred, vncPort),
+		desktopViewerMatches(alt, vncPort),
+		desktopViewerListening(preferred),
+		desktopViewerListening(alt),
+	)
 }
 
 // desktopVNCListening probes whether x11vnc answers on 127.0.0.1:port.
@@ -322,8 +439,8 @@ func ensureDesktopViewers() ensureViewersResult {
 			continue
 		}
 		vncPort := desktopVNCPort(n)
-		viewerPort := desktopViewerPort(n)
-		if desktopViewerListening(viewerPort) {
+		port, matched := desktopViewerPortResolve(n, vncPort)
+		if matched {
 			res.SkippedReady = append(res.SkippedReady, n)
 			continue
 		}
@@ -331,7 +448,9 @@ func ensureDesktopViewers() ensureViewersResult {
 			res.SkippedNoVNC = append(res.SkippedNoVNC, n)
 			continue
 		}
-		if err := startDesktopViewer(n, viewerPort, vncPort); err != nil {
+		// Do NOT treat a foreign listener (e.g. token gateway) as ready —
+		// start a dedicated MaxQ viewer on the resolved port (may be alt).
+		if err := startDesktopViewer(n, port, vncPort); err != nil {
 			res.OK = false
 			res.Errors = append(res.Errors, fmt.Sprintf(":%d %v", n, err))
 			continue
@@ -402,12 +521,13 @@ func restartWebsockifyOnly() restartWebsockifyResult {
 			continue
 		}
 		vncPort := desktopVNCPort(n)
-		viewerPort := desktopViewerPort(n)
 		if !desktopVNCListening(vncPort) {
 			res.SkippedNoVNC = append(res.SkippedNoVNC, n)
 			continue
 		}
-		killWebsockifyOnPort(viewerPort)
+		// Resolve may pick alt (6180+(n-1)) when preferred is a foreign token gateway.
+		viewerPort, _ := desktopViewerPortResolve(n, vncPort)
+		killOwnedDesktopViewerOnPort(viewerPort)
 		if err := startDesktopViewer(n, viewerPort, vncPort); err != nil {
 			res.OK = false
 			res.Errors = append(res.Errors, fmt.Sprintf(":%d %v", n, err))
@@ -419,7 +539,10 @@ func restartWebsockifyOnly() restartWebsockifyResult {
 	return res
 }
 
-func killWebsockifyOnPort(port int) {
+// killOwnedDesktopViewerOnPort SIGTERMs only dedicated MaxQ websockify viewers
+// on port (cmdline contains localhost: as RFB target). Never kills --token-plugin
+// / TokenFile sand gateways even if they share the same listen port.
+func killOwnedDesktopViewerOnPort(port int) {
 	if port <= 0 {
 		return
 	}
@@ -427,8 +550,7 @@ func killWebsockifyOnPort(port int) {
 	if err != nil {
 		return
 	}
-	needle := fmt.Sprintf("0.0.0.0:%d", port)
-	alt := fmt.Sprintf(":%d", port)
+	killedOwned := false
 	for _, e := range ents {
 		name := e.Name()
 		if name == "" || name[0] < '0' || name[0] > '9' {
@@ -442,7 +564,15 @@ func killWebsockifyOnPort(port int) {
 		if !strings.Contains(cmd, "websockify") {
 			continue
 		}
-		if !(strings.Contains(cmd, needle) || strings.Contains(cmd, " "+alt+" ") || strings.HasSuffix(strings.TrimSpace(cmd), alt)) {
+		if !desktopViewerCmdlineHasListen(cmd, port) {
+			continue
+		}
+		// Never touch token-plugin / TokenFile gateways.
+		if strings.Contains(cmd, "--token-plugin") || strings.Contains(cmd, "TokenFile") {
+			continue
+		}
+		// Only dedicated MaxQ viewers with an explicit localhost: RFB target.
+		if !strings.Contains(cmd, "localhost:") {
 			continue
 		}
 		pid, err := strconv.Atoi(name)
@@ -450,15 +580,22 @@ func killWebsockifyOnPort(port int) {
 			continue
 		}
 		_ = syscall.Kill(pid, syscall.SIGTERM)
+		killedOwned = true
+	}
+	if !killedOwned {
+		return
 	}
 	deadline := time.Now().Add(400 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if !desktopViewerListening(port) {
+		// Stop waiting once no owned viewer remains; foreign listeners may still answer.
+		cmd := desktopViewerCmdline(port)
+		if cmd == "" || !strings.Contains(cmd, "localhost:") {
 			return
 		}
 		time.Sleep(40 * time.Millisecond)
 	}
 }
+
 
 func (s *server) handleEnsureDesktopViewers(w http.ResponseWriter, r *http.Request) {
 	res := ensureDesktopViewers()
