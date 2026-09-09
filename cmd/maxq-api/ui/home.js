@@ -162,7 +162,12 @@ function applyHomeStream(data) {
   const hasFrozen = Number.isFinite(suspendedCount) && suspendedCount > 0;
   const needsNovnc = Number.isFinite(liveCount) && Number.isFinite(viewerReady) && liveCount > viewerReady;
   const desks = (data && data.desktops) || [];
-  const quietCount = desks.filter((d) => d && d.live && !d.suspended && !d.current).length;
+  // Match freezeQuietDesktops: skip current/busy/already-frozen; count quiet|idle|paused only.
+  const quietCount = desks.filter((d) => {
+    if (!d || !d.live || d.suspended || d.current) return false;
+    const act = String(d.activity || "").toLowerCase();
+    return act === "quiet" || act === "idle" || act === "paused";
+  }).length;
   const hasQuiet = quietCount > 0;
   const ramCell = document.getElementById("hs-ram-cell");
   const cta = document.getElementById("hs-cta");

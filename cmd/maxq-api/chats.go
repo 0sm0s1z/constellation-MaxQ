@@ -57,7 +57,7 @@ func entitlementSite(raw string) string {
 		return "chatgpt"
 	case host == "grok.com" || host == "www.grok.com" || strings.HasSuffix(host, ".grok.com"):
 		return "grok"
-	case host == "grok.x.ai":
+	case host == "grok.x.ai" || host == "accounts.x.ai":
 		return "grok"
 	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/grok"):
 		return "grok"

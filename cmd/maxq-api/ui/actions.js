@@ -118,7 +118,11 @@ const MaxQActions = (() => {
       try {
         const desks = await MaxQShell.getJSON("/desktops", "application/json");
         const list = (desks && desks.desktops) || [];
-        const quiet = list.filter((d) => d && d.live && !d.suspended && !d.current);
+        const quiet = list.filter((d) => {
+          if (!d || !d.live || d.suspended || d.current) return false;
+          const act = String(d.activity || "").toLowerCase();
+          return act === "quiet" || act === "idle" || act === "paused";
+        });
         n = quiet.length;
       } catch (_) { /* fall through */ }
       confirmMsg = n != null

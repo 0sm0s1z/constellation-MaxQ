@@ -16,6 +16,7 @@
       overflow: hidden;
     }
     .home-status-head {
+      position: relative; z-index: 2;
       display: flex; flex-wrap: wrap; gap: .55rem 1rem;
       align-items: center; justify-content: space-between;
       padding: .72rem 1.25rem;
@@ -44,20 +45,31 @@
     .home-demo-links { display: flex; flex-wrap: wrap; gap: .25rem; }
 
     .home-stream {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
-      gap: .7rem .85rem;
-      align-items: stretch;
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
       padding: .9rem 1.15rem 1rem;
       margin: 0;
       border: 0;
       background: transparent;
       box-shadow: none;
       border-radius: 0;
+      min-width: 0;
     }
-    .hs-cell[data-key="ram"] { grid-column: span 1; min-width: 7.5rem; }
+    .home-stream-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+      gap: .7rem .85rem;
+      align-items: stretch;
+      min-width: 0;
+      width: 100%;
+    }
+    .hs-cell[data-key="ram"] { min-width: 0; }
     .hs-cta .hs-cta-link { font-size: .72rem; padding: .28rem .55rem; }
-    .hs-cell { display: grid; gap: .28rem; min-width: 0; }
+    .hs-cell {
+      display: grid; gap: .28rem; min-width: 0;
+      overflow: hidden;
+    }
     .hs-label {
       font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
       color: var(--muted-foreground); font-weight: 550;
@@ -65,7 +77,9 @@
     .hs-val {
       font-family: var(--font); font-size: .88rem; font-weight: 550;
       letter-spacing: -.015em;
-      color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--foreground);
+      min-width: 0; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .hs-val.is-empty,
     .hs-val:empty::after {
@@ -77,14 +91,19 @@
     .hs-cell.pressure {
       border-radius: calc(var(--radius) - 2px);
       padding: .25rem .45rem;
-      margin: -.25rem -.45rem;
+      box-sizing: border-box;
       background: color-mix(in srgb, var(--peach) 8%, transparent);
       border: 1px solid color-mix(in srgb, var(--peach) 22%, transparent);
     }
     .hs-cta {
-      display: flex; flex-wrap: wrap; gap: .3rem;
-      align-items: center; justify-content: flex-end;
+      display: flex; flex-wrap: wrap; gap: .35rem .4rem;
+      align-items: center; justify-content: flex-start;
+      width: 100%;
+      min-width: 0;
+      padding-top: .15rem;
+      border-top: 1px solid color-mix(in srgb, var(--mauve) 10%, var(--border));
     }
+    .hs-cta[hidden] { display: none !important; }
     .hs-cta .hs-cta-link:not(.secondary) { /* primary only when shown */ }
 
     .home-fleet {
@@ -137,12 +156,8 @@
     .hs-val a:hover, a.hs-val:hover {
       color: var(--accent-foreground); border-bottom-color: var(--accent-foreground);
     }
-    @media (max-width: 900px) {
-      .home-stream { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .hs-cta { grid-column: 1 / -1; justify-content: flex-start; }
-    }
     @media (max-width: 520px) {
-      .home-stream { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .home-stream-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -186,29 +201,31 @@
         </header>
 
         <div id="home-stream" class="home-stream" aria-label="Live stream status">
-          <div class="hs-cell" data-key="agent">
-            <span class="hs-label">Agent</span>
-            <strong id="hs-agent" class="hs-val is-empty">waiting</strong>
-          </div>
-          <div class="hs-cell" data-key="live">
-            <span class="hs-label">Live · VNC</span>
-            <strong id="hs-live" class="hs-val is-empty">waiting</strong>
-          </div>
-          <div class="hs-cell" data-key="cpu">
-            <span class="hs-label">CPU</span>
-            <strong id="hs-cpu" class="hs-val is-empty">waiting</strong>
-          </div>
-          <div class="hs-cell" data-key="ram" id="hs-ram-cell">
-            <span class="hs-label">RAM · avail</span>
-            <strong id="hs-ram" class="hs-val is-empty">waiting</strong>
-          </div>
-          <div class="hs-cell" data-key="gost">
-            <span class="hs-label">GOST</span>
-            <strong id="hs-gost" class="hs-val is-empty">waiting</strong>
-          </div>
-          <div class="hs-cell" data-key="state">
-            <span class="hs-label">State</span>
-            <strong id="hs-state" class="hs-val is-empty">waiting</strong>
+          <div class="home-stream-metrics" role="group" aria-label="Stream metrics">
+            <div class="hs-cell" data-key="agent">
+              <span class="hs-label">Agent</span>
+              <strong id="hs-agent" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="live">
+              <span class="hs-label">Live · VNC</span>
+              <strong id="hs-live" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="cpu">
+              <span class="hs-label">CPU</span>
+              <strong id="hs-cpu" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="ram" id="hs-ram-cell">
+              <span class="hs-label">RAM · avail</span>
+              <strong id="hs-ram" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="gost">
+              <span class="hs-label">GOST</span>
+              <strong id="hs-gost" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="state">
+              <span class="hs-label">State</span>
+              <strong id="hs-state" class="hs-val is-empty">waiting</strong>
+            </div>
           </div>
           <div class="hs-cta" id="hs-cta" hidden>
             <a href="/actions#clear-ram" class="hs-cta-link" id="hs-cta-clear">Clear RAM</a>

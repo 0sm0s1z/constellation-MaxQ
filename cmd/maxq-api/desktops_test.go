@@ -328,13 +328,15 @@ func TestCDPPortForDisplay(t *testing.T) {
 
 func TestEntitlementSite(t *testing.T) {
 	cases := map[string]string{
-		"https://chatgpt.com/c/abc": "chatgpt",
-		"https://chat.openai.com/":  "chatgpt",
-		"https://grok.com/chat":     "grok",
-		"https://x.com/i/grok":      "grok",
-		"https://claude.ai/chat/1":  "claude",
-		"https://example.com/":      "",
-		"http://127.0.0.1:7432/":    "",
+		"https://chatgpt.com/c/abc":                "chatgpt",
+		"https://chat.openai.com/":                 "chatgpt",
+		"https://grok.com/chat":                    "grok",
+		"https://accounts.x.ai/sign-in?redirect=x": "grok",
+		"https://grok.x.ai/":                       "grok",
+		"https://x.com/i/grok":                     "grok",
+		"https://claude.ai/chat/1":                 "claude",
+		"https://example.com/":                     "",
+		"http://127.0.0.1:7432/":                   "",
 	}
 	for in, want := range cases {
 		if got := entitlementSite(in); got != want {

@@ -538,3 +538,39 @@ button.action-btn.primary {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* overlap-fix: stream metrics never share a row with CTAs; truncate long values */
+.metric-grid {
+  min-width: 0;
+}
+.metric-grid article {
+  min-width: 0;
+  overflow: hidden;
+}
+.metric-grid strong,
+.metric-grid small {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#stream-actions,
+.stream-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+.metric-actions {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+}
+.desk-topbar {
+  position: sticky; /* establishes containing block for ::after wash */
+}
