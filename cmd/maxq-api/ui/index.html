@@ -6,21 +6,26 @@
   <title>MaxQ · Operator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/mocha.css">
   <style>
-    /* Home — one calm status panel (demo + stream), quieter awake row */
+    /* Home — pretty-pied status panel (demo + stream), soft glow */
     .home-status {
-      margin: 0 0 1.75rem;
+      margin: 0 0 1.85rem;
       padding: 0;
       overflow: hidden;
     }
     .home-status-head {
       display: flex; flex-wrap: wrap; gap: .55rem 1rem;
       align-items: center; justify-content: space-between;
-      padding: .65rem 1.2rem;
-      border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--accent) 9%, var(--card));
+      padding: .72rem 1.25rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--mauve) 16%, var(--border));
+      background: linear-gradient(
+        105deg,
+        color-mix(in srgb, var(--mauve) 14%, var(--card)),
+        color-mix(in srgb, var(--peach) 8%, var(--card)) 55%,
+        color-mix(in srgb, var(--lavender) 10%, var(--card))
+      );
     }
     .home-demo-main {
       display: flex; flex-wrap: wrap; gap: .3rem .65rem; align-items: baseline;
@@ -95,12 +100,13 @@
     }
     .home-fleet a.fleet-chip {
       display: inline-flex; align-items: center; gap: .2rem;
-      padding: .12rem .42rem; border-radius: 999px;
-      font-family: var(--font); font-size: 10px; font-weight: 500;
+      padding: .16rem .5rem; border-radius: 999px;
+      font-family: var(--font); font-size: 10px; font-weight: 550;
       letter-spacing: .02em;
       text-decoration: none; color: var(--muted-foreground);
-      background: transparent;
-      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+      border: 1px solid color-mix(in srgb, var(--mauve) 14%, var(--border));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--mauve) 6%, transparent);
     }
     .home-fleet a.fleet-chip:hover {
       color: var(--accent-foreground);
@@ -161,7 +167,7 @@
 
     <main class="op-main">
       <div class="op-hero">
-        <p class="op-kicker">Operator</p>
+        <p class="op-kicker">Constellation · operator glass</p>
         <h1>Co-pilot the bot box.</h1>
         <p>Launch Desktops and Actions first. Leave frozen desks paused until you need them.</p>
       </div>
