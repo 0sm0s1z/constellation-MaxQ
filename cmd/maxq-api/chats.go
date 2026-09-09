@@ -61,6 +61,8 @@ func entitlementSite(raw string) string {
 		return "grok"
 	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/grok"):
 		return "grok"
+	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/chat"):
+		return "x"
 	case host == "claude.ai" || strings.HasSuffix(host, ".claude.ai"):
 		return "claude"
 	default:
@@ -207,6 +209,8 @@ const chatBodyEvalExpr = `(() => {
     '[data-message-author-role]',
     '[data-testid="conversation-turn"]',
     '[data-testid="message"]',
+    '[data-testid="messageText"]',
+    '[data-testid="tweetText"]',
     'div[class*="message-bubble"]',
     'div[class*="Message"]',
     '.markdown',

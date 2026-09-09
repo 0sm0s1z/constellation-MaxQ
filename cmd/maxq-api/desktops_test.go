@@ -334,6 +334,8 @@ func TestEntitlementSite(t *testing.T) {
 		"https://accounts.x.ai/sign-in?redirect=x": "grok",
 		"https://grok.x.ai/":                       "grok",
 		"https://x.com/i/grok":                     "grok",
+		"https://x.com/i/chat/32925761-195138772":  "x",
+		"https://twitter.com/i/chat/pin/recovery":  "x",
 		"https://claude.ai/chat/1":                 "claude",
 		"https://example.com/":                     "",
 		"http://127.0.0.1:7432/":                   "",
