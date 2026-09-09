@@ -23,6 +23,10 @@ const desktopSlotFloor = 15
 
 var x11SocketRoot = "/tmp/.X11-unix"
 
+// ensureViewersMu serializes ensure/restart so parallel glass calls cannot
+// stampede-start duplicate websockify processes on the same viewer port.
+var ensureViewersMu sync.Mutex
+
 type xvfbDesktop struct {
 	Number       int              `json:"number"`
 	Display      string           `json:"display"`
@@ -378,10 +382,13 @@ func desktopViewerPortResolveDecision(n int, preferredMatch, altMatch, preferred
 		return preferred, false // free, not started
 	}
 	// Foreign listener on preferred (e.g. sand token gateway on 6081).
-	if !altListen || altMatch {
-		return alt, altMatch
+	// Always advertise alt for start attempts so we never bind over the
+	// foreign preferred gateway. matched stays false when alt is also busy
+	// without a dedicated viewer; ensureDesktopViewers must not spawn then.
+	if !altListen {
+		return alt, false
 	}
-	return preferred, false
+	return alt, false
 }
 
 // desktopViewerPortResolve picks the HTTP viewer port for slot n.
@@ -427,6 +434,8 @@ type ensureViewersResult struct {
 }
 
 func ensureDesktopViewers() ensureViewersResult {
+	ensureViewersMu.Lock()
+	defer ensureViewersMu.Unlock()
 	res := ensureViewersResult{
 		OK:           true,
 		Started:      []int{},
@@ -439,7 +448,24 @@ func ensureDesktopViewers() ensureViewersResult {
 			continue
 		}
 		vncPort := desktopVNCPort(n)
+		preferred := desktopViewerPort(n)
+		alt := desktopViewerAltPort(n)
+		// Drop duplicate owned viewers before resolve so match probes are stable.
+		_ = pruneOwnedDesktopViewerDuplicates(preferred)
+		if alt > 0 && alt != preferred {
+			_ = pruneOwnedDesktopViewerDuplicates(alt)
+		}
 		port, matched := desktopViewerPortResolve(n, vncPort)
+		if !matched {
+			// Any leftover dedicated python websockify counts as ready.
+			if len(ownedDesktopViewerPIDs(port)) > 0 || desktopViewerMatches(port, vncPort) {
+				matched = true
+			} else if alt > 0 && (len(ownedDesktopViewerPIDs(alt)) > 0 || desktopViewerMatches(alt, vncPort)) {
+				port, matched = alt, true
+			} else if preferred > 0 && (len(ownedDesktopViewerPIDs(preferred)) > 0 || desktopViewerMatches(preferred, vncPort)) {
+				port, matched = preferred, true
+			}
+		}
 		if matched {
 			res.SkippedReady = append(res.SkippedReady, n)
 			continue
@@ -448,8 +474,12 @@ func ensureDesktopViewers() ensureViewersResult {
 			res.SkippedNoVNC = append(res.SkippedNoVNC, n)
 			continue
 		}
-		// Do NOT treat a foreign listener (e.g. token gateway) as ready —
-		// start a dedicated MaxQ viewer on the resolved port (may be alt).
+		// Never spawn over a foreign (or already-bound) listener.
+		if desktopViewerListening(port) {
+			res.OK = false
+			res.Errors = append(res.Errors, fmt.Sprintf(":%d viewer port %d busy (foreign or race)", n, port))
+			continue
+		}
 		if err := startDesktopViewer(n, port, vncPort); err != nil {
 			res.OK = false
 			res.Errors = append(res.Errors, fmt.Sprintf(":%d %v", n, err))
@@ -510,6 +540,8 @@ type restartWebsockifyResult struct {
  // already have x11vnc, then starts a fresh websockify. Never touches Xvfb,
  // chrome-profile, x11vnc, or maxq-api. Safe for :23 viewer-only repair.
 func restartWebsockifyOnly() restartWebsockifyResult {
+	ensureViewersMu.Lock()
+	defer ensureViewersMu.Unlock()
 	res := restartWebsockifyResult{
 		OK:           true,
 		Restarted:    []int{},
@@ -537,6 +569,80 @@ func restartWebsockifyOnly() restartWebsockifyResult {
 	}
 	res.Count = len(res.Restarted)
 	return res
+}
+
+// ownedDesktopViewerPIDs lists dedicated MaxQ python websockify PIDs listening
+// on port (cmdline has websockify + listen + localhost: RFB). Skips bash
+// box-bounded-log wrappers and --token-plugin / TokenFile sand gateways.
+func ownedDesktopViewerPIDs(port int) []int {
+	if port < 1 {
+		return nil
+	}
+	ents, err := os.ReadDir("/proc")
+	if err != nil {
+		return nil
+	}
+	out := []int{}
+	for _, e := range ents {
+		name := e.Name()
+		if name == "" || name[0] < '0' || name[0] > '9' {
+			continue
+		}
+		raw, err := os.ReadFile("/proc/" + name + "/cmdline")
+		if err != nil || len(raw) == 0 {
+			continue
+		}
+		cmd := strings.ReplaceAll(string(raw), "\x00", " ")
+		if !strings.Contains(cmd, "websockify") {
+			continue
+		}
+		if strings.Contains(cmd, "--token-plugin") || strings.Contains(cmd, "TokenFile") {
+			continue
+		}
+		// Skip the bash wrapper that embeds the websockify argv.
+		if strings.Contains(cmd, "box-bounded-log") || strings.HasPrefix(strings.TrimSpace(cmd), "bash ") {
+			continue
+		}
+		if !desktopViewerCmdlineHasListen(cmd, port) {
+			continue
+		}
+		if !strings.Contains(cmd, "localhost:") {
+			continue
+		}
+		pid, err := strconv.Atoi(name)
+		if err != nil || pid <= 1 {
+			continue
+		}
+		out = append(out, pid)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// pruneOwnedDesktopViewerDuplicates keeps the oldest owned python websockify
+// on port and SIGTERMs newer duplicates. Returns how many were signaled.
+func pruneOwnedDesktopViewerDuplicates(port int) int {
+	pids := ownedDesktopViewerPIDs(port)
+	if len(pids) <= 1 {
+		return 0
+	}
+	killed := 0
+	for _, pid := range pids[1:] {
+		if err := syscall.Kill(pid, syscall.SIGTERM); err == nil {
+			killed++
+		}
+	}
+	if killed == 0 {
+		return 0
+	}
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if len(ownedDesktopViewerPIDs(port)) <= 1 {
+			break
+		}
+		time.Sleep(40 * time.Millisecond)
+	}
+	return killed
 }
 
 // killOwnedDesktopViewerOnPort SIGTERMs only dedicated MaxQ websockify viewers

@@ -142,8 +142,10 @@ function applyHomeStream(data) {
   setStream("hs-agent", agentDisp, Number.isFinite(agentNum) ? ("/desktops?crew=" + Math.trunc(agentNum)) : "/desktops");
   if (sys.live_count != null) {
     const ready = sys.viewer_ready != null ? sys.viewer_ready : null;
-    const base = ready != null ? (sys.live_count + " · " + ready + " vnc") : String(sys.live_count);
-    setStream("hs-live", base + frozenSeg(sys), "/desktops");
+    const base = ready != null ? (sys.live_count + "·" + ready + " vnc") : String(sys.live_count);
+    const fr = Number(sys.suspended_count);
+    const frBit = (Number.isFinite(fr) && fr > 0) ? (" ·" + Math.trunc(fr) + " frz") : "";
+    setStream("hs-live", base + frBit, "/desktops");
   } else {
     setStream("hs-live", "—", "/desktops");
   }
@@ -168,10 +170,11 @@ function applyHomeStream(data) {
     const avail = fmtGiB(sys.ram_available_bytes);
     const swapOn = !!sys.swap_enabled;
     const swapBit = swapOn ? " · swap on" : " · swap 0";
-    setStream("hs-ram", Math.round(ramPct) + "% · " + avail + " avail / " + total + " GiB (" + used + " used)" + swapBit);
+    // Dense STREAM: short visible value; full breakdown lives in title.
+    setStream("hs-ram", Math.round(ramPct) + "% · " + avail + " free");
     if (ramCell) {
       ramCell.classList.toggle("pressure", highRam);
-      ramCell.title = (sys.swap_note || "prefer Actions for OOM relief") + " → /actions";
+      ramCell.title = Math.round(ramPct) + "% · " + used + " used / " + total + " GiB · " + avail + " avail" + swapBit + " — " + (sys.swap_note || "prefer Actions for OOM relief");
     }
   } else {
     setStream("hs-ram", "—");

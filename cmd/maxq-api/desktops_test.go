@@ -472,7 +472,7 @@ func TestDesktopViewerPortResolveDecision(t *testing.T) {
 		{name: "preferred free", n: 2, wantPort: 6081, wantMatched: false},
 		{name: "foreign preferred alt free", n: 2, prefListen: true, wantPort: 6181, wantMatched: false},
 		{name: "foreign preferred alt match", n: 2, prefListen: true, altMatch: true, altListen: true, wantPort: 6181, wantMatched: true},
-		{name: "both foreign", n: 2, prefListen: true, altListen: true, wantPort: 6081, wantMatched: false},
+		{name: "both foreign", n: 2, prefListen: true, altListen: true, wantPort: 6181, wantMatched: false},
 		{name: "slot1 preferred free", n: 1, wantPort: 6080, wantMatched: false},
 		{name: "slot1 foreign uses alt", n: 1, prefListen: true, wantPort: 6180, wantMatched: false},
 		{name: "invalid slot", n: 0, wantPort: 0, wantMatched: false},

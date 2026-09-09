@@ -41,15 +41,17 @@
     .home-stream {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
-      gap: .85rem 1rem;
+      gap: .7rem .85rem;
       align-items: stretch;
-      padding: 1.05rem 1.2rem 1.15rem;
+      padding: .9rem 1.15rem 1rem;
       margin: 0;
       border: 0;
       background: transparent;
       box-shadow: none;
       border-radius: 0;
     }
+    .hs-cell[data-key="ram"] { grid-column: span 1; min-width: 7.5rem; }
+    .hs-cta .hs-cta-link { font-size: .72rem; padding: .28rem .55rem; }
     .hs-cell { display: grid; gap: .28rem; min-width: 0; }
     .hs-label {
       font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
