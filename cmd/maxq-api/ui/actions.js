@@ -109,6 +109,10 @@ const MaxQActions = (() => {
         : "Confirm resume frozen desks? SIGCONT all paused live desks except the current agent display.";
     } else if (id === "clear-ram") {
       confirmMsg = "Clear RAM via OpenCode? Protects current agent desktop, maxq-api, and live/busy desks.";
+    } else if (id === "ensure-novnc") {
+      confirmMsg = "Ensure noVNC viewers for live desks that already have x11vnc? Starts websockify only — never kills Chrome, Xvfb, or x11vnc.";
+    } else if (id === "report-ram") {
+      confirmMsg = "Report RAM from /proc/meminfo? Read-only — no kills.";
     } else if (id === "freeze-quiet-desks") {
       let n = null;
       try {

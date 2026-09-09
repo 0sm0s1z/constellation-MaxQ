@@ -129,7 +129,9 @@ function renderHomeDemo(data, status) {
   if (Number.isFinite(ram)) {
     parts.push('<span class="dim">·</span>');
     const cls = ram >= 85 ? 'warn' : '';
-    parts.push('<span class="' + cls + '">RAM ' + Math.round(ram) + '%</span>');
+    const avail = Number(sys.ram_available_bytes);
+    const freeBit = (ram >= 85 && Number.isFinite(avail)) ? (' · ' + (Math.round(avail / 1073741824 * 10) / 10) + ' free') : '';
+    parts.push('<span class="' + cls + '">RAM ' + Math.round(ram) + '%' + freeBit + '</span>');
   }
   line.innerHTML = parts.join(" ");
   wrap.hidden = false;
@@ -159,9 +161,14 @@ function applyHomeStream(data) {
   const highRam = Number.isFinite(ramPct) && ramPct >= 85;
   const hasFrozen = Number.isFinite(suspendedCount) && suspendedCount > 0;
   const needsNovnc = Number.isFinite(liveCount) && Number.isFinite(viewerReady) && liveCount > viewerReady;
+  const desks = (data && data.desktops) || [];
+  const quietCount = desks.filter((d) => d && d.live && !d.suspended && !d.current).length;
+  const hasQuiet = quietCount > 0;
   const ramCell = document.getElementById("hs-ram-cell");
   const cta = document.getElementById("hs-cta");
   const ctaClear = document.getElementById("hs-cta-clear");
+  const ctaFreeze = document.getElementById("hs-cta-freeze");
+  const ctaReport = document.getElementById("hs-cta-report");
   const ctaResume = document.getElementById("hs-cta-resume");
   const ctaNovnc = document.getElementById("hs-cta-novnc");
   if (Number.isFinite(ramPct)) {
@@ -180,8 +187,14 @@ function applyHomeStream(data) {
     setStream("hs-ram", "—");
     if (ramCell) ramCell.classList.remove("pressure");
   }
+  // OOM story: never auto-fire. Surface safer Freeze quiet before Clear RAM when quiet desks exist.
   if (cta) cta.hidden = !(highRam || hasFrozen || needsNovnc);
   if (ctaClear) ctaClear.hidden = !highRam;
+  if (ctaFreeze) {
+    ctaFreeze.hidden = !(highRam && hasQuiet);
+    if (!ctaFreeze.hidden) ctaFreeze.textContent = "Freeze " + quietCount + " quiet";
+  }
+  if (ctaReport) ctaReport.hidden = !highRam;
   if (ctaResume) ctaResume.hidden = !hasFrozen;
   if (ctaNovnc) ctaNovnc.hidden = !needsNovnc;
 
@@ -194,6 +207,8 @@ function clearHomeStream() {
   const ramCell = document.getElementById("hs-ram-cell");
   const cta = document.getElementById("hs-cta");
   const ctaClear = document.getElementById("hs-cta-clear");
+  const ctaFreeze = document.getElementById("hs-cta-freeze");
+  const ctaReport = document.getElementById("hs-cta-report");
   const ctaResume = document.getElementById("hs-cta-resume");
   const ctaNovnc = document.getElementById("hs-cta-novnc");
   const fleet = document.getElementById("home-fleet");
@@ -201,6 +216,8 @@ function clearHomeStream() {
   if (ramCell) ramCell.classList.remove("pressure");
   if (cta) cta.hidden = true;
   if (ctaClear) ctaClear.hidden = true;
+  if (ctaFreeze) ctaFreeze.hidden = true;
+  if (ctaReport) ctaReport.hidden = true;
   if (ctaResume) ctaResume.hidden = true;
   if (ctaNovnc) ctaNovnc.hidden = true;
   if (fleet) fleet.hidden = true;
