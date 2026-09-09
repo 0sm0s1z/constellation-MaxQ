@@ -369,7 +369,7 @@ function renderCrewChat(d) {
     const empty = document.createElement("div");
     empty.className = "chat-empty";
     empty.textContent = d.live
-      ? "No chatgpt / grok / x chat session on this desktop."
+      ? "No chatgpt / grok / x / claude / cursor / gemini chat on this desktop."
       : "Desktop idle.";
     list.appendChild(empty);
     return;

@@ -62,9 +62,17 @@ func entitlementSite(raw string) string {
 	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/grok"):
 		return "grok"
 	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/chat"):
+		// Skip pin/recovery / passcode walls — not a readable chat body.
+		if strings.Contains(path, "/i/chat/pin/") || strings.Contains(path, "/pin/recovery") {
+			return ""
+		}
 		return "x"
 	case host == "claude.ai" || strings.HasSuffix(host, ".claude.ai"):
 		return "claude"
+	case host == "cursor.com" || host == "www.cursor.com" || strings.HasSuffix(host, ".cursor.com"):
+		return "cursor"
+	case host == "gemini.google.com" || host == "aistudio.google.com":
+		return "gemini"
 	default:
 		return ""
 	}
