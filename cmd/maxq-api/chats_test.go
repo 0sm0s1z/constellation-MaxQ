@@ -127,3 +127,38 @@ func TestSkipChatBodyEvalExtraTitles(t *testing.T) {
 		t.Fatal("real chatgpt must eval")
 	}
 }
+
+func TestSplitMashedChatBody(t *testing.T) {
+	raw := "Feel free to let me know the tech topics that you find the most interesting, i would be happy to cover it on the show :) Brandon Forbes 28w You: Awesome!"
+	got := splitMashedChatBody(raw)
+	if len(got) < 2 {
+		t.Fatalf("expected split, got %#v", got)
+	}
+	if !strings.Contains(got[0], "Feel free to let me know") {
+		t.Fatalf("first %#v", got[0])
+	}
+	last := got[len(got)-1]
+	if !strings.HasPrefix(last, "You: Awesome") {
+		t.Fatalf("last %#v", last)
+	}
+	if strings.Contains(got[0], "28w") || strings.Contains(got[0], "Brandon") {
+		t.Fatalf("age/name still on first bubble: %#v", got[0])
+	}
+	trailing := splitMashedChatBody("hello there this is a long enough prior bubble Brandon Forbes 28w")
+	if len(trailing) != 1 || strings.Contains(trailing[0], "28w") {
+		t.Fatalf("trailing age label: %#v", trailing)
+	}
+	// Noise path: mashed follow thank-you should still filter after expand.
+	filtered := filterChatMessages([]string{
+		"Michael Waitze 2w Thank you for the follow! Brandon Forbes 28w You: Awesome!",
+		"Feel free to chat about platforms",
+	})
+	if len(filtered) < 1 {
+		t.Fatalf("filtered empty: %#v", filtered)
+	}
+	for _, m := range filtered {
+		if strings.Contains(strings.ToLower(m), "thank you for the follow") {
+			t.Fatalf("follow noise survived: %#v", filtered)
+		}
+	}
+}

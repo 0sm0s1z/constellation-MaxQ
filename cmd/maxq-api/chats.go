@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"net/url"
 	"strings"
 	"sync"
@@ -148,18 +149,125 @@ func chatChromeNoise(s string) bool {
 	return false
 }
 
+// splitMashedChatBody expands X DM scrapes that concatenate bubbles + labels
+// into one string, e.g. "hello Brandon Forbes 28w You: Awesome!".
+func splitMashedChatBody(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	// First cut on explicit " You: " reply markers (keep the reply text).
+	youRe := regexp.MustCompile(`(?i)\s+You:\s+`)
+	chunks := youRe.Split(s, -1)
+	out := make([]string, 0, len(chunks)+2)
+	for i, c := range chunks {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if i > 0 {
+			c = "You: " + c
+		}
+		out = append(out, splitOnXAgeLabel(c)...)
+	}
+	if len(out) == 0 {
+		return []string{s}
+	}
+	return out
+}
+
+// splitOnXAgeLabel cuts before "Name 28w" / "Name 3d" speaker+age crumbs
+// that X often glues between bubbles when scraping innerText.
+// Only splits when the prior bubble is long enough — avoids turning
+// "Michael Waitze 2w Thank you…" into a stray "Michael" crumb.
+func splitOnXAgeLabel(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	re := regexp.MustCompile(`\s+([A-Z][A-Za-z0-9 .'\-]{1,40})\s+(\d+[smhdwy])(?:\s+|$)`)
+	idxs := re.FindAllStringSubmatchIndex(s, -1)
+	if len(idxs) == 0 {
+		return []string{s}
+	}
+	out := make([]string, 0, len(idxs)+1)
+	prev := 0
+	splitAny := false
+	for _, m := range idxs {
+		prefix := strings.TrimSpace(s[prev:m[0]])
+		// Require a real prior bubble before treating Name+age as a seam.
+		if len([]rune(prefix)) < 24 {
+			continue
+		}
+		out = append(out, prefix)
+		prev = m[1]
+		splitAny = true
+	}
+	if !splitAny {
+		return []string{s}
+	}
+	if prev < len(s) {
+		tail := strings.TrimSpace(s[prev:])
+		if tail != "" && !chatLabelCrumb(tail) {
+			out = append(out, tail)
+		}
+	}
+	if len(out) == 0 {
+		return []string{s}
+	}
+	return out
+}
+
+// chatLabelCrumb drops leftover speaker names after a mash split ("Brandon Forbes").
+func chatLabelCrumb(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(strings.ToLower(s), "you:") {
+		return false
+	}
+	r := []rune(s)
+	if len(r) > 48 {
+		return false
+	}
+	// One or two Title-Case tokens, no sentence punctuation.
+	if strings.ContainsAny(s, ".!?:;") {
+		return false
+	}
+	parts := strings.Fields(s)
+	if len(parts) == 0 || len(parts) > 3 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+		runes := []rune(p)
+		if len(runes) < 2 {
+			return false
+		}
+		if runes[0] < 'A' || runes[0] > 'Z' {
+			return false
+		}
+	}
+	return true
+}
+
 func filterChatMessages(msgs []string) []string {
 	if len(msgs) == 0 {
 		return nil
 	}
 	out := make([]string, 0, len(msgs))
 	for _, m := range msgs {
-		if chatChromeNoise(m) {
-			continue
-		}
-		out = append(out, m)
-		if len(out) >= chatPreviewMsgMax {
-			break
+		for _, part := range splitMashedChatBody(m) {
+			if chatChromeNoise(part) || chatLabelCrumb(part) {
+				continue
+			}
+			out = append(out, part)
+			if len(out) >= chatPreviewMsgMax {
+				return out
+			}
 		}
 	}
 	return out
