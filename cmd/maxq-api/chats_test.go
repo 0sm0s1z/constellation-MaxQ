@@ -78,3 +78,36 @@ func TestFetchChatMessagesCDPRejectsRemote(t *testing.T) {
 		t.Fatalf("wss must be rejected: %#v", msgs)
 	}
 }
+
+func TestChatChromeNoiseFilter(t *testing.T) {
+	raw := []string{
+		"Michael Waitze 2w Thank you for the follow!",
+		"Not Now Use X Number",
+		"not now",
+		"Feel free to let me know the tech topics that you find the most interesting",
+		"Accept cookies",
+		"If you know their X Number you can message them now.",
+	}
+	got := filterChatMessages(raw)
+	if len(got) != 2 {
+		t.Fatalf("len=%d %#v", len(got), got)
+	}
+	if previewFromMessages(raw) != got[len(got)-1] {
+		t.Fatalf("preview %q", previewFromMessages(raw))
+	}
+	if previewFromMessages([]string{"Not Now", "Use X Number"}) != "" {
+		t.Fatal("all-noise should empty preview")
+	}
+}
+
+func TestSkipChatBodyEval(t *testing.T) {
+	if !skipChatBodyEval("https://accounts.x.ai/sign-in", "Sign In to Your Grok Account | Grok") {
+		t.Fatal("accounts.x.ai sign-in")
+	}
+	if !skipChatBodyEval("https://chatgpt.com/auth/login", "Log in") {
+		t.Fatal("login title")
+	}
+	if skipChatBodyEval("https://x.com/i/chat/32925761-195138772", "x.com/i/chat/32925761-195138772") {
+		t.Fatal("real X chat must eval")
+	}
+}

@@ -101,11 +101,88 @@ func truncateChatText(s string, max int) string {
 	return string(r[:max-1]) + "…"
 }
 
+// chatChromeNoise drops X/Grok/consent UI chrome that CDP often scrapes as "messages".
+func chatChromeNoise(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return true
+	}
+	low := strings.ToLower(s)
+	// Exact or near-exact chrome buttons / banners.
+	exact := []string{
+		"not now", "use x number", "not now use x number",
+		"accept all", "accept cookies", "reject all", "allow cookies",
+		"enable notifications", "turn on notifications",
+		"sign in", "log in", "sign up", "continue with google",
+		"continue with apple", "forgot password?", "forgot password",
+	}
+	for _, e := range exact {
+		if low == e {
+			return true
+		}
+	}
+	// Short / medium chrome: mashed button labels and X Number onboarding.
+	if len([]rune(s)) <= 96 {
+		for _, frag := range []string{
+			"not now", "use x number", "their x number", "accept cookies",
+			"enable notifications", "cookie settings", "manage cookies",
+			"message them now",
+		} {
+			if strings.Contains(low, frag) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func filterChatMessages(msgs []string) []string {
+	if len(msgs) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(msgs))
+	for _, m := range msgs {
+		if chatChromeNoise(m) {
+			continue
+		}
+		out = append(out, m)
+		if len(out) >= chatPreviewMsgMax {
+			break
+		}
+	}
+	return out
+}
+
 func previewFromMessages(msgs []string) string {
+	msgs = filterChatMessages(msgs)
 	if len(msgs) == 0 {
 		return ""
 	}
 	return msgs[len(msgs)-1]
+}
+
+// skipChatBodyEval: sign-in / auth walls waste CDP budget and never yield real chat bodies.
+func skipChatBodyEval(rawURL, title string) bool {
+	lowTitle := strings.ToLower(strings.TrimSpace(title))
+	if strings.Contains(lowTitle, "sign in") || strings.Contains(lowTitle, "log in") ||
+		strings.Contains(lowTitle, "sign-in") || strings.Contains(lowTitle, "login") {
+		return true
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u == nil {
+		return false
+	}
+	path := strings.ToLower(u.Path)
+	host := strings.ToLower(u.Hostname())
+	for _, frag := range []string{"/sign-in", "/signin", "/login", "/i/flow/login", "/authenticate"} {
+		if strings.Contains(path, frag) {
+			return true
+		}
+	}
+	if host == "accounts.x.ai" || host == "accounts.google.com" || host == "login.microsoftonline.com" {
+		return true
+	}
+	return false
 }
 
 type previewJob struct {
@@ -159,7 +236,7 @@ func listEntitlementTabs(port int) []entitlementTab {
 		}
 		idx := len(out)
 		out = append(out, entitlementTab{Site: site, Title: title, URL: clean})
-		if t.WebSocketDebuggerURL != "" && len(toEval) < chatPreviewTabsMax {
+		if t.WebSocketDebuggerURL != "" && len(toEval) < chatPreviewTabsMax && !skipChatBodyEval(clean, title) {
 			toEval = append(toEval, previewJob{idx: idx, ws: t.WebSocketDebuggerURL})
 		}
 	}
@@ -189,7 +266,7 @@ func fillChatPreviews(tabs []entitlementTab, jobs []previewJob) {
 			if remain < to {
 				to = remain
 			}
-			msgs := fetchChatMessagesCDP(job.ws, to)
+			msgs := filterChatMessages(fetchChatMessagesCDP(job.ws, to))
 			if len(msgs) == 0 {
 				return
 			}
