@@ -57,6 +57,10 @@ func entitlementSite(raw string) string {
 	case host == "chatgpt.com" || host == "www.chatgpt.com" || host == "chat.openai.com":
 		return "chatgpt"
 	case host == "grok.com" || host == "www.grok.com" || strings.HasSuffix(host, ".grok.com"):
+		// Landing / home / billing shells — no readable conversation body.
+		if isGrokShellSurface(u) {
+			return ""
+		}
 		return "grok"
 	case host == "grok.x.ai" || host == "accounts.x.ai":
 		return "grok"
@@ -77,6 +81,30 @@ func entitlementSite(raw string) string {
 	default:
 		return ""
 	}
+}
+
+// isGrokShellSurface drops grok.com home/billing/account landings that
+// otherwise show up as empty Crew "grok" cards (query is stripped later).
+func isGrokShellSurface(u *url.URL) bool {
+	if u == nil {
+		return true
+	}
+	path := strings.ToLower(strings.TrimSuffix(u.Path, "/"))
+	if path == "" {
+		return true
+	}
+	for _, frag := range []string{"/billing", "/account", "/settings", "/subscriptions"} {
+		if strings.Contains(path, frag) {
+			return true
+		}
+	}
+	q := strings.ToLower(u.RawQuery)
+	for _, frag := range []string{"_s=home", "_s=billing", "_s=settings"} {
+		if strings.Contains(q, frag) {
+			return true
+		}
+	}
+	return false
 }
 
 // cdpTarget is internal — webSocketDebuggerUrl must never reach the FE.
@@ -125,6 +153,10 @@ func chatChromeNoise(s string) bool {
 		"send a message",
 		"switch to build mode to create apps",
 		"switch to build mode",
+		"what should we explore?",
+		"what should we explore",
+		"fast finance",
+		"dismiss",
 	}
 	for _, e := range exact {
 		if low == e {
@@ -140,6 +172,8 @@ func chatChromeNoise(s string) bool {
 			"type @ to search", "search your apps",
 			"ask anything", "message grok", "send a message",
 			"switch to build mode", "create apps",
+			"what should we explore", "fast finance",
+			"connect accounts to manage",
 		} {
 			if strings.Contains(low, frag) {
 				return true

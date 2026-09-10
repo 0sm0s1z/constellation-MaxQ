@@ -111,13 +111,38 @@ func TestChatChromeNoiseGrokComposer(t *testing.T) {
 		"Real reply about constellation MaxQ glass",
 		"What's on your mind?",
 		"Switch to Build Mode to create apps",
+		"What should we explore?",
+		"Fast Finance",
+		"Connect accounts to manage your finances in chat",
 	}
 	got := filterChatMessages(raw)
 	if len(got) != 1 || got[0] != "Real reply about constellation MaxQ glass" {
 		t.Fatalf("got %#v", got)
 	}
-	if previewFromMessages([]string{"Type @ to search your apps", "Ask Grok anything"}) != "" {
+	if previewFromMessages([]string{"Type @ to search your apps", "Ask Grok anything", "What should we explore?"}) != "" {
 		t.Fatal("composer-only should empty preview")
+	}
+}
+
+func TestGrokShellSurfaceOmitted(t *testing.T) {
+	for _, raw := range []string{
+		"https://grok.com/?_s=home",
+		"https://grok.com/?_s=billing",
+		"https://www.grok.com/",
+		"https://grok.com/billing",
+		"https://grok.com/account",
+	} {
+		if got := entitlementSite(raw); got != "" {
+			t.Fatalf("%s => %q want omit", raw, got)
+		}
+	}
+	keep := "https://grok.com/chat/abc123"
+	if got := entitlementSite(keep); got != "grok" {
+		t.Fatalf("%s => %q want grok", keep, got)
+	}
+	keep2 := "https://grok.com/c/some-thread-id"
+	if got := entitlementSite(keep2); got != "grok" {
+		t.Fatalf("%s => %q want grok", keep2, got)
 	}
 }
 
