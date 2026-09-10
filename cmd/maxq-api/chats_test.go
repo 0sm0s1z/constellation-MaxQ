@@ -103,6 +103,24 @@ func TestChatChromeNoiseFilter(t *testing.T) {
 	}
 }
 
+func TestChatChromeNoiseGrokComposer(t *testing.T) {
+	raw := []string{
+		"Type @ to search your apps",
+		"Message Grok",
+		"Ask anything",
+		"Real reply about constellation MaxQ glass",
+		"What's on your mind?",
+		"Switch to Build Mode to create apps",
+	}
+	got := filterChatMessages(raw)
+	if len(got) != 1 || got[0] != "Real reply about constellation MaxQ glass" {
+		t.Fatalf("got %#v", got)
+	}
+	if previewFromMessages([]string{"Type @ to search your apps", "Ask Grok anything"}) != "" {
+		t.Fatal("composer-only should empty preview")
+	}
+}
+
 func TestSkipChatBodyEval(t *testing.T) {
 	if !skipChatBodyEval("https://accounts.x.ai/sign-in", "Sign In to Your Grok Account | Grok") {
 		t.Fatal("accounts.x.ai sign-in")

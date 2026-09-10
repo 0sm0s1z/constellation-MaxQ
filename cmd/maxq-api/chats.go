@@ -109,13 +109,22 @@ func chatChromeNoise(s string) bool {
 		return true
 	}
 	low := strings.ToLower(s)
-	// Exact or near-exact chrome buttons / banners.
+	// Exact or near-exact chrome buttons / banners / composer placeholders.
 	exact := []string{
 		"not now", "use x number", "not now use x number",
 		"accept all", "accept cookies", "reject all", "allow cookies",
 		"enable notifications", "turn on notifications",
 		"sign in", "log in", "sign up", "continue with google",
 		"continue with apple", "forgot password?", "forgot password",
+		"type @ to search your apps",
+		"message grok",
+		"ask anything",
+		"ask grok anything",
+		"what's on your mind?",
+		"what can i help with?",
+		"send a message",
+		"switch to build mode to create apps",
+		"switch to build mode",
 	}
 	for _, e := range exact {
 		if low == e {
@@ -128,6 +137,9 @@ func chatChromeNoise(s string) bool {
 			"not now", "use x number", "their x number", "accept cookies",
 			"enable notifications", "cookie settings", "manage cookies",
 			"message them now",
+			"type @ to search", "search your apps",
+			"ask anything", "message grok", "send a message",
+			"switch to build mode", "create apps",
 		} {
 			if strings.Contains(low, frag) {
 				return true
