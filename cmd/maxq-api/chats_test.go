@@ -111,3 +111,16 @@ func TestSkipChatBodyEval(t *testing.T) {
 		t.Fatal("real X chat must eval")
 	}
 }
+
+
+func TestSkipChatBodyEvalExtraTitles(t *testing.T) {
+	if !skipChatBodyEval("https://accounts.x.ai/sign-in", "Create your account | Grok") {
+		t.Fatal("create account title")
+	}
+	if !skipChatBodyEval("https://grok.x.ai/", "Verify your identity") {
+		t.Fatal("verify identity title")
+	}
+	if skipChatBodyEval("https://chatgpt.com/", "ChatGPT") {
+		t.Fatal("real chatgpt must eval")
+	}
+}

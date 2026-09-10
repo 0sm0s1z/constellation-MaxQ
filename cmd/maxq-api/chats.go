@@ -165,7 +165,9 @@ func previewFromMessages(msgs []string) string {
 func skipChatBodyEval(rawURL, title string) bool {
 	lowTitle := strings.ToLower(strings.TrimSpace(title))
 	if strings.Contains(lowTitle, "sign in") || strings.Contains(lowTitle, "log in") ||
-		strings.Contains(lowTitle, "sign-in") || strings.Contains(lowTitle, "login") {
+		strings.Contains(lowTitle, "sign-in") || strings.Contains(lowTitle, "login") ||
+		strings.Contains(lowTitle, "create your account") || strings.Contains(lowTitle, "verify your identity") ||
+		strings.Contains(lowTitle, "enter your password") {
 		return true
 	}
 	u, err := url.Parse(rawURL)
@@ -234,9 +236,13 @@ func listEntitlementTabs(port int) []entitlementTab {
 		if title == "" || strings.EqualFold(title, site) {
 			title = site
 		}
+		// Auth walls / sign-in tabs: omit from Crew entirely (not just skip CDP).
+		if skipChatBodyEval(clean, title) {
+			continue
+		}
 		idx := len(out)
 		out = append(out, entitlementTab{Site: site, Title: title, URL: clean})
-		if t.WebSocketDebuggerURL != "" && len(toEval) < chatPreviewTabsMax && !skipChatBodyEval(clean, title) {
+		if t.WebSocketDebuggerURL != "" && len(toEval) < chatPreviewTabsMax {
 			toEval = append(toEval, previewJob{idx: idx, ws: t.WebSocketDebuggerURL})
 		}
 	}
