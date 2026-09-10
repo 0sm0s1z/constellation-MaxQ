@@ -128,9 +128,9 @@ function renderHomeDemo(data, status) {
   }
   if (Number.isFinite(ram)) {
     parts.push('<span class="dim">·</span>');
-    const cls = ram >= 85 ? 'warn' : '';
+    const cls = ram >= 85 ? 'warn' : (ram >= 65 ? 'elev' : '');
     const avail = Number(sys.ram_available_bytes);
-    const freeBit = (ram >= 85 && Number.isFinite(avail)) ? (' · ' + (Math.round(avail / 1073741824 * 10) / 10) + ' free') : '';
+    const freeBit = (ram >= 65 && Number.isFinite(avail)) ? (' · ' + (Math.round(avail / 1073741824 * 10) / 10) + ' free') : '';
     parts.push('<span class="' + cls + '">RAM ' + Math.round(ram) + '%' + freeBit + '</span>');
   }
   line.innerHTML = parts.join(" ");
@@ -158,6 +158,8 @@ function applyHomeStream(data) {
   const suspendedCount = Number(sys.suspended_count);
   const liveCount = Number(sys.live_count);
   const viewerReady = Number(sys.viewer_ready);
+  // OOM bands: elevated (>=65) surfaces Report/Freeze; critical (>=85) unlocks Clear RAM.
+  const elevRam = Number.isFinite(ramPct) && ramPct >= 65;
   const highRam = Number.isFinite(ramPct) && ramPct >= 85;
   const hasFrozen = Number.isFinite(suspendedCount) && suspendedCount > 0;
   const needsNovnc = Number.isFinite(liveCount) && Number.isFinite(viewerReady) && liveCount > viewerReady;
@@ -185,21 +187,25 @@ function applyHomeStream(data) {
     // Dense STREAM: short visible value; full breakdown lives in title.
     setStream("hs-ram", Math.round(ramPct) + "% · " + avail + " free");
     if (ramCell) {
+      ramCell.classList.toggle("elevated", elevRam && !highRam);
       ramCell.classList.toggle("pressure", highRam);
       ramCell.title = Math.round(ramPct) + "% · " + used + " used / " + total + " GiB · " + avail + " avail" + swapBit + " — " + (sys.swap_note || "prefer Actions for OOM relief");
     }
   } else {
     setStream("hs-ram", "—");
-    if (ramCell) ramCell.classList.remove("pressure");
+    if (ramCell) {
+      ramCell.classList.remove("pressure");
+      ramCell.classList.remove("elevated");
+    }
   }
-  // OOM story: never auto-fire. Surface safer Freeze quiet before Clear RAM when quiet desks exist.
-  if (cta) cta.hidden = !(highRam || hasFrozen || needsNovnc);
+  // OOM story: never auto-fire. Mid-band Report/Freeze; Clear RAM only at critical.
+  if (cta) cta.hidden = !(elevRam || highRam || hasFrozen || needsNovnc);
   if (ctaClear) ctaClear.hidden = !highRam;
   if (ctaFreeze) {
-    ctaFreeze.hidden = !(highRam && hasQuiet);
+    ctaFreeze.hidden = !(elevRam && hasQuiet);
     if (!ctaFreeze.hidden) ctaFreeze.textContent = "Freeze " + quietCount + " quiet";
   }
-  if (ctaReport) ctaReport.hidden = !highRam;
+  if (ctaReport) ctaReport.hidden = !elevRam;
   if (ctaResume) ctaResume.hidden = !hasFrozen;
   if (ctaNovnc) ctaNovnc.hidden = !needsNovnc;
 
@@ -218,7 +224,10 @@ function clearHomeStream() {
   const ctaNovnc = document.getElementById("hs-cta-novnc");
   const fleet = document.getElementById("home-fleet");
   const chips = document.getElementById("home-fleet-chips");
-  if (ramCell) ramCell.classList.remove("pressure");
+  if (ramCell) {
+    ramCell.classList.remove("pressure");
+    ramCell.classList.remove("elevated");
+  }
   if (cta) cta.hidden = true;
   if (ctaClear) ctaClear.hidden = true;
   if (ctaFreeze) ctaFreeze.hidden = true;

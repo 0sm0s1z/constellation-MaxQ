@@ -89,10 +89,13 @@ func TestChatChromeNoiseFilter(t *testing.T) {
 		"If you know their X Number you can message them now.",
 	}
 	got := filterChatMessages(raw)
-	if len(got) != 2 {
+	if len(got) != 1 {
 		t.Fatalf("len=%d %#v", len(got), got)
 	}
-	if previewFromMessages(raw) != got[len(got)-1] {
+	if got[0] != "Feel free to let me know the tech topics that you find the most interesting" {
+		t.Fatalf("kept %q", got[0])
+	}
+	if previewFromMessages(raw) != got[0] {
 		t.Fatalf("preview %q", previewFromMessages(raw))
 	}
 	if previewFromMessages([]string{"Not Now", "Use X Number"}) != "" {

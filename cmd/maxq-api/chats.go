@@ -133,6 +133,18 @@ func chatChromeNoise(s string) bool {
 			}
 		}
 	}
+	// X DM / notifications scraped into chat bodies (follow thanks, like/repost banners).
+	for _, frag := range []string{
+		"thank you for the follow",
+		"thanks for the follow",
+		"liked your post",
+		"reposted your post",
+		"followed you",
+	} {
+		if strings.Contains(low, frag) {
+			return true
+		}
+	}
 	return false
 }
 
