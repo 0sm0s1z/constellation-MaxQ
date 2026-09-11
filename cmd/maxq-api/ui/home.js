@@ -208,7 +208,10 @@ function applyHomeStream(data) {
   if (ctaReport) ctaReport.hidden = !elevRam;
   if (ctaResume) {
     ctaResume.hidden = !hasFrozen;
-    if (!ctaResume.hidden) ctaResume.textContent = "Resume " + Math.trunc(suspendedCount) + " frozen";
+    if (!ctaResume.hidden) {
+      ctaResume.textContent = "Resume " + Math.trunc(suspendedCount) + " frozen";
+      ctaResume.setAttribute("data-resume-n", String(Math.trunc(suspendedCount)));
+    }
   }
   if (ctaNovnc) ctaNovnc.hidden = !needsNovnc;
 
