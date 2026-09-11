@@ -283,3 +283,9 @@
 .p2-card:hover, .p2-meta {
   box-shadow: var(--glow-panel, var(--elev));
 }
+
+
+/* Actions OOM strip — match Home/Desktops bands */
+#act-ram-tile.elevated strong { color: var(--yellow, #f9e2af); }
+#act-ram-tile.pressure strong { color: var(--red, #f38ba8); }
+#act-oom { text-transform: lowercase; }

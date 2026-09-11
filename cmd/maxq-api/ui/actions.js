@@ -20,6 +20,61 @@ const MaxQActions = (() => {
       .replace(/"/g, "&quot;");
   }
 
+  // OOM bands match Home + Desktops STREAM: Clear RAM Run only at critical >=85%.
+  const state = { ramPercent: NaN, elev: false, high: false };
+
+  function oomRamBands(rp) {
+    const n = Number(rp);
+    return {
+      rp: n,
+      elev: Number.isFinite(n) && n >= 65,
+      high: Number.isFinite(n) && n >= 85,
+    };
+  }
+
+  function updateOomStrip(sys) {
+    const bands = oomRamBands(sys && sys.ram_percent);
+    state.ramPercent = bands.rp;
+    state.elev = bands.elev;
+    state.high = bands.high;
+    const ramEl = $("act-ram");
+    const oomEl = $("act-oom");
+    const tile = $("act-ram-tile");
+    const hint = $("act-oom-hint");
+    if (ramEl) {
+      ramEl.textContent = Number.isFinite(bands.rp) ? (Math.round(bands.rp) + "%") : "—";
+    }
+    if (tile) {
+      tile.classList.toggle("elevated", bands.elev && !bands.high);
+      tile.classList.toggle("pressure", bands.high);
+    }
+    if (oomEl) {
+      if (bands.high) oomEl.textContent = "critical";
+      else if (bands.elev) oomEl.textContent = "elevated";
+      else if (Number.isFinite(bands.rp)) oomEl.textContent = "ok";
+      else oomEl.textContent = "—";
+    }
+    if (hint) {
+      if (bands.high) {
+        hint.hidden = false;
+        hint.textContent = "RAM critical (≥85%). Clear RAM is unlocked on Actions + STREAM. Prefer Report RAM → Freeze quiet first. Never auto-fire.";
+      } else if (bands.elev) {
+        hint.hidden = false;
+        hint.textContent = "RAM elevated (≥65%). Report RAM + Freeze quiet are preferred. Clear RAM stays locked until critical (≥85%), matching Home/Desktops.";
+      } else if (Number.isFinite(bands.rp)) {
+        hint.hidden = false;
+        hint.textContent = "OOM bands: elevated ≥65% · critical ≥85% (Clear RAM). Catalog stays visible; Clear RAM Run follows the same gate as Home/Desktops STREAM.";
+      } else {
+        hint.hidden = true;
+        hint.textContent = "";
+      }
+    }
+  }
+
+  function clearRamArmed() {
+    return state.high;
+  }
+
   function renderRuns(runs) {
     const body = $("act-body");
     const list = Array.isArray(runs) ? runs.slice().sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || ""))) : [];
@@ -56,12 +111,20 @@ const MaxQActions = (() => {
       badges.push(`<span class="p2-badge dim">${escapeHtml(a.runner || "")}</span>`);
       badges.push(`<span class="p2-badge secret">${escapeHtml(a.scope || "")}</span>`);
       const binds = (a.binds || []).map((b) => `<span class="p2-badge bind" title="bind">${escapeHtml(b)}</span>`).join("");
-      const disabled = a.armed ? "" : "disabled";
+      let disabled = a.armed ? "" : "disabled";
       let unarmedHint = "";
       if (!a.armed && a.id === "close-idle-tabs") {
         unarmedHint = '<p class="p2-hint">Unarmed: set <code>webhook_url</code> in <code>$HOME/.config/maxq/hooks.toml</code>.</p>';
       } else if (!a.armed) {
         unarmedHint = '<p class="p2-hint">Unarmed — configure before run.</p>';
+      }
+      if (a.id === "clear-ram" && a.armed && !clearRamArmed()) {
+        disabled = "disabled";
+        const pct = Number.isFinite(state.ramPercent) ? Math.round(state.ramPercent) + "%" : "unknown";
+        unarmedHint = '<p class="p2-hint">Locked until OOM critical (≥85%). Now ' + escapeHtml(pct) + ' — matches Home/Desktops STREAM. Prefer Report RAM / Freeze quiet.</p>';
+        badges.push('<span class="p2-badge warn">critical≥85%</span>');
+      } else if (a.id === "clear-ram" && a.armed && clearRamArmed()) {
+        badges.push('<span class="p2-badge warn">unlocked</span>');
       }
       return `<article class="p2-card" data-id="${escapeHtml(a.id)}">
         <h3>${escapeHtml(a.label || a.id)}</h3>
@@ -108,7 +171,12 @@ const MaxQActions = (() => {
         ? ("Confirm resume " + n + " frozen? SIGCONT paused live desks except the current agent display.")
         : "Confirm resume frozen desks? SIGCONT all paused live desks except the current agent display.";
     } else if (id === "clear-ram") {
-      confirmMsg = "Clear RAM via OpenCode? Protects current agent desktop, maxq-api, and live/busy desks.";
+      if (!clearRamArmed()) {
+        setMsg("Clear RAM locked until RAM ≥85% (match Home/Desktops).", true);
+        return;
+      }
+      const pct = Number.isFinite(state.ramPercent) ? Math.round(state.ramPercent) + "%" : "critical";
+      confirmMsg = "Clear RAM via OpenCode at " + pct + "? Protects current agent desktop, maxq-api, and live/busy desks. Never auto-fire.";
     } else if (id === "ensure-novnc") {
       confirmMsg = "Ensure noVNC viewers for live desks that already have x11vnc? Starts websockify only — never kills Chrome, Xvfb, or x11vnc.";
     } else if (id === "report-ram") {
@@ -172,6 +240,12 @@ const MaxQActions = (() => {
     $("act-status").textContent = "loading";
     $("act-refresh").disabled = true;
     try {
+      try {
+        const desks = await MaxQShell.getJSON("/desktops", "application/json");
+        updateOomStrip((desks && desks.system) || {});
+      } catch (_) {
+        updateOomStrip({});
+      }
       const data = await MaxQShell.getJSON("/actions", "application/json");
       renderActions(data.actions || []);
       renderRuns(data.runs || []);

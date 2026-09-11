@@ -56,3 +56,4 @@ Box swap is typically **0**. Prefer Actions (report-ram → freeze-quiet / Clear
 - **Elevated (≥65%)**: Home surfaces Report RAM + Freeze quiet; Desktops RAM tile gets `elevated` styling.
 - **Critical (≥85%)**: Home unlocks Clear RAM CTA; Desktops STREAM / Crew also show Clear RAM (hidden below 85%).
 - Never auto-fire Clear RAM, Freeze quiet, or Resume paused.
+- **Actions catalog** (`/actions.html`): same Clear RAM Run gate (≥85%); shows RAM % + OOM band strip. Catalog cards stay visible when locked.
