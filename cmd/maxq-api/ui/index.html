@@ -115,6 +115,13 @@
     .hs-cta[hidden] { display: none !important; }
     .hs-cta-link[hidden] { display: none !important; }
     .hs-cta .hs-cta-link:not(.secondary) { /* primary only when shown */ }
+    .hs-cta-link.locked {
+      opacity: .72;
+      cursor: default;
+      border-style: dashed;
+      text-decoration: none;
+    }
+    .hs-cta-link.locked:hover { opacity: .85; }
 
     .home-fleet {
       display: flex; flex-wrap: wrap; gap: .3rem .35rem;
@@ -346,7 +353,7 @@
       </nav>
     </main>
   </div>
-  <script src="/shell.js?v=fb6d8e4c"></script>
-  <script src="/home.js?v=fb6d8e4c"></script>
+  <script src="/shell.js?v=a11c1ear"></script>
+  <script src="/home.js?v=a11c1ear"></script>
 </body>
 </html>

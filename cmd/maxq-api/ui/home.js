@@ -198,9 +198,28 @@ function applyHomeStream(data) {
       ramCell.classList.remove("elevated");
     }
   }
-  // OOM story: never auto-fire. Mid-band Report/Freeze; Clear RAM only at critical.
+  // OOM story: never auto-fire. Mid-band Report/Freeze; Clear RAM unlocked only at critical.
+  // At elevated, still surface a locked Clear RAM affordance (match Actions catalog card).
   if (cta) cta.hidden = !(elevRam || highRam || hasFrozen || needsNovnc);
-  if (ctaClear) ctaClear.hidden = !highRam;
+  if (ctaClear) {
+    if (highRam) {
+      ctaClear.hidden = false;
+      ctaClear.textContent = "Clear RAM";
+      ctaClear.classList.remove("secondary", "locked");
+      ctaClear.title = "RAM critical (≥85%). Open Actions to run Clear RAM. Never auto-fire.";
+      ctaClear.setAttribute("aria-disabled", "false");
+    } else if (elevRam) {
+      ctaClear.hidden = false;
+      ctaClear.textContent = "Clear RAM · locked";
+      ctaClear.classList.add("secondary", "locked");
+      ctaClear.title = "Locked until OOM critical (≥85%). Now elevated — prefer Report RAM / Freeze quiet. Opens Actions catalog.";
+      ctaClear.setAttribute("aria-disabled", "true");
+    } else {
+      ctaClear.hidden = true;
+      ctaClear.classList.remove("secondary", "locked");
+      ctaClear.removeAttribute("aria-disabled");
+    }
+  }
   if (ctaFreeze) {
     ctaFreeze.hidden = !(elevRam && hasQuiet);
     if (!ctaFreeze.hidden) ctaFreeze.textContent = "Freeze " + quietCount + " quiet";

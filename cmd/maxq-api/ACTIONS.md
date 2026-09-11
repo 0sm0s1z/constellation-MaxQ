@@ -58,3 +58,4 @@ Box swap is typically **0**. Prefer Actions (report-ram → freeze-quiet / Clear
 - Never auto-fire Clear RAM, Freeze quiet, or Resume paused.
 - Glass labels match counts: Home/STREAM/Actions show `Freeze N quiet` and `Resume N frozen` (from live `/desktops` system).
 - **Actions catalog** (`/actions.html`): same Clear RAM Run gate (≥85%); shows RAM % + OOM band strip. Catalog cards stay visible when locked.
+- **Home** surfaces a locked `Clear RAM · locked` CTA at elevated (≥65%) so the catalog gate is visible before critical; Run remains Actions-only at ≥85%.

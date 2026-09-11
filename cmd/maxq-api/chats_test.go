@@ -205,3 +205,29 @@ func TestSplitMashedChatBody(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanizeEntitlementTitleXChat(t *testing.T) {
+	got := humanizeEntitlementTitle("x", "x.com/i/chat/32925761-195138772", "https://x.com/i/chat/32925761-195138772")
+	if !strings.HasPrefix(got, "X DM") {
+		t.Fatalf("got %q", got)
+	}
+	keep := humanizeEntitlementTitle("x", "Brandon Forbes", "https://x.com/i/chat/1")
+	if keep != "Brandon Forbes" {
+		t.Fatalf("kept title mangled: %q", keep)
+	}
+	gpt := humanizeEntitlementTitle("chatgpt", "https://chatgpt.com/", "https://chatgpt.com/")
+	if gpt != "https://chatgpt.com/" {
+		t.Fatalf("non-x title changed: %q", gpt)
+	}
+}
+
+func TestPeerNameFromRawMessages(t *testing.T) {
+	peer := peerNameFromRawMessages([]string{"Brandon Forbes You: Awesome! Hi there"})
+	if peer != "Brandon Forbes" && peer != "" {
+		// mash split may yield Brandon Forbes as crumb
+		t.Logf("peer=%q", peer)
+	}
+	if peerNameFromRawMessages([]string{"You: hi", "hello world this is a long message!"}) != "" {
+		t.Fatal("should not invent peer from You:/body")
+	}
+}

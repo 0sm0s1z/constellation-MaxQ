@@ -300,6 +300,67 @@ func chatLabelCrumb(s string) bool {
 	return true
 }
 
+
+// looksLikeURLChatTitle: CDP often returns the path/host as the tab title for X DMs.
+func looksLikeURLChatTitle(title string) bool {
+	t := strings.ToLower(strings.TrimSpace(title))
+	if t == "" || t == "x" || t == "twitter" {
+		return true
+	}
+	if strings.Contains(t, "://") {
+		return true
+	}
+	if strings.Contains(t, "x.com/") || strings.Contains(t, "twitter.com/") {
+		return true
+	}
+	if strings.Contains(t, "/i/chat") {
+		return true
+	}
+	return false
+}
+
+// humanizeEntitlementTitle replaces URL-ish X chat titles with a stable short label.
+func humanizeEntitlementTitle(site, title, rawURL string) string {
+	title = strings.TrimSpace(title)
+	if site != "x" && site != "twitter" {
+		return title
+	}
+	if !looksLikeURLChatTitle(title) {
+		return title
+	}
+	u, err := url.Parse(rawURL)
+	if err == nil && u != nil {
+		path := u.Path
+		if i := strings.LastIndex(path, "/"); i >= 0 && i+1 < len(path) {
+			id := path[i+1:]
+			if len(id) > 8 {
+				id = id[len(id)-6:]
+			}
+			if id != "" && id != "chat" {
+				return "X DM · " + id
+			}
+		}
+	}
+	return "X DM"
+}
+
+// peerNameFromRawMessages rescues Title-Case speaker crumbs before filterChatMessages drops them.
+func peerNameFromRawMessages(msgs []string) string {
+	for _, m := range msgs {
+		for _, part := range splitMashedChatBody(m) {
+			if !chatLabelCrumb(part) {
+				continue
+			}
+			low := strings.ToLower(part)
+			if strings.HasPrefix(low, "you:") || low == "you" {
+				continue
+			}
+			return part
+		}
+	}
+	return ""
+}
+
 func filterChatMessages(msgs []string) []string {
 	if len(msgs) == 0 {
 		return nil
@@ -402,6 +463,7 @@ func listEntitlementTabs(port int) []entitlementTab {
 		if title == "" || strings.EqualFold(title, site) {
 			title = site
 		}
+		title = humanizeEntitlementTitle(site, title, clean)
 		// Auth walls / sign-in tabs: omit from Crew entirely (not just skip CDP).
 		if skipChatBodyEval(clean, title) {
 			continue
@@ -438,7 +500,11 @@ func fillChatPreviews(tabs []entitlementTab, jobs []previewJob) {
 			if remain < to {
 				to = remain
 			}
-			msgs := filterChatMessages(fetchChatMessagesCDP(job.ws, to))
+			raw := fetchChatMessagesCDP(job.ws, to)
+			if peer := peerNameFromRawMessages(raw); peer != "" && looksLikeURLChatTitle(tabs[job.idx].Title) {
+				tabs[job.idx].Title = peer
+			}
+			msgs := filterChatMessages(raw)
 			if len(msgs) == 0 {
 				return
 			}
