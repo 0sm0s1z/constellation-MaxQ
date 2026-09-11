@@ -861,6 +861,8 @@ async function refresh({ initial = false, hard = false } = {}) {
     if (state.mode === "global") renderGlobal();
     else renderCrew();
     renderStrip();
+    // Re-render STREAM action labels after /desktops lands (Resume N frozen / Freeze N quiet).
+    renderStreamActions();
   } catch (e) {
     toast(e instanceof Error ? e.message : String(e));
   }
