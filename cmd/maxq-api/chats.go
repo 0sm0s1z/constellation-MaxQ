@@ -319,6 +319,27 @@ func looksLikeURLChatTitle(title string) bool {
 	return false
 }
 
+// needsXDMPeerUpgrade: true while title is still a URL or humanized placeholder
+// ("X DM" / "X DM · 138772"). Peer crumbs from CDP should replace these.
+func needsXDMPeerUpgrade(title string) bool {
+	if looksLikeURLChatTitle(title) {
+		return true
+	}
+	t := strings.TrimSpace(title)
+	if t == "" {
+		return true
+	}
+	low := strings.ToLower(t)
+	if low == "x dm" {
+		return true
+	}
+	// humanizeEntitlementTitle emits "X DM · <id>" (U+00B7 middle dot)
+	if strings.HasPrefix(low, "x dm ") {
+		return true
+	}
+	return false
+}
+
 // humanizeEntitlementTitle replaces URL-ish X chat titles with a stable short label.
 func humanizeEntitlementTitle(site, title, rawURL string) string {
 	title = strings.TrimSpace(title)
@@ -344,18 +365,63 @@ func humanizeEntitlementTitle(site, title, rawURL string) string {
 	return "X DM"
 }
 
-// peerNameFromRawMessages rescues Title-Case speaker crumbs before filterChatMessages drops them.
+// looksLikePersonName: looser than chatLabelCrumb — X DM usernames are often
+// "First last" with a lowercase surname (e.g. "Lonnie black").
+func looksLikePersonName(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	low := strings.ToLower(s)
+	if strings.HasPrefix(low, "you:") || low == "you" || low == "x dm" {
+		return false
+	}
+	if strings.ContainsAny(s, ".!?:;/@#") {
+		return false
+	}
+	r := []rune(s)
+	if len(r) < 2 || len(r) > 48 {
+		return false
+	}
+	parts := strings.Fields(s)
+	if len(parts) == 0 || len(parts) > 4 {
+		return false
+	}
+	// First token must start uppercase; remaining tokens letters/hyphen/apostrophe.
+	for i, p := range parts {
+		runes := []rune(p)
+		if len(runes) < 1 {
+			return false
+		}
+		if i == 0 {
+			if runes[0] < 'A' || runes[0] > 'Z' {
+				return false
+			}
+		} else if (runes[0] < 'A' || runes[0] > 'Z') && (runes[0] < 'a' || runes[0] > 'z') {
+			return false
+		}
+		for _, ch := range runes[1:] {
+			if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '-' || ch == '\'' {
+				continue
+			}
+			return false
+		}
+	}
+	return true
+}
+
+// peerNameFromRawMessages rescues speaker crumbs before filterChatMessages drops them.
 func peerNameFromRawMessages(msgs []string) string {
 	for _, m := range msgs {
 		for _, part := range splitMashedChatBody(m) {
-			if !chatLabelCrumb(part) {
-				continue
-			}
+			part = strings.TrimSpace(part)
 			low := strings.ToLower(part)
 			if strings.HasPrefix(low, "you:") || low == "you" {
 				continue
 			}
-			return part
+			if chatLabelCrumb(part) || looksLikePersonName(part) {
+				return part
+			}
 		}
 	}
 	return ""
@@ -501,7 +567,7 @@ func fillChatPreviews(tabs []entitlementTab, jobs []previewJob) {
 				to = remain
 			}
 			raw := fetchChatMessagesCDP(job.ws, to)
-			if peer := peerNameFromRawMessages(raw); peer != "" && looksLikeURLChatTitle(tabs[job.idx].Title) {
+			if peer := peerNameFromRawMessages(raw); peer != "" && needsXDMPeerUpgrade(tabs[job.idx].Title) {
 				tabs[job.idx].Title = peer
 			}
 			msgs := filterChatMessages(raw)
@@ -528,6 +594,34 @@ const chatBodyEvalExpr = `(() => {
     if (out.length && out[out.length - 1] === s) return;
     out.push(clip(s));
   };
+  const finish = () => {
+    if (!out.length) return out;
+    const head = out[0];
+    const headIsPeer = !!(head && head.length <= 48 && head.split(/\s+/).length <= 4 && !/[.!?:;]/.test(head));
+    const tail = out.slice(-N);
+    if (headIsPeer && tail.indexOf(head) < 0) return [head].concat(tail).slice(0, N + 1);
+    return tail;
+  };
+  const peerSels = [
+    '[data-testid="dm-conversation-username"]',
+    '[data-testid="dm-conversation-header"]',
+    '[data-testid="dmConversationName"]',
+    '[data-testid="UserName"]',
+    'header [role="heading"]',
+    '[role="main"] h2',
+  ];
+  for (const sel of peerSels) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    let t = clean(el.innerText || el.textContent || el.getAttribute('aria-label') || '');
+    t = t.split('\n')[0];
+    t = t.replace(/\s+Unencrypted$/i, '').trim();
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length >= 1 && words.length <= 4 && t.length >= 2 && t.length <= 48 && !/[.!?:;]/.test(t)) {
+      out.push(clip(t));
+      break;
+    }
+  }
   const prefer = [
     '[data-message-author-role]',
     '[data-testid="conversation-turn"]',
@@ -543,9 +637,8 @@ const chatBodyEvalExpr = `(() => {
     const nodes = document.querySelectorAll(sel);
     if (!nodes || !nodes.length) continue;
     for (const el of nodes) push(el.innerText || el.textContent || '');
-    if (out.length) return out.slice(-N);
+    if (out.length) return finish();
   }
-  // Fallback: last chunks of main/article (login or sparse DOM).
   const roots = document.querySelectorAll('main, article, [role="main"]');
   for (const root of roots) {
     const t = clean(root.innerText || root.textContent || '');
@@ -555,7 +648,7 @@ const chatBodyEvalExpr = `(() => {
     for (const p of pick) push(p);
     if (out.length) break;
   }
-  return out.slice(-N);
+  return finish();
 })()`
 
 func fetchChatMessagesCDP(wsURL string, timeout time.Duration) []string {

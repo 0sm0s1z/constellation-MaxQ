@@ -231,3 +231,52 @@ func TestPeerNameFromRawMessages(t *testing.T) {
 		t.Fatal("should not invent peer from You:/body")
 	}
 }
+
+func TestNeedsXDMPeerUpgrade(t *testing.T) {
+	if !needsXDMPeerUpgrade("x.com/i/chat/32925761-195138772") {
+		t.Fatal("URL title should need upgrade")
+	}
+	if !needsXDMPeerUpgrade("X DM · 138772") {
+		t.Fatal("humanized placeholder should need upgrade")
+	}
+	if !needsXDMPeerUpgrade("X DM") {
+		t.Fatal("bare X DM should need upgrade")
+	}
+	if needsXDMPeerUpgrade("Brandon Forbes") {
+		t.Fatal("real peer name must not need upgrade")
+	}
+}
+
+func TestPeerUpgradeAfterHumanize(t *testing.T) {
+	title := humanizeEntitlementTitle("x", "x.com/i/chat/32925761-195138772", "https://x.com/i/chat/32925761-195138772")
+	if !needsXDMPeerUpgrade(title) {
+		t.Fatalf("after humanize %q still needs peer upgrade", title)
+	}
+	peer := peerNameFromRawMessages([]string{"Brandon Forbes", "You: Awesome!", "hello there friend"})
+	if peer == "" {
+		t.Fatal("expected Brandon Forbes peer crumb")
+	}
+	if peer != "Brandon Forbes" {
+		t.Fatalf("peer=%q", peer)
+	}
+}
+
+
+
+func TestLooksLikePersonName(t *testing.T) {
+	if !looksLikePersonName("Lonnie black") {
+		t.Fatal("Lonnie black should count as peer")
+	}
+	if !looksLikePersonName("Chris Shields") {
+		t.Fatal("Chris Shields")
+	}
+	if looksLikePersonName("You: Awesome!") {
+		t.Fatal("You: rejected")
+	}
+	if looksLikePersonName("hello world this is a long message!") {
+		t.Fatal("sentence rejected")
+	}
+	if peerNameFromRawMessages([]string{"Lonnie black", "You: hi", "body text here ok"}) != "Lonnie black" {
+		t.Fatal("peer from raw")
+	}
+}
