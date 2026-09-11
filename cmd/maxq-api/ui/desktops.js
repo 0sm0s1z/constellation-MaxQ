@@ -465,7 +465,13 @@ function renderTelemetry() {
   setText("metric-load", fmtLoad(s.load1));
   setText("metric-gost", s.gost_running ? "running" : "stopped");
   const ramCard = document.querySelector("article.metric-ram");
-  if (ramCard) ramCard.classList.toggle("pressure", Number.isFinite(s.ram_percent) && s.ram_percent >= 85);
+  if (ramCard) {
+    const rp = Number(s.ram_percent);
+    const elev = Number.isFinite(rp) && rp >= 65 && rp < 85;
+    const high = Number.isFinite(rp) && rp >= 85;
+    ramCard.classList.toggle("elevated", elev);
+    ramCard.classList.toggle("pressure", high);
+  }
   setTextOpt("metric-cpu-detail", cores ? `${cores} cores` : "");
   setTextOpt("metric-ram-detail",
     (Number.isFinite(s.ram_used_bytes) && Number.isFinite(s.ram_total_bytes) && s.ram_total_bytes > 0)
@@ -623,12 +629,22 @@ function renderActionButton(a) {
       b.textContent = Number.isFinite(n) && n > 0
         ? `Confirm resume ${n} frozen?`
         : "Confirm resume frozen?";
+    } else if (a.id === "freeze-quiet-desks") {
+      const n = quietDeskCount();
+      b.textContent = n > 0
+        ? `Confirm freeze ${n} quiet?`
+        : "Confirm freeze quiet?";
     } else {
       b.textContent = `Confirm ${a.label}?`;
     }
     b.title = "Click again within 6s to run. Escape cancels.";
   } else {
-    b.textContent = a.label;
+    if (a.id === "freeze-quiet-desks") {
+      const n = quietDeskCount();
+      b.textContent = n > 0 ? `Freeze ${n} quiet` : a.label;
+    } else {
+      b.textContent = a.label;
+    }
     b.title = (a.description || a.label) + " — requires confirm";
   }
   return b;
@@ -658,6 +674,30 @@ function renderActionRuns() {
   host.appendChild(card);
 }
 
+// OOM bands (match Home): Clear RAM only at critical >=85%. Never auto-fire.
+function oomRamBands() {
+  const rp = Number(state.data && state.data.system && state.data.system.ram_percent);
+  return {
+    elev: Number.isFinite(rp) && rp >= 65,
+    high: Number.isFinite(rp) && rp >= 85,
+  };
+}
+
+function streamActionVisible(a) {
+  if (!a || !a.id) return false;
+  if (a.id === "clear-ram") return oomRamBands().high;
+  return true;
+}
+
+function quietDeskCount() {
+  const list = (state.data && state.data.desktops) || [];
+  return list.filter((d) => {
+    if (!d || !d.live || d.suspended || d.current) return false;
+    const act = String(d.activity || "").toLowerCase();
+    return act === "quiet" || act === "idle" || act === "paused";
+  }).length;
+}
+
 function renderStreamActions() {
   const ram = document.getElementById("stream-actions-ram");
   const extra = document.getElementById("stream-actions");
@@ -666,6 +706,7 @@ function renderStreamActions() {
   if (extra) extra.replaceChildren();
   if (crew) crew.replaceChildren();
   for (const a of state.actions) {
+    if (!streamActionVisible(a)) continue;
     if (actionBinds(a, "stream.ram") && ram) ram.appendChild(renderActionButton(a));
     else if (actionBinds(a, "stream") && extra) extra.appendChild(renderActionButton(a));
     if (crew && (actionBinds(a, "crew.desktop") || actionBinds(a, "stream"))) {

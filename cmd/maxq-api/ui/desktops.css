@@ -69,6 +69,8 @@ button,select{font:inherit}.ambient{position:fixed;border-radius:50%;filter:blur
 
 .tile-badges .busy{color:var(--peach);border:1px solid rgba(250,179,135,.35);border-radius:999px;padding:1px 6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
 .tile-badges .quiet{color:var(--overlay1);border:1px solid rgba(205,214,244,.12);border-radius:999px;padding:1px 6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.metric-ram.elevated{border-color:rgba(249,226,175,.45);background:rgba(249,226,175,.06)}
+.metric-ram.elevated strong{color:var(--yellow,#f9e2af)}
 .metric-ram.pressure{border-color:rgba(250,179,135,.55);background:rgba(250,179,135,.08)}
 .metric-ram.pressure strong{color:var(--peach)}
 #crew-stream-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}

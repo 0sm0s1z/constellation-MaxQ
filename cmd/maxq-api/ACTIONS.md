@@ -50,3 +50,9 @@ Password still first OSS lock. Until then, treating EVA `:7432` as the operator.
 
 Box swap is typically **0**. Prefer Actions (report-ram → freeze-quiet / Clear RAM) over enabling swap.
 **Do not enable swap without Matthew.**
+
+## Glass OOM bands (Home + Desktops STREAM)
+
+- **Elevated (≥65%)**: Home surfaces Report RAM + Freeze quiet; Desktops RAM tile gets `elevated` styling.
+- **Critical (≥85%)**: Home unlocks Clear RAM CTA; Desktops STREAM / Crew also show Clear RAM (hidden below 85%).
+- Never auto-fire Clear RAM, Freeze quiet, or Resume paused.
