@@ -206,7 +206,10 @@ function applyHomeStream(data) {
     if (!ctaFreeze.hidden) ctaFreeze.textContent = "Freeze " + quietCount + " quiet";
   }
   if (ctaReport) ctaReport.hidden = !elevRam;
-  if (ctaResume) ctaResume.hidden = !hasFrozen;
+  if (ctaResume) {
+    ctaResume.hidden = !hasFrozen;
+    if (!ctaResume.hidden) ctaResume.textContent = "Resume " + Math.trunc(suspendedCount) + " frozen";
+  }
   if (ctaNovnc) ctaNovnc.hidden = !needsNovnc;
 
   setStream("hs-gost", sys.gost_running ? "running" : "stopped", "/box");

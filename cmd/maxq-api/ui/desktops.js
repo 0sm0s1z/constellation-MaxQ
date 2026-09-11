@@ -642,6 +642,9 @@ function renderActionButton(a) {
     if (a.id === "freeze-quiet-desks") {
       const n = quietDeskCount();
       b.textContent = n > 0 ? `Freeze ${n} quiet` : a.label;
+    } else if (a.id === "resume-paused") {
+      const n = Number(state.data && state.data.system && state.data.system.suspended_count);
+      b.textContent = Number.isFinite(n) && n > 0 ? `Resume ${n} frozen` : a.label;
     } else {
       b.textContent = a.label;
     }

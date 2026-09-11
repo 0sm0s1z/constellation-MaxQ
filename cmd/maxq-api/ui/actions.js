@@ -21,7 +21,7 @@ const MaxQActions = (() => {
   }
 
   // OOM bands match Home + Desktops STREAM: Clear RAM Run only at critical >=85%.
-  const state = { ramPercent: NaN, elev: false, high: false };
+  const state = { ramPercent: NaN, elev: false, high: false, suspendedCount: 0, quietCount: 0 };
 
   function oomRamBands(rp) {
     const n = Number(rp);
@@ -32,11 +32,19 @@ const MaxQActions = (() => {
     };
   }
 
-  function updateOomStrip(sys) {
+  function updateOomStrip(sys, desks) {
     const bands = oomRamBands(sys && sys.ram_percent);
     state.ramPercent = bands.rp;
     state.elev = bands.elev;
     state.high = bands.high;
+    const sc = Number(sys && sys.suspended_count);
+    state.suspendedCount = Number.isFinite(sc) && sc > 0 ? Math.trunc(sc) : 0;
+    const list = Array.isArray(desks) ? desks : [];
+    state.quietCount = list.filter((d) => {
+      if (!d || !d.live || d.suspended || d.current) return false;
+      const act = String(d.activity || "").toLowerCase();
+      return act === "quiet" || act === "idle" || act === "paused";
+    }).length;
     const ramEl = $("act-ram");
     const oomEl = $("act-oom");
     const tile = $("act-ram-tile");
@@ -126,8 +134,17 @@ const MaxQActions = (() => {
       } else if (a.id === "clear-ram" && a.armed && clearRamArmed()) {
         badges.push('<span class="p2-badge warn">unlocked</span>');
       }
+      if (a.id === "resume-paused" && state.suspendedCount > 0) {
+        badges.push('<span class="p2-badge warn">' + state.suspendedCount + ' frozen</span>');
+      }
+      if (a.id === "freeze-quiet-desks" && state.quietCount > 0) {
+        badges.push('<span class="p2-badge dim">' + state.quietCount + ' quiet</span>');
+      }
+      let title = a.label || a.id;
+      if (a.id === "resume-paused" && state.suspendedCount > 0) title = "Resume " + state.suspendedCount + " frozen";
+      if (a.id === "freeze-quiet-desks" && state.quietCount > 0) title = "Freeze " + state.quietCount + " quiet";
       return `<article class="p2-card" data-id="${escapeHtml(a.id)}">
-        <h3>${escapeHtml(a.label || a.id)}</h3>
+        <h3>${escapeHtml(title)}</h3>
         <p>${escapeHtml(a.description || "")}</p>
         ${unarmedHint}
         <div class="row">${badges.join("")}</div>
@@ -242,9 +259,9 @@ const MaxQActions = (() => {
     try {
       try {
         const desks = await MaxQShell.getJSON("/desktops", "application/json");
-        updateOomStrip((desks && desks.system) || {});
+        updateOomStrip((desks && desks.system) || {}, (desks && desks.desktops) || []);
       } catch (_) {
-        updateOomStrip({});
+        updateOomStrip({}, []);
       }
       const data = await MaxQShell.getJSON("/actions", "application/json");
       renderActions(data.actions || []);
