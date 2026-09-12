@@ -263,6 +263,30 @@ func TestPeerUpgradeAfterHumanize(t *testing.T) {
 
 
 
+func TestFilterDropsPersonNamePeerCrumb(t *testing.T) {
+	got := filterChatMessages([]string{
+		"Lonnie black",
+		"Feel free to let me know the tech topics that you find the most interesting",
+		"You: Awesome!",
+		"The results kinda suck right now as I've been focusing on the platform",
+	})
+	for _, m := range got {
+		if strings.EqualFold(strings.TrimSpace(m), "Lonnie black") {
+			t.Fatalf("peer crumb survived in body: %#v", got)
+		}
+	}
+	if len(got) < 2 {
+		t.Fatalf("expected real bodies kept, got %#v", got)
+	}
+	// Title-case peer crumb also stays out of body (chatLabelCrumb path).
+	got2 := filterChatMessages([]string{"Brandon Forbes", "You: hi there friend"})
+	for _, m := range got2 {
+		if strings.EqualFold(strings.TrimSpace(m), "Brandon Forbes") {
+			t.Fatalf("title-case peer survived: %#v", got2)
+		}
+	}
+}
+
 func TestLooksLikePersonName(t *testing.T) {
 	if !looksLikePersonName("Lonnie black") {
 		t.Fatal("Lonnie black should count as peer")

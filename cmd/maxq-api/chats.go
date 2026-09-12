@@ -434,7 +434,8 @@ func filterChatMessages(msgs []string) []string {
 	out := make([]string, 0, len(msgs))
 	for _, m := range msgs {
 		for _, part := range splitMashedChatBody(m) {
-			if chatChromeNoise(part) || chatLabelCrumb(part) {
+			// Peer crumbs ("Lonnie black" / "Brandon Forbes") belong in title, not body.
+			if chatChromeNoise(part) || chatLabelCrumb(part) || looksLikePersonName(part) {
 				continue
 			}
 			out = append(out, part)

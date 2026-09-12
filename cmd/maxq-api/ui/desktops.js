@@ -417,10 +417,14 @@ function renderCrewChat(d) {
 function chatBodyMessages(chat) {
   if (!chat || typeof chat !== "object") return [];
   const msgs = Array.isArray(chat.messages) ? chat.messages : [];
+  const title = String(chat.title || "").trim().toLowerCase();
   const out = [];
   for (const m of msgs) {
     const t = String(m || "").trim();
-    if (t) out.push(t);
+    if (!t) continue;
+    // Peer/title crumb already shown as chat-title — keep body messages only.
+    if (title && t.toLowerCase() === title) continue;
+    out.push(t);
   }
   // Cap visible stack for glass density (API already caps ~5).
   return out.slice(-4);
