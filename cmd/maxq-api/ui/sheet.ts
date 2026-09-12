@@ -1,113 +1,21 @@
-// MaxQ settings sheet (TypeScript, no framework).
-type Gost = { enabled: boolean; running: boolean; listen: string; upstream: string; iface: string; intercept: boolean };
-type Clis = { installed: string; skipped: string };
-type Status = { state: string; theme: string; gost: Gost; clis: Clis; api: { listen: string } };
-type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; source: string; skip_auto_review: boolean };
-type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
-type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
-
-const $ = (id: string): HTMLElement => {
-  const el = document.getElementById(id);
-  if (!el) throw new Error("missing #" + id);
-  return el;
-};
-
-async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(path, init);
-  if (!r.ok) {
-    let extra = "";
-    try { const j = (await r.json()) as { error?: string }; extra = j.error ? ": " + j.error : ""; } catch { /* non-json error */ }
-    throw new Error(path + " " + r.status + extra);
-  }
-  if (r.status === 204) return undefined as T;
-  return r.json() as Promise<T>;
-}
-
-async function getStatus(): Promise<Status> { return requestJSON<Status>("/status"); }
-async function getPolicy(): Promise<Policy> { return requestJSON<Policy>("/policy"); }
-async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
-async function getDesktops(): Promise<{ desktops: Desktop[]; errors: { connection_name: string; error: string }[] }> { return requestJSON("/desktops"); }
-async function postJSON(path: string, body: unknown): Promise<unknown> {
-  return requestJSON(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
-}
-
-function renderStatus(s: Status): void {
-  $("st-state").textContent = s.state;
-  $("st-theme").textContent = s.theme;
-  $("st-gost").textContent = (s.gost.enabled ? "enabled" : "off") + " / " + (s.gost.running ? "running" : "stopped");
-  $("st-clis").textContent = [s.clis.installed, s.clis.skipped].filter((x) => x && x.length).join(" ") || "—";
-  $("st-api").textContent = s.api.listen;
-  const pill = $("pill"); pill.textContent = s.state; pill.className = "pill " + (s.state === "applied" ? "on" : "off");
-}
-
-function renderPolicy(policy: Policy): void {
-  const enabled = $("approvals-enabled") as HTMLInputElement;
-  enabled.checked = policy.approvals.mode === "on";
-  $("st-approvals").textContent = policy.approvals.mode === "off"
-    ? "Off · always allow · host Auto-review bypassed"
-    : "On · approval prompts allowed";
-}
-
-function renderConnections(connections: Connection[]): void {
-  const list = $("connections"); list.replaceChildren();
-  if (!connections.length) { const empty = document.createElement("li"); empty.className = "muted"; empty.textContent = "No remote APIs connected."; list.append(empty); return; }
-  for (const c of connections) {
-    const item = document.createElement("li"); item.className = "connection";
-    const text = document.createElement("div");
-    const name = document.createElement("strong"); name.textContent = c.name; text.append(name);
-    const detail = document.createElement("small"); detail.textContent = c.base_url + (c.auth_configured ? " · auth configured" : ""); text.append(detail);
-    const remove = document.createElement("button"); remove.type = "button"; remove.className = "remove"; remove.textContent = "Remove";
-    remove.addEventListener("click", () => act(async () => { await requestJSON("/connections/" + encodeURIComponent(c.id), { method: "DELETE" }); }));
-    item.append(text, remove); list.append(item);
-  }
-}
-
-function renderDesktops(desktops: Desktop[], errors: { connection_name: string; error: string }[]): void {
-  const root = $("desktops"); root.replaceChildren();
-  for (const error of errors) { const p = document.createElement("p"); p.className = "msg"; p.textContent = error.connection_name + ": " + error.error; root.append(p); }
-  if (!desktops.length && !errors.length) { const p = document.createElement("p"); p.className = "muted"; p.textContent = "No desktops reported by connected APIs."; root.append(p); return; }
-  for (const d of desktops) {
-    const article = document.createElement("article"); article.className = "desktop";
-    const title = document.createElement("strong"); title.textContent = String(d.name || d.title || d.id || "Unnamed desktop");
-    const source = document.createElement("small"); source.textContent = String(d.box_identity || d.connection_name || "Unknown box") + " · " + String(d.connection_name || d.source_api || "API");
-    article.append(title, source);
-    if (d.id && d.connection_id) {
-      const watch = document.createElement("button"); watch.type = "button"; watch.textContent = "Watch";
-      watch.addEventListener("click", () => act(() => postJSON("/desktops/action", { connection_id: d.connection_id, desktop_id: d.id, action: "watch" })));
-      article.append(watch);
-    }
-    root.append(article);
-  }
-}
-
-function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
-function busy(on: boolean): void {
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "approvals-enabled"].forEach((id) => { ($(id) as HTMLButtonElement | HTMLInputElement).disabled = on; });
-}
-async function act(fn: () => Promise<unknown>): Promise<void> {
-  showMsg(""); busy(true);
-  try { await fn(); await refresh(); } catch (e) { showMsg(e instanceof Error ? e.message : String(e)); } finally { busy(false); }
-}
-async function refresh(): Promise<void> {
-  const [status, policy, connections, desktops] = await Promise.all([getStatus(), getPolicy(), getConnections(), getDesktops()]);
-  renderStatus(status); renderPolicy(policy); renderConnections(connections.connections); renderDesktops(desktops.desktops, desktops.errors || []);
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  $("btn-apply").addEventListener("click", () => act(() => postJSON("/apply", {})));
-  $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
-  $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
-  $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
-  $("approvals-enabled").addEventListener("change", () => {
-    const enabled = $("approvals-enabled") as HTMLInputElement;
-    act(() => postJSON("/policy", { enabled: enabled.checked }));
-  });
-  $("connection-form").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const name = $("connection-name") as HTMLInputElement;
-    const baseURL = $("connection-url") as HTMLInputElement;
-    const auth = $("connection-auth") as HTMLInputElement;
-    act(async () => { await postJSON("/connections", { name: name.value, base_url: baseURL.value, auth: auth.value }); name.value = ""; baseURL.value = ""; auth.value = ""; });
-  });
-  refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e)));
-});
+type SiteKey="chatgpt"|"grok"|"claude"|"discord"|"slack";
+type Defaults={default_ai_chat:"chatgpt"|"grok"|"claude";sites:Record<SiteKey,string>};
+type Status={state:string;theme:string;gost:{enabled:boolean;running:boolean};clis:{installed:string;preexisting:string};api:{listen:string}};
+type Desktop={ghostty:{installed:boolean;default:boolean;version:string};launcher:{name:string;keybind:string};defaults:Defaults};
+type SBOMEntry={name:string;version:string;path:string;source:"maxq"|"preexisting"};
+const SITE_KEYS:SiteKey[]=["chatgpt","grok","claude","discord","slack"];
+function $<T extends HTMLElement=HTMLElement>(id:string):T{const el=document.getElementById(id);if(!el)throw new Error("missing #"+id);return el as T}
+async function getJSON<T>(path:string):Promise<T>{const r=await fetch(path);if(!r.ok)throw new Error(path+" "+r.status);return r.json() as Promise<T>}
+async function postJSON(path:string,body:unknown):Promise<unknown>{const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body??{})});if(!r.ok){let extra="";try{const j=await r.json() as {error?:string};extra=j.error?": "+j.error:""}catch{}throw new Error(path+" "+r.status+extra)}return r.json()}
+function renderStatus(s:Status,d:Desktop):void{$("st-state").textContent=s.state;$("st-theme").textContent=s.theme;const gs=d.ghostty.installed?(d.ghostty.default?"default":"installed / not default"):"missing";$("st-ghostty").textContent=[gs,d.ghostty.version].filter(Boolean).join(" · ");$("st-launcher").textContent=d.launcher.name+" · "+d.launcher.keybind;$("st-gost").textContent=(s.gost.enabled?"enabled":"off")+" / "+(s.gost.running?"running":"stopped");$("st-clis").textContent=[s.clis.installed,s.clis.preexisting].filter(Boolean).join(" ")||"—";$("st-api").textContent=s.api.listen;const p=$("pill");p.textContent=s.state;p.className="pill "+(s.state==="applied"?"on":"off")}
+function renderDefaults(d:Defaults):void{($("default-ai") as HTMLSelectElement).value=d.default_ai_chat;SITE_KEYS.forEach(k=>(($("site-"+k) as HTMLInputElement).value=d.sites[k]||""));const list=$("shortcuts");list.textContent="";const entries:Array<[string,string]>=[["Super+Space","launcher"],["MaxQ AI Chat",d.sites[d.default_ai_chat]||d.default_ai_chat],["ChatGPT",d.sites.chatgpt],["Grok",d.sites.grok],["Claude",d.sites.claude],["Discord",d.sites.discord],["Slack",d.sites.slack],["Ghostty","$HOME/bin/ghostty"],["MaxQ Settings","127.0.0.1:7432"]];for(const [name,target] of entries){const li=document.createElement("li"),r=document.createElement("span");r.textContent=target||"—";li.append(document.createTextNode(name),r);list.appendChild(li)}}
+function renderPackages(items:SBOMEntry[]):void{const list=$("packages");list.textContent="";for(const p of items){const li=document.createElement("li"),r=document.createElement("span");r.textContent=[p.version,p.source,p.path].filter(Boolean).join(" · ");li.append(document.createTextNode(p.name),r);list.appendChild(li)}if(!items.length){const li=document.createElement("li");li.textContent="No SBOM entries yet";list.appendChild(li)}}
+type Desk={display:string;n:number;rfb:number;http:number;token?:string;live:boolean;current:boolean};
+function viewerURL(d:Desk):string{const host=location.hostname||"127.0.0.1";return `http://${host}:${d.http}/vnc.html?autoconnect=true&resize=scale`}
+function renderDesktops(items:Desk[]):void{const list=$("desktops");list.textContent="";if(!items.length){const li=document.createElement("li");li.textContent="No Xvfb sessions";list.appendChild(li);return}for(const d of items){const li=document.createElement("li");if(d.current)li.classList.add("current");const meta=document.createElement("span");meta.textContent=[d.live?"live":"token",":"+d.http,d.token?"token "+d.token:""].filter(Boolean).join(" · ");const btn=document.createElement("button");btn.type="button";btn.textContent=d.current?"this desktop":"view";btn.addEventListener("click",()=>{[...list.children].forEach(el=>el.classList.remove("active"));li.classList.add("active");const frame=$<HTMLIFrameElement>("desktop-view");frame.hidden=false;frame.src=viewerURL(d)});li.append(document.createTextNode(d.display+(d.current?" · current":"")),meta,btn);list.appendChild(li)}}
+function readDefaults():Defaults{const sites={} as Record<SiteKey,string>;SITE_KEYS.forEach(k=>sites[k]=($("site-"+k) as HTMLInputElement).value.trim());return{default_ai_chat:($("default-ai") as HTMLSelectElement).value as Defaults["default_ai_chat"],sites}}
+function msg(text:string,ok=false):void{const e=$("msg");e.hidden=!text;e.textContent=text;e.style.color=ok?"var(--green)":"var(--red)"}
+async function refresh():Promise<void>{const [s,d,defs,sbom,desks]=await Promise.all([getJSON<Status>("/status"),getJSON<Desktop>("/desktop"),getJSON<Defaults>("/defaults"),getJSON<SBOMEntry[]>("/sbom"),getJSON<Desk[]>("/desktops")]);renderStatus(s,d);renderDefaults(defs);renderPackages(sbom);renderDesktops(desks)}
+function busy(on:boolean):void{["btn-apply","btn-revert","btn-proxy-on","btn-proxy-off","btn-save-defaults"].forEach(id=>(($(id) as HTMLButtonElement).disabled=on))}
+async function act(fn:()=>Promise<unknown>,success=""):Promise<void>{msg("");busy(true);try{await fn();await refresh();if(success)msg(success,true)}catch(e){msg(e instanceof Error?e.message:String(e))}finally{busy(false)}}
+window.addEventListener("DOMContentLoaded",()=>{$("btn-apply").addEventListener("click",()=>{void act(()=>postJSON("/apply",{}))});$("btn-revert").addEventListener("click",()=>{void act(()=>postJSON("/revert",{}))});$("btn-proxy-on").addEventListener("click",()=>{void act(()=>postJSON("/proxy",{enabled:true}))});$("btn-proxy-off").addEventListener("click",()=>{void act(()=>postJSON("/proxy",{enabled:false}))});$("defaults-form").addEventListener("submit",e=>{e.preventDefault();void act(()=>postJSON("/defaults",readDefaults()),"defaults saved")});void refresh().catch(e=>msg(e instanceof Error?e.message:String(e)))})

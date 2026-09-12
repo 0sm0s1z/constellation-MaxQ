@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Handoff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/pass2.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>HANDOFF</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main">
+      <header class="p2-hero">
+        <div>
+          <p class="op-kicker">Auth</p>
+          <h1>Handoff</h1>
+          <p>Hand an authentication step back to the operator. Agents never capture passwords — the browser session stays in an isolated profile under <code>$HOME</code>.</p>
+        </div>
+        <div class="p2-toolbar">
+          <button type="button" id="handoff-refresh" class="primary">Refresh status</button>
+        </div>
+      </header>
+
+      <section class="card p2-meta">
+        <div><span>desktops live</span><strong id="ho-desktops">—</strong></div>
+        <div><span>noVNC ready</span><strong id="ho-viewers">—</strong></div>
+        <div><span>frozen</span><strong id="ho-frozen">—</strong></div>
+        <div><span>sessions</span><strong id="ho-sessions">—</strong></div>
+        <div><span>signed-in</span><strong id="ho-signed">—</strong></div>
+        <div><span>status</span><strong id="ho-status">idle</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>flow</h2>
+        <div id="ho-flow" class="p2-steps">
+          <div class="p2-step"><div class="n">…</div><div><h3>loading</h3><p></p></div></div>
+        </div>
+        <div class="p2-links" id="ho-links"></div>
+      </section>
+
+
+      <section class="card">
+        <h2>live desks → crew</h2>
+        <p class="p2-hint">Read-only. Open a live desk in Crew to finish auth — agents never capture passwords.</p>
+        <div class="p2-table-wrap">
+          <table class="p2-table" aria-label="Live desks for crew handoff">
+            <thead>
+              <tr>
+                <th>Display</th>
+                <th>Status</th>
+                <th>Viewer</th>
+                <th>Crew</th>
+              </tr>
+            </thead>
+            <tbody id="ho-desks">
+              <tr><td colspan="4" class="p2-empty">loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>session evidence</h2>
+        <p class="p2-hint">Sample from <code>/api/stubs/sessions</code> — cookie contents never shown.</p>
+        <div class="p2-table-wrap">
+          <table class="p2-table" aria-label="Handoff session sample">
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>Profile</th>
+                <th>Auth</th>
+                <th>Last active</th>
+              </tr>
+            </thead>
+            <tbody id="ho-body">
+              <tr><td colspan="4" class="p2-empty">loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <p id="ho-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/handoff.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{}); MaxQHandoff.boot();});</script>
+</body>
+</html>

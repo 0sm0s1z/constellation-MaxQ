@@ -1,23 +1,59 @@
-// MaxQ settings sheet (compiled from sheet.ts; no framework).
 "use strict";
-function $(id) { const el = document.getElementById(id); if (!el) throw new Error("missing #" + id); return el; }
-async function requestJSON(path, init) {
-  const r = await fetch(path, init);
-  if (!r.ok) { let extra = ""; try { const j = await r.json(); extra = j.error ? ": " + j.error : ""; } catch {} throw new Error(path + " " + r.status + extra); }
-  if (r.status === 204) return undefined;
-  return r.json();
+const SITE_KEYS=["chatgpt","grok","claude","discord","slack"];
+function $(id){const el=document.getElementById(id);if(!el)throw new Error("missing #"+id);return el}
+async function getJSON(path){const r=await fetch(path);if(!r.ok)throw new Error(path+" "+r.status);return r.json()}
+async function postJSON(path,body){const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body??{})});if(!r.ok){let extra="";try{const j=await r.json();extra=j.error?": "+j.error:""}catch{}throw new Error(path+" "+r.status+extra)}return r.json()}
+function renderStatus(s,d){$("st-state").textContent=s.state;$("st-theme").textContent=s.theme;const gs=d.ghostty.installed?(d.ghostty.default?"default":"installed / not default"):"missing";$("st-ghostty").textContent=[gs,d.ghostty.version].filter(Boolean).join(" · ");$("st-launcher").textContent=d.launcher.name+" · "+d.launcher.keybind;$("st-gost").textContent=(s.gost.enabled?"enabled":"off")+" / "+(s.gost.running?"running":"stopped");$("st-clis").textContent=[s.clis.installed,s.clis.preexisting].filter(Boolean).join(" ")||"—";$("st-api").textContent=s.api.listen;$("st-api-public").textContent=s.api.api_public?"public":"loopback";$("st-ui-public").textContent=s.api.ui_public?"public":"loopback";const p=$("pill");p.textContent=s.state;p.className="pill "+(s.state==="applied"?"on":"off")}
+function renderDefaults(d){$("default-ai").value=d.default_ai_chat;SITE_KEYS.forEach(k=>{$("site-"+k).value=d.sites[k]||""});const list=$("shortcuts");list.textContent="";const entries=[["Super+Space","launcher"],["MaxQ AI Chat",d.sites[d.default_ai_chat]||d.default_ai_chat],["ChatGPT",d.sites.chatgpt],["Grok",d.sites.grok],["Claude",d.sites.claude],["Discord",d.sites.discord],["Slack",d.sites.slack],["Ghostty","$HOME/bin/ghostty"],["MaxQ Settings","127.0.0.1:7432"]];for(const [name,target] of entries){const li=document.createElement("li"),r=document.createElement("span");r.textContent=target||"—";li.append(document.createTextNode(name),r);list.appendChild(li)}}
+function renderPackages(items){const list=$("packages");list.textContent="";for(const p of items){const li=document.createElement("li"),r=document.createElement("span");r.textContent=[p.version,p.source,p.path].filter(Boolean).join(" · ");li.append(document.createTextNode(p.name),r);list.appendChild(li)}if(!items.length){const li=document.createElement("li");li.textContent="No SBOM entries yet";list.appendChild(li)}}
+
+function viewerURL(d){const host=location.hostname||"127.0.0.1";return `http://${host}:${d.http}/vnc.html?autoconnect=true&resize=scale`}
+function renderDesktops(items){const list=$("desktops");list.textContent="";if(!items.length){const li=document.createElement("li");li.textContent="No Xvfb sessions";list.appendChild(li);return}for(const d of items){const li=document.createElement("li");if(d.current)li.classList.add("current");const meta=document.createElement("span");meta.textContent=[d.live?"live":"token",":"+d.http,d.token?"token "+d.token:""].filter(Boolean).join(" · ");const btn=document.createElement("button");btn.type="button";btn.textContent=d.current?"this desktop":"view";btn.addEventListener("click",()=>{[...list.children].forEach(el=>el.classList.remove("active"));li.classList.add("active");const frame=$("desktop-view");frame.hidden=false;frame.src=viewerURL(d)});li.append(document.createTextNode(d.display+(d.current?" · current":"")),meta,btn);list.appendChild(li)}}
+function readDefaults(){const sites={};SITE_KEYS.forEach(k=>sites[k]=$("site-"+k).value.trim());return{default_ai_chat:$("default-ai").value,sites}}
+function msg(text,ok=false){const e=$("msg");e.hidden=!text;e.textContent=text;e.style.color=ok?"var(--green)":"var(--red)"}
+function authMsg(text,ok=false){const e=$("auth-msg");e.hidden=!text;e.textContent=text;e.style.color=ok?"var(--green)":"var(--red)"}
+function renderAuth(a){
+  $("st-auth").textContent=a.operator_auth?"ON — glass locked":"OFF — glass open";
+  $("st-auth-hash").textContent=a.has_hash?"set (bcrypt file)":"not set";
+  const on=$("btn-auth-on"), off=$("btn-auth-off");
+  on.disabled=!a.has_hash||!!a.operator_auth;
+  on.title=a.operator_auth?"Already enabled":(a.has_hash?"DANGER: locks EVA :7432":"Set a password hash first");
+  off.disabled=!a.operator_auth;
+  off.title=a.operator_auth?"Turn wall off (opens glass)":"Auth already off";
 }
-async function getStatus() { return requestJSON("/status"); }
-async function getPolicy() { return requestJSON("/policy"); }
-async function getConnections() { return requestJSON("/connections"); }
-async function getDesktops() { return requestJSON("/desktops"); }
-async function postJSON(path, body) { return requestJSON(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) }); }
-function renderStatus(s) { $("st-state").textContent = s.state; $("st-theme").textContent = s.theme; $("st-gost").textContent = (s.gost.enabled ? "enabled" : "off") + " / " + (s.gost.running ? "running" : "stopped"); $("st-clis").textContent = [s.clis.installed, s.clis.skipped].filter((x) => x && x.length).join(" ") || "—"; $("st-api").textContent = s.api.listen; const pill = $("pill"); pill.textContent = s.state; pill.className = "pill " + (s.state === "applied" ? "on" : "off"); }
-function renderPolicy(policy) { const enabled = $("approvals-enabled"); enabled.checked = policy.approvals.mode === "on"; $("st-approvals").textContent = policy.approvals.mode === "off" ? "Off · always allow · host Auto-review bypassed" : "On · approval prompts allowed"; }
-function renderConnections(connections) { const list = $("connections"); list.replaceChildren(); if (!connections.length) { const empty = document.createElement("li"); empty.className = "muted"; empty.textContent = "No remote APIs connected."; list.append(empty); return; } for (const c of connections) { const item = document.createElement("li"); item.className = "connection"; const text = document.createElement("div"); const name = document.createElement("strong"); name.textContent = c.name; text.append(name); const detail = document.createElement("small"); detail.textContent = c.base_url + (c.auth_configured ? " · auth configured" : ""); text.append(detail); const remove = document.createElement("button"); remove.type = "button"; remove.className = "remove"; remove.textContent = "Remove"; remove.addEventListener("click", () => act(async () => { await requestJSON("/connections/" + encodeURIComponent(c.id), { method: "DELETE" }); })); item.append(text, remove); list.append(item); } }
-function renderDesktops(desktops, errors) { const root = $("desktops"); root.replaceChildren(); for (const error of errors) { const p = document.createElement("p"); p.className = "msg"; p.textContent = error.connection_name + ": " + error.error; root.append(p); } if (!desktops.length && !errors.length) { const p = document.createElement("p"); p.className = "muted"; p.textContent = "No desktops reported by connected APIs."; root.append(p); return; } for (const d of desktops) { const article = document.createElement("article"); article.className = "desktop"; const title = document.createElement("strong"); title.textContent = String(d.name || d.title || d.id || "Unnamed desktop"); const source = document.createElement("small"); source.textContent = String(d.box_identity || d.connection_name || "Unknown box") + " · " + String(d.connection_name || d.source_api || "API"); article.append(title, source); if (d.id && d.connection_id) { const watch = document.createElement("button"); watch.type = "button"; watch.textContent = "Watch"; watch.addEventListener("click", () => act(() => postJSON("/desktops/action", { connection_id: d.connection_id, desktop_id: d.id, action: "watch" }))); article.append(watch); } root.append(article); } }
-function showMsg(text) { const el = $("msg"); el.hidden = !text; el.textContent = text; }
-function busy(on) { ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "approvals-enabled"].forEach((id) => { $(id).disabled = on; }); }
-async function act(fn) { showMsg(""); busy(true); try { await fn(); await refresh(); } catch (e) { showMsg(e instanceof Error ? e.message : String(e)); } finally { busy(false); } }
-async function refresh() { const [status, policy, connections, desktops] = await Promise.all([getStatus(), getPolicy(), getConnections(), getDesktops()]); renderStatus(status); renderPolicy(policy); renderConnections(connections.connections); renderDesktops(desktops.desktops, desktops.errors || []); }
-window.addEventListener("DOMContentLoaded", () => { $("btn-apply").addEventListener("click", () => act(() => postJSON("/apply", {}))); $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {}))); $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true }))); $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false }))); $("approvals-enabled").addEventListener("change", () => { const enabled = $("approvals-enabled"); act(() => postJSON("/policy", { enabled: enabled.checked })); }); $("connection-form").addEventListener("submit", (event) => { event.preventDefault(); const name = $("connection-name"); const baseURL = $("connection-url"); const auth = $("connection-auth"); act(async () => { await postJSON("/connections", { name: name.value, base_url: baseURL.value, auth: auth.value }); name.value = ""; baseURL.value = ""; auth.value = ""; }); }); refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e))); });
+async function refreshAuth(){const a=await getJSON("/api/auth/status");renderAuth(a);return a}
+async function refresh(){const [s,d,defs,sbom]=await Promise.all([getJSON("/status"),getJSON("/desktop"),getJSON("/defaults"),getJSON("/sbom")]);renderStatus(s,d);renderDefaults(defs);renderPackages(sbom);try{await refreshAuth()}catch(e){authMsg(e instanceof Error?e.message:String(e))}}
+function busy(on){["btn-apply","btn-revert","btn-proxy-on","btn-proxy-off","btn-save-defaults","btn-api-public-on","btn-api-public-off","btn-ui-public-on","btn-ui-public-off","btn-set-password"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=on})}
+async function act(fn,success=""){msg("");busy(true);try{await fn();await refresh();if(success)msg(success,true)}catch(e){msg(e instanceof Error?e.message:String(e))}finally{busy(false)}}
+async function authAct(fn,success=""){authMsg("");try{await fn();await refreshAuth();if(success)authMsg(success,true)}catch(e){authMsg(e instanceof Error?e.message:String(e))}}
+window.addEventListener("DOMContentLoaded",()=>{
+  $("btn-apply").addEventListener("click",()=>act(()=>postJSON("/apply",{})));
+  $("btn-revert").addEventListener("click",()=>act(()=>postJSON("/revert",{})));
+  $("btn-proxy-on").addEventListener("click",()=>act(()=>postJSON("/proxy",{enabled:true})));
+  $("btn-proxy-off").addEventListener("click",()=>act(()=>postJSON("/proxy",{enabled:false})));
+  $("btn-api-public-on").addEventListener("click",()=>act(()=>postJSON("/bind",{api_public:true})));
+  $("btn-api-public-off").addEventListener("click",()=>act(()=>postJSON("/bind",{api_public:false})));
+  $("btn-ui-public-on").addEventListener("click",()=>act(()=>postJSON("/bind",{ui_public:true})));
+  $("btn-ui-public-off").addEventListener("click",()=>act(()=>postJSON("/bind",{ui_public:false})));
+  $("defaults-form").addEventListener("submit",e=>{e.preventDefault();act(()=>postJSON("/defaults",readDefaults()),"defaults saved")});
+  $("auth-password-form").addEventListener("submit",e=>{
+    e.preventDefault();
+    const password=$("auth-password").value;
+    const current_password=$("auth-current").value;
+    authAct(async()=>{
+      await postJSON("/api/auth/set-password",{password,current_password});
+      $("auth-password").value="";
+      $("auth-current").value="";
+    },"password hash stored (0600); auth still OFF until you Enable");
+  });
+  $("btn-auth-on").addEventListener("click",()=>{
+    if(!confirm("DANGER: Enable operator_auth? This LOCKS EVA :7432. Unauthenticated callers get 401 /login redirect. Only continue if you intend to lock the glass."))return;
+    const password=$("auth-current").value;
+    authAct(()=>postJSON("/api/auth/operator",{enabled:true,password}),"operator_auth ENABLED — glass locked");
+  });
+  $("btn-auth-off").addEventListener("click",()=>{
+    const password=$("auth-current").value||$("auth-password").value;
+    authAct(()=>postJSON("/api/auth/operator",{enabled:false,password}),"operator_auth disabled — glass open");
+  });
+  refresh().catch(e=>msg(e instanceof Error?e.message:String(e)))
+})

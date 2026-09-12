@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · AI defaults</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/pass2.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>AI</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main">
+      <header class="p2-hero">
+        <div>
+          <p class="op-kicker">Defaults</p>
+          <h1>AI defaults</h1>
+          <p>Primary AI chat surface and site URLs. Persists via existing <code>GET/POST /defaults</code> (same store as Box).</p>
+        </div>
+        <div class="p2-toolbar">
+          <button type="button" id="ai-reload" class="primary">Reload</button>
+        </div>
+      </header>
+
+      <section class="card p2-meta">
+        <div><span>default chat</span><strong id="ai-current">—</strong></div>
+        <div><span>sites</span><strong id="ai-sites-count">—</strong></div>
+        <div><span>store</span><strong>$HOME/.config/maxq/defaults.toml</strong></div>
+        <div><span>status</span><strong id="ai-status">idle</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>chat + sites</h2>
+        <p class="p2-hint">Operator overrides survive <code>maxq revert</code>. URLs must be https.</p>
+        <form id="ai-form" class="p2-form">
+          <label>Default AI chat
+            <select id="default-ai">
+              <option value="chatgpt">ChatGPT</option>
+              <option value="grok">Grok</option>
+              <option value="claude">Claude</option>
+            </select>
+          </label>
+          <div class="p2-sites">
+            <label>ChatGPT <input id="site-chatgpt" type="url" required placeholder="https://chatgpt.com"></label>
+            <label>Grok <input id="site-grok" type="url" required placeholder="https://grok.com"></label>
+            <label>Claude <input id="site-claude" type="url" required placeholder="https://claude.ai"></label>
+            <label>Discord <input id="site-discord" type="url" required placeholder="https://discord.com/app"></label>
+            <label>Slack <input id="site-slack" type="url" required placeholder="https://app.slack.com/client"></label>
+          </div>
+          <div class="p2-toolbar">
+            <button type="submit" id="ai-save" class="primary">Save defaults</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>resolved shortcuts</h2>
+        <ul id="ai-shortcuts" class="shortcut-list">
+          <li>loading…</li>
+        </ul>
+      </section>
+      <p id="ai-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/ai.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{}); MaxQAI.boot();});</script>
+</body>
+</html>

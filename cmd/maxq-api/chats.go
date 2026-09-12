@@ -1,0 +1,946 @@
+package main
+
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"regexp"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+)
+
+const cdpPortBase = 9222
+
+// Caps for CDP body previews — keep /desktops snappy and demo-safe.
+const (
+	chatPreviewMsgMax   = 5
+	chatPreviewCharsMax = 160
+	chatPreviewTabsMax  = 4
+	cdpListTimeout      = 400 * time.Millisecond
+	cdpEvalTimeout      = 1200 * time.Millisecond
+	chatPreviewBudget   = 3500 * time.Millisecond
+)
+
+type entitlementTab struct {
+	Site     string   `json:"site"`
+	Title    string   `json:"title"`
+	URL      string   `json:"url"`
+	Messages []string `json:"messages,omitempty"`
+	Preview  string   `json:"preview,omitempty"`
+}
+
+func cdpPortForDisplay(n int) int {
+	if n < 1 {
+		return 0
+	}
+	return cdpPortBase + n
+}
+
+func entitlementSite(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u == nil {
+		return ""
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	path := strings.ToLower(u.Path)
+	switch {
+	case host == "chatgpt.com" || host == "www.chatgpt.com" || host == "chat.openai.com":
+		return "chatgpt"
+	case host == "grok.com" || host == "www.grok.com" || strings.HasSuffix(host, ".grok.com"):
+		// Landing / home / billing shells — no readable conversation body.
+		if isGrokShellSurface(u) {
+			return ""
+		}
+		return "grok"
+	case host == "grok.x.ai" || host == "accounts.x.ai":
+		return "grok"
+	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/grok"):
+		return "grok"
+	case (host == "x.com" || host == "www.x.com" || host == "twitter.com") && strings.Contains(path, "/i/chat"):
+		// Skip pin/recovery / passcode walls — not a readable chat body.
+		if strings.Contains(path, "/i/chat/pin/") || strings.Contains(path, "/pin/recovery") {
+			return ""
+		}
+		return "x"
+	case host == "claude.ai" || strings.HasSuffix(host, ".claude.ai"):
+		return "claude"
+	case host == "cursor.com" || host == "www.cursor.com" || strings.HasSuffix(host, ".cursor.com"):
+		return "cursor"
+	case host == "gemini.google.com" || host == "aistudio.google.com":
+		return "gemini"
+	default:
+		return ""
+	}
+}
+
+// isGrokShellSurface drops grok.com home/billing/account landings that
+// otherwise show up as empty Crew "grok" cards (query is stripped later).
+func isGrokShellSurface(u *url.URL) bool {
+	if u == nil {
+		return true
+	}
+	path := strings.ToLower(strings.TrimSuffix(u.Path, "/"))
+	if path == "" {
+		return true
+	}
+	for _, frag := range []string{"/billing", "/account", "/settings", "/subscriptions"} {
+		if strings.Contains(path, frag) {
+			return true
+		}
+	}
+	q := strings.ToLower(u.RawQuery)
+	for _, frag := range []string{"_s=home", "_s=billing", "_s=settings"} {
+		if strings.Contains(q, frag) {
+			return true
+		}
+	}
+	return false
+}
+
+// cdpTarget is internal — webSocketDebuggerUrl must never reach the FE.
+type cdpTarget struct {
+	Type                 string `json:"type"`
+	URL                  string `json:"url"`
+	Title                string `json:"title"`
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+}
+
+func truncateChatText(s string, max int) string {
+	s = strings.Join(strings.Fields(strings.TrimSpace(s)), " ")
+	if max < 1 || s == "" {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	if max == 1 {
+		return "…"
+	}
+	return string(r[:max-1]) + "…"
+}
+
+// chatChromeNoise drops X/Grok/consent UI chrome that CDP often scrapes as "messages".
+func chatChromeNoise(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return true
+	}
+	low := strings.ToLower(s)
+	// Exact or near-exact chrome buttons / banners / composer placeholders.
+	exact := []string{
+		"not now", "use x number", "not now use x number",
+		"accept all", "accept cookies", "reject all", "allow cookies",
+		"enable notifications", "turn on notifications",
+		"sign in", "log in", "sign up", "continue with google",
+		"continue with apple", "forgot password?", "forgot password",
+		"type @ to search your apps",
+		"message grok",
+		"ask anything",
+		"ask grok anything",
+		"what's on your mind?",
+		"what can i help with?",
+		"send a message",
+		"switch to build mode to create apps",
+		"switch to build mode",
+		"what should we explore?",
+		"what should we explore",
+		"fast finance",
+		"dismiss",
+	}
+	for _, e := range exact {
+		if low == e {
+			return true
+		}
+	}
+	// Short / medium chrome: mashed button labels and X Number onboarding.
+	if len([]rune(s)) <= 96 {
+		for _, frag := range []string{
+			"not now", "use x number", "their x number", "accept cookies",
+			"enable notifications", "cookie settings", "manage cookies",
+			"message them now",
+			"type @ to search", "search your apps",
+			"ask anything", "message grok", "send a message",
+			"switch to build mode", "create apps",
+			"what should we explore", "fast finance",
+			"connect accounts to manage",
+		} {
+			if strings.Contains(low, frag) {
+				return true
+			}
+		}
+	}
+	// X DM / notifications scraped into chat bodies (follow thanks, like/repost banners).
+	for _, frag := range []string{
+		"thank you for the follow",
+		"thanks for the follow",
+		"liked your post",
+		"reposted your post",
+		"followed you",
+	} {
+		if strings.Contains(low, frag) {
+			return true
+		}
+	}
+	return false
+}
+
+// splitMashedChatBody expands X DM scrapes that concatenate bubbles + labels
+// into one string, e.g. "hello Brandon Forbes 28w You: Awesome!".
+func splitMashedChatBody(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	// First cut on explicit " You: " reply markers (keep the reply text).
+	youRe := regexp.MustCompile(`(?i)\s+You:\s+`)
+	chunks := youRe.Split(s, -1)
+	out := make([]string, 0, len(chunks)+2)
+	for i, c := range chunks {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if i > 0 {
+			c = "You: " + c
+		}
+		out = append(out, splitOnXAgeLabel(c)...)
+	}
+	if len(out) == 0 {
+		return []string{s}
+	}
+	return out
+}
+
+// splitOnXAgeLabel cuts before "Name 28w" / "Name 3d" speaker+age crumbs
+// that X often glues between bubbles when scraping innerText.
+// Only splits when the prior bubble is long enough — avoids turning
+// "Michael Waitze 2w Thank you…" into a stray "Michael" crumb.
+func splitOnXAgeLabel(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	re := regexp.MustCompile(`\s+([A-Z][A-Za-z0-9 .'\-]{1,40})\s+(\d+[smhdwy])(?:\s+|$)`)
+	idxs := re.FindAllStringSubmatchIndex(s, -1)
+	if len(idxs) == 0 {
+		return []string{s}
+	}
+	out := make([]string, 0, len(idxs)+1)
+	prev := 0
+	splitAny := false
+	for _, m := range idxs {
+		prefix := strings.TrimSpace(s[prev:m[0]])
+		// Require a real prior bubble before treating Name+age as a seam.
+		if len([]rune(prefix)) < 24 {
+			continue
+		}
+		out = append(out, prefix)
+		prev = m[1]
+		splitAny = true
+	}
+	if !splitAny {
+		return []string{s}
+	}
+	if prev < len(s) {
+		tail := strings.TrimSpace(s[prev:])
+		if tail != "" && !chatLabelCrumb(tail) {
+			out = append(out, tail)
+		}
+	}
+	if len(out) == 0 {
+		return []string{s}
+	}
+	return out
+}
+
+// chatLabelCrumb drops leftover speaker names after a mash split ("Brandon Forbes").
+func chatLabelCrumb(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(strings.ToLower(s), "you:") {
+		return false
+	}
+	r := []rune(s)
+	if len(r) > 48 {
+		return false
+	}
+	// One or two Title-Case tokens, no sentence punctuation.
+	if strings.ContainsAny(s, ".!?:;") {
+		return false
+	}
+	parts := strings.Fields(s)
+	if len(parts) == 0 || len(parts) > 3 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+		runes := []rune(p)
+		if len(runes) < 2 {
+			return false
+		}
+		if runes[0] < 'A' || runes[0] > 'Z' {
+			return false
+		}
+	}
+	return true
+}
+
+
+// looksLikeURLChatTitle: CDP often returns the path/host as the tab title for X DMs.
+func looksLikeURLChatTitle(title string) bool {
+	t := strings.ToLower(strings.TrimSpace(title))
+	if t == "" || t == "x" || t == "twitter" {
+		return true
+	}
+	if strings.Contains(t, "://") {
+		return true
+	}
+	if strings.Contains(t, "x.com/") || strings.Contains(t, "twitter.com/") {
+		return true
+	}
+	if strings.Contains(t, "/i/chat") {
+		return true
+	}
+	return false
+}
+
+// needsXDMPeerUpgrade: true while title is still a URL or humanized placeholder
+// ("X DM" / "X DM · 138772"). Peer crumbs from CDP should replace these.
+func needsXDMPeerUpgrade(title string) bool {
+	if looksLikeURLChatTitle(title) {
+		return true
+	}
+	t := strings.TrimSpace(title)
+	if t == "" {
+		return true
+	}
+	low := strings.ToLower(t)
+	if low == "x dm" {
+		return true
+	}
+	// humanizeEntitlementTitle emits "X DM · <id>" (U+00B7 middle dot)
+	if strings.HasPrefix(low, "x dm ") {
+		return true
+	}
+	return false
+}
+
+// humanizeEntitlementTitle replaces URL-ish X chat titles with a stable short label.
+func humanizeEntitlementTitle(site, title, rawURL string) string {
+	title = strings.TrimSpace(title)
+	if site != "x" && site != "twitter" {
+		return title
+	}
+	if !looksLikeURLChatTitle(title) {
+		return title
+	}
+	u, err := url.Parse(rawURL)
+	if err == nil && u != nil {
+		path := u.Path
+		if i := strings.LastIndex(path, "/"); i >= 0 && i+1 < len(path) {
+			id := path[i+1:]
+			if len(id) > 8 {
+				id = id[len(id)-6:]
+			}
+			if id != "" && id != "chat" {
+				return "X DM · " + id
+			}
+		}
+	}
+	return "X DM"
+}
+
+// looksLikePersonName: looser than chatLabelCrumb — X DM usernames are often
+// "First last" with a lowercase surname (e.g. "Lonnie black").
+func looksLikePersonName(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	low := strings.ToLower(s)
+	if strings.HasPrefix(low, "you:") || low == "you" || low == "x dm" {
+		return false
+	}
+	if strings.ContainsAny(s, ".!?:;/@#") {
+		return false
+	}
+	r := []rune(s)
+	if len(r) < 2 || len(r) > 48 {
+		return false
+	}
+	parts := strings.Fields(s)
+	if len(parts) == 0 || len(parts) > 4 {
+		return false
+	}
+	// First token must start uppercase; remaining tokens letters/hyphen/apostrophe.
+	for i, p := range parts {
+		runes := []rune(p)
+		if len(runes) < 1 {
+			return false
+		}
+		if i == 0 {
+			if runes[0] < 'A' || runes[0] > 'Z' {
+				return false
+			}
+		} else if (runes[0] < 'A' || runes[0] > 'Z') && (runes[0] < 'a' || runes[0] > 'z') {
+			return false
+		}
+		for _, ch := range runes[1:] {
+			if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '-' || ch == '\'' {
+				continue
+			}
+			return false
+		}
+	}
+	return true
+}
+
+// peerNameFromRawMessages rescues speaker crumbs before filterChatMessages drops them.
+func peerNameFromRawMessages(msgs []string) string {
+	for _, m := range msgs {
+		for _, part := range splitMashedChatBody(m) {
+			part = strings.TrimSpace(part)
+			low := strings.ToLower(part)
+			if strings.HasPrefix(low, "you:") || low == "you" {
+				continue
+			}
+			if chatLabelCrumb(part) || looksLikePersonName(part) {
+				return part
+			}
+		}
+	}
+	return ""
+}
+
+func filterChatMessages(msgs []string) []string {
+	if len(msgs) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(msgs))
+	for _, m := range msgs {
+		for _, part := range splitMashedChatBody(m) {
+			// Peer crumbs ("Lonnie black" / "Brandon Forbes") belong in title, not body.
+			if chatChromeNoise(part) || chatLabelCrumb(part) || looksLikePersonName(part) {
+				continue
+			}
+			out = append(out, part)
+			if len(out) >= chatPreviewMsgMax {
+				return out
+			}
+		}
+	}
+	return out
+}
+
+func previewFromMessages(msgs []string) string {
+	msgs = filterChatMessages(msgs)
+	if len(msgs) == 0 {
+		return ""
+	}
+	return msgs[len(msgs)-1]
+}
+
+// skipChatBodyEval: sign-in / auth walls waste CDP budget and never yield real chat bodies.
+func skipChatBodyEval(rawURL, title string) bool {
+	lowTitle := strings.ToLower(strings.TrimSpace(title))
+	if strings.Contains(lowTitle, "sign in") || strings.Contains(lowTitle, "log in") ||
+		strings.Contains(lowTitle, "sign-in") || strings.Contains(lowTitle, "login") ||
+		strings.Contains(lowTitle, "create your account") || strings.Contains(lowTitle, "verify your identity") ||
+		strings.Contains(lowTitle, "enter your password") {
+		return true
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u == nil {
+		return false
+	}
+	path := strings.ToLower(u.Path)
+	host := strings.ToLower(u.Hostname())
+	for _, frag := range []string{"/sign-in", "/signin", "/login", "/i/flow/login", "/authenticate"} {
+		if strings.Contains(path, frag) {
+			return true
+		}
+	}
+	if host == "accounts.x.ai" || host == "accounts.google.com" || host == "login.microsoftonline.com" {
+		return true
+	}
+	return false
+}
+
+type previewJob struct {
+	idx int
+	ws  string
+}
+
+func listEntitlementTabs(port int) []entitlementTab {
+	if port < 1 {
+		return nil
+	}
+	client := &http.Client{Timeout: cdpListTimeout}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json/list", port))
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	var targets []cdpTarget
+	if json.NewDecoder(resp.Body).Decode(&targets) != nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := make([]entitlementTab, 0)
+	var toEval []previewJob
+	for _, t := range targets {
+		if t.Type != "page" {
+			continue
+		}
+		site := entitlementSite(t.URL)
+		if site == "" {
+			continue
+		}
+		u, err := url.Parse(t.URL)
+		if err != nil {
+			continue
+		}
+		// Drop query/fragment so we don't leak CDP or session params.
+		u.RawQuery = ""
+		u.Fragment = ""
+		clean := u.String()
+		if seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		title := strings.TrimSpace(t.Title)
+		if title == "" || strings.EqualFold(title, site) {
+			title = site
+		}
+		title = humanizeEntitlementTitle(site, title, clean)
+		// Auth walls / sign-in tabs: omit from Crew entirely (not just skip CDP).
+		if skipChatBodyEval(clean, title) {
+			continue
+		}
+		idx := len(out)
+		out = append(out, entitlementTab{Site: site, Title: title, URL: clean})
+		if t.WebSocketDebuggerURL != "" && len(toEval) < chatPreviewTabsMax {
+			toEval = append(toEval, previewJob{idx: idx, ws: t.WebSocketDebuggerURL})
+		}
+	}
+	fillChatPreviews(out, toEval)
+	return out
+}
+
+func fillChatPreviews(tabs []entitlementTab, jobs []previewJob) {
+	if len(jobs) == 0 || len(tabs) == 0 {
+		return
+	}
+	deadline := time.Now().Add(chatPreviewBudget)
+	var wg sync.WaitGroup
+	for _, job := range jobs {
+		if time.Now().After(deadline) {
+			break
+		}
+		job := job
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			remain := time.Until(deadline)
+			if remain <= 0 {
+				return
+			}
+			to := cdpEvalTimeout
+			if remain < to {
+				to = remain
+			}
+			raw := fetchChatMessagesCDP(job.ws, to)
+			if peer := peerNameFromRawMessages(raw); peer != "" && needsXDMPeerUpgrade(tabs[job.idx].Title) {
+				tabs[job.idx].Title = peer
+			}
+			msgs := filterChatMessages(raw)
+			if len(msgs) == 0 {
+				return
+			}
+			tabs[job.idx].Messages = msgs
+			tabs[job.idx].Preview = previewFromMessages(msgs)
+		}()
+	}
+	wg.Wait()
+}
+
+// DOM scrape — message bodies only. Hard-capped; no cookies/tokens/debugger URLs.
+const chatBodyEvalExpr = `(() => {
+  const N = 5;
+  const MAX = 160;
+  const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const clip = (s) => s.length > MAX ? s.slice(0, MAX - 1) + '\u2026' : s;
+  const out = [];
+  const push = (s) => {
+    s = clean(s);
+    if (!s || s.length < 2) return;
+    if (out.length && out[out.length - 1] === s) return;
+    out.push(clip(s));
+  };
+  const finish = () => {
+    if (!out.length) return out;
+    const head = out[0];
+    const headIsPeer = !!(head && head.length <= 48 && head.split(/\s+/).length <= 4 && !/[.!?:;]/.test(head));
+    const tail = out.slice(-N);
+    if (headIsPeer && tail.indexOf(head) < 0) return [head].concat(tail).slice(0, N + 1);
+    return tail;
+  };
+  const peerSels = [
+    '[data-testid="dm-conversation-username"]',
+    '[data-testid="dm-conversation-header"]',
+    '[data-testid="dmConversationName"]',
+    '[data-testid="UserName"]',
+    'header [role="heading"]',
+    '[role="main"] h2',
+  ];
+  for (const sel of peerSels) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    let t = clean(el.innerText || el.textContent || el.getAttribute('aria-label') || '');
+    t = t.split('\n')[0];
+    t = t.replace(/\s+Unencrypted$/i, '').trim();
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length >= 1 && words.length <= 4 && t.length >= 2 && t.length <= 48 && !/[.!?:;]/.test(t)) {
+      out.push(clip(t));
+      break;
+    }
+  }
+  const prefer = [
+    '[data-message-author-role]',
+    '[data-testid="conversation-turn"]',
+    '[data-testid="message"]',
+    '[data-testid="messageText"]',
+    '[data-testid="tweetText"]',
+    'div[class*="message-bubble"]',
+    'div[class*="Message"]',
+    '.markdown',
+    '.prose',
+  ];
+  for (const sel of prefer) {
+    const nodes = document.querySelectorAll(sel);
+    if (!nodes || !nodes.length) continue;
+    for (const el of nodes) push(el.innerText || el.textContent || '');
+    if (out.length) return finish();
+  }
+  const roots = document.querySelectorAll('main, article, [role="main"]');
+  for (const root of roots) {
+    const t = clean(root.innerText || root.textContent || '');
+    if (!t) continue;
+    const parts = t.split(/(?<=[.!?])\s+/).filter((p) => p.length > 8);
+    const pick = (parts.length ? parts : [t]).slice(-N);
+    for (const p of pick) push(p);
+    if (out.length) break;
+  }
+  return finish();
+})()`
+
+func fetchChatMessagesCDP(wsURL string, timeout time.Duration) []string {
+	if wsURL == "" || timeout <= 0 {
+		return nil
+	}
+	u, err := url.Parse(wsURL)
+	if err != nil || u == nil {
+		return nil
+	}
+	if u.Scheme != "ws" && u.Scheme != "http" {
+		return nil
+	}
+	host := u.Hostname()
+	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		return nil
+	}
+	raw, err := cdpRuntimeEvaluate(wsURL, chatBodyEvalExpr, timeout)
+	if err != nil || len(raw) == 0 {
+		return nil
+	}
+	return parseChatMessagesValue(raw)
+}
+
+func parseChatMessagesValue(raw json.RawMessage) []string {
+	var wrap struct {
+		Result struct {
+			Type  string          `json:"type"`
+			Value json.RawMessage `json:"value"`
+		} `json:"result"`
+		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
+	}
+	if json.Unmarshal(raw, &wrap) != nil {
+		return nil
+	}
+	if len(wrap.ExceptionDetails) > 0 && string(wrap.ExceptionDetails) != "null" {
+		return nil
+	}
+	var msgs []string
+	if json.Unmarshal(wrap.Result.Value, &msgs) != nil {
+		return nil
+	}
+	out := make([]string, 0, len(msgs))
+	for _, m := range msgs {
+		t := truncateChatText(m, chatPreviewCharsMax)
+		if t == "" {
+			continue
+		}
+		out = append(out, t)
+		if len(out) >= chatPreviewMsgMax {
+			break
+		}
+	}
+	return out
+}
+
+func cdpRuntimeEvaluate(wsURL, expression string, timeout time.Duration) (json.RawMessage, error) {
+	conn, err := dialCDPWebSocket(wsURL, timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+
+	req := map[string]any{
+		"id":     1,
+		"method": "Runtime.evaluate",
+		"params": map[string]any{
+			"expression":    expression,
+			"returnByValue": true,
+			"awaitPromise":  true,
+		},
+	}
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	if err := wsWriteText(conn, payload); err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		_ = conn.SetReadDeadline(deadline)
+		msg, err := wsReadMessage(conn)
+		if err != nil {
+			return nil, err
+		}
+		var env struct {
+			ID     int             `json:"id"`
+			Result json.RawMessage `json:"result"`
+			Error  json.RawMessage `json:"error"`
+		}
+		if json.Unmarshal(msg, &env) != nil {
+			continue
+		}
+		if env.ID != 1 {
+			continue
+		}
+		if len(env.Error) > 0 && string(env.Error) != "null" {
+			return nil, fmt.Errorf("cdp error")
+		}
+		return env.Result, nil
+	}
+	return nil, fmt.Errorf("cdp timeout")
+}
+
+func dialCDPWebSocket(wsURL string, timeout time.Duration) (net.Conn, error) {
+	u, err := url.Parse(wsURL)
+	if err != nil {
+		return nil, err
+	}
+	host := u.Host
+	if !strings.Contains(host, ":") {
+		host += ":80"
+	}
+	path := u.RequestURI()
+	if path == "" {
+		path = "/"
+	}
+	d := net.Dialer{Timeout: timeout}
+	conn, err := d.Dial("tcp", host)
+	if err != nil {
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+
+	key := make([]byte, 16)
+	if _, err := rand.Read(key); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	secKey := base64.StdEncoding.EncodeToString(key)
+	req := fmt.Sprintf(
+		"GET %s HTTP/1.1\r\nHost: %s\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n",
+		path, u.Host, secKey,
+	)
+	if _, err := io.WriteString(conn, req); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	br := make([]byte, 0, 1024)
+	buf := make([]byte, 256)
+	for !strings.Contains(string(br), "\r\n\r\n") {
+		n, err := conn.Read(buf)
+		if n > 0 {
+			br = append(br, buf[:n]...)
+		}
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+		if len(br) > 8192 {
+			conn.Close()
+			return nil, fmt.Errorf("handshake too large")
+		}
+	}
+	head := string(br)
+	if !strings.Contains(head, " 101 ") && !strings.HasPrefix(head, "HTTP/1.1 101") && !strings.HasPrefix(head, "HTTP/1.0 101") {
+		conn.Close()
+		return nil, fmt.Errorf("ws upgrade failed")
+	}
+	return conn, nil
+}
+
+func wsWriteText(conn net.Conn, payload []byte) error {
+	mask := make([]byte, 4)
+	if _, err := rand.Read(mask); err != nil {
+		return err
+	}
+	h := []byte{0x81}
+	n := len(payload)
+	switch {
+	case n < 126:
+		h = append(h, byte(0x80|n))
+	case n < 65536:
+		h = append(h, 0x80|126, byte(n>>8), byte(n))
+	default:
+		var lb [8]byte
+		binary.BigEndian.PutUint64(lb[:], uint64(n))
+		h = append(h, 0x80|127)
+		h = append(h, lb[:]...)
+	}
+	h = append(h, mask...)
+	masked := make([]byte, n)
+	for i := 0; i < n; i++ {
+		masked[i] = payload[i] ^ mask[i%4]
+	}
+	_, err := conn.Write(append(h, masked...))
+	return err
+}
+
+func wsReadMessage(conn net.Conn) ([]byte, error) {
+	var out []byte
+	for {
+		h := make([]byte, 2)
+		if _, err := io.ReadFull(conn, h); err != nil {
+			return nil, err
+		}
+		fin := h[0]&0x80 != 0
+		opcode := h[0] & 0x0f
+		masked := h[1]&0x80 != 0
+		n := int(h[1] & 0x7f)
+		switch n {
+		case 126:
+			var ext [2]byte
+			if _, err := io.ReadFull(conn, ext[:]); err != nil {
+				return nil, err
+			}
+			n = int(binary.BigEndian.Uint16(ext[:]))
+		case 127:
+			var ext [8]byte
+			if _, err := io.ReadFull(conn, ext[:]); err != nil {
+				return nil, err
+			}
+			n64 := binary.BigEndian.Uint64(ext[:])
+			if n64 > 1<<20 {
+				return nil, fmt.Errorf("frame too large")
+			}
+			n = int(n64)
+		}
+		var mask [4]byte
+		if masked {
+			if _, err := io.ReadFull(conn, mask[:]); err != nil {
+				return nil, err
+			}
+		}
+		payload := make([]byte, n)
+		if n > 0 {
+			if _, err := io.ReadFull(conn, payload); err != nil {
+				return nil, err
+			}
+		}
+		if masked {
+			for i := 0; i < n; i++ {
+				payload[i] ^= mask[i%4]
+			}
+		}
+		switch opcode {
+		case 0x1, 0x2, 0x0:
+			out = append(out, payload...)
+			if fin {
+				return out, nil
+			}
+		case 0x8:
+			return nil, io.EOF
+		case 0x9:
+			_ = wsWriteControl(conn, 0xA, payload)
+		case 0xA:
+		default:
+			if fin && len(out) > 0 {
+				return out, nil
+			}
+		}
+	}
+}
+
+func wsWriteControl(conn net.Conn, opcode byte, payload []byte) error {
+	if len(payload) > 125 {
+		payload = payload[:125]
+	}
+	mask := make([]byte, 4)
+	if _, err := rand.Read(mask); err != nil {
+		return err
+	}
+	h := []byte{0x80 | opcode, byte(0x80 | len(payload))}
+	h = append(h, mask...)
+	masked := make([]byte, len(payload))
+	for i := range payload {
+		masked[i] = payload[i] ^ mask[i%4]
+	}
+	_, err := conn.Write(append(h, masked...))
+	return err
+}
+
+func fillDesktopChats(items []xvfbDesktop) {
+	var wg sync.WaitGroup
+	for i := range items {
+		if !items[i].Live {
+			items[i].Chats = []entitlementTab{}
+			continue
+		}
+		items[i].CDPPort = cdpPortForDisplay(items[i].Number)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			tabs := listEntitlementTabs(items[i].CDPPort)
+			if tabs == nil {
+				tabs = []entitlementTab{}
+			}
+			items[i].Chats = tabs
+		}(i)
+	}
+	wg.Wait()
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/pass2.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>VAULT</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main wide">
+      <header class="p2-hero">
+        <div>
+          <p class="op-kicker">Secrets</p>
+          <h1>Vault</h1>
+          <p>Secret <em>slots</em> under <code>$HOME/.config/maxq</code>. Values are never displayed — names, paths, ages, and masked presence only.</p>
+        </div>
+        <div class="p2-toolbar">
+          <button type="button" id="vault-refresh" class="primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="card p2-meta">
+        <div><span>slots</span><strong id="vault-count">—</strong></div>
+        <div><span>present</span><strong id="vault-present">—</strong></div>
+        <div><span>root</span><strong id="vault-root">—</strong></div>
+        <div><span>status</span><strong id="vault-status">idle</strong></div>
+      </section>
+
+      <p class="p2-hint">Demo-safe inventory. Opening a slot does not reveal contents.</p>
+
+      <section class="card p2-table-wrap">
+        <table class="p2-table" aria-label="Vault slots">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Kind</th>
+              <th>Present</th>
+              <th>Mode</th>
+              <th>Size</th>
+              <th>Age</th>
+              <th>Path</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="vault-body">
+            <tr><td colspan="8" class="p2-empty">loading…</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <p id="vault-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/vault.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{}); MaxQVault.boot();});</script>
+</body>
+</html>
