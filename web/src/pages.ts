@@ -6,6 +6,9 @@ export type Route =
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
+/** #63 sell CTA — live Google Form waitlist (CEO/Crew). Keep Install as curl path. */
+export const GET_MAXQ =
+  "https://docs.google.com/forms/d/e/1FAIpQLSdfNiCNPrs29G1zbMRTiKvd19QyuMIECLX-4ob-_86UhiNJig/viewform";
 
 const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "why", "surfaces", "start"]);
 const KNOWN: Route[] = [
@@ -520,8 +523,10 @@ function renderLaunch(): string {
             <p class="lede reveal r4">One command on the bot's computer. The stock box becomes a workstation tailored for the bot. You keep the side door.</p>
             <div class="cta-row reveal r5">
               <a class="btn-solid" href="#install">Install</a>
+              <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
               <a class="btn-ghost" href="#how">See how it works</a>
             </div>
+            <p class="lede reveal r5" style="margin-top:0.5rem">Not ready to curl? Start here.</p>
           </div>
           <dl class="blk split late l1" data-split>
             <div>
@@ -694,8 +699,10 @@ export function renderHome(): string {
       <h2 class="display">Install MaxQ on the stock box.</h2>
       <p class="lede">Apply the workstation. Keep the side door. Prove or revert whenever you need to.</p>
       ${installLine()}
+      <p class="lede">Prefer a handoff over install.sh.</p>
       <div class="cta-row">
         <a class="btn-solid" href="#install">Install guide</a>
+        <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
         <a class="btn-ghost" href="${GITHUB}">GitHub</a>
       </div>
     </section>`;
