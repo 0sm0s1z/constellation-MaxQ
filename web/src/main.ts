@@ -1,6 +1,6 @@
 import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
-  renderStack, renderRouter, renderCue, renderCrew, GITHUB, WHY, type Route,
+  renderStack, renderRouter, renderCue, renderCrew, GITHUB, GET_MAXQ, WHY, type Route,
 } from "./pages";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
@@ -58,6 +58,7 @@ function shell(inner: string, route: Route): string {
       </nav>
       <div class="nav-end">
         <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
+        <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
         <a class="btn-solid btn-sm" href="#install">Install</a>
         <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><span></span><span></span></button>
       </div>
