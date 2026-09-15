@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Files</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/files.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>FILES</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main wide">
+      <header class="files-hero">
+        <div>
+          <p class="op-kicker">Host surface</p>
+          <h1>Files</h1>
+          <p>Read-only host browsing constrained to safe paths beneath <code>$HOME</code>. Symlinks are never followed and sensitive paths stay non-navigable.</p>
+        </div>
+        <div class="files-toolbar">
+          <span class="badge ok" id="apiState">API · connecting</span>
+          <button type="button" id="refreshButton" class="primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="card files-meta">
+        <div><span>entries</span><strong id="entryCount">—</strong></div>
+        <div><span>path</span><strong id="pathStatus">$HOME</strong></div>
+        <div><span>filtered</span><strong id="filteredProof">—</strong></div>
+        <div><span>mode</span><strong>metadata only</strong></div>
+      </section>
+
+      <p class="files-hint">Source <code>GET /api/stubs/files</code> · boundary <code>$HOME</code> only · no file body reads.</p>
+
+      <section class="card files-controls" aria-label="File browser controls">
+        <button type="button" id="upButton">↑ Up</button>
+        <div class="pathline" id="breadcrumbs" aria-label="Current path"></div>
+        <span></span>
+        <input id="searchInput" type="search" placeholder="Filter files…" autocomplete="off">
+      </section>
+
+      <section class="card files-browser">
+        <div class="browser-head" aria-hidden="true">
+          <div>Name</div>
+          <div>Kind</div>
+          <div>Size</div>
+          <div>Modified</div>
+        </div>
+        <div id="fileRows">
+          <div class="empty"><div><strong>Loading $HOME…</strong>Waiting for the Go API.</div></div>
+        </div>
+        <div class="statusline">
+          <span>read-only · symlink targets not followed</span>
+          <span>canonical path checked</span>
+        </div>
+      </section>
+      <p id="files-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/files.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{});});</script>
+</body>
+</html>

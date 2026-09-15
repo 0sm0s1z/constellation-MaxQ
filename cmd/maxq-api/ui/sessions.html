@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Sessions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/sessions.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>SESSIONS</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main wide">
+      <header class="sess-hero">
+        <div>
+          <p class="op-kicker">Auth evidence</p>
+          <h1>Sessions</h1>
+          <p>Chrome-family profile inventory and coarse auth-state evidence. Cookie contents, account identifiers, tokens, and credential values never cross the glass.</p>
+        </div>
+        <div class="sess-toolbar">
+          <span class="badge ok" id="apiState">API · connecting</span>
+          <button type="button" id="refreshButton" class="primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="card sess-meta">
+        <div>
+          <span>profiles</span>
+          <strong id="metricProfiles">—</strong>
+          <span class="sub">discovered</span>
+        </div>
+        <div>
+          <span>signed-in evidence</span>
+          <strong id="metricSignedIn">—</strong>
+          <span class="sub">account metadata</span>
+        </div>
+        <div>
+          <span>session stores</span>
+          <strong id="metricSessionData">—</strong>
+          <span class="sub">cookie DB present</span>
+        </div>
+        <div>
+          <span>browsers</span>
+          <strong id="metricBrowsers">—</strong>
+          <span class="sub">Chrome-family</span>
+        </div>
+      </section>
+
+      <p class="sess-hint">Source <code>GET /api/stubs/sessions</code> · never returned: cookies · tokens · emails · account IDs.</p>
+
+      <section class="card sess-controls" aria-label="Session filters">
+        <input id="searchInput" type="search" placeholder="Filter browser, profile, or state…" autocomplete="off">
+        <span></span>
+      </section>
+
+      <section id="sessionList" class="session-list">
+        <div class="empty"><div><strong>Discovering browser profiles…</strong>Waiting for the Go API.</div></div>
+      </section>
+
+      <section class="card sess-proof" aria-label="Safety proof">
+        <div>
+          <span>source</span>
+          <strong>GET /api/stubs/sessions</strong>
+        </div>
+        <div>
+          <span>mode</span>
+          <strong>read-only profile inspection</strong>
+        </div>
+        <div>
+          <span>never returned</span>
+          <strong>cookies · tokens · emails</strong>
+        </div>
+        <div>
+          <span>last refresh</span>
+          <strong id="lastRefresh">—</strong>
+        </div>
+      </section>
+      <p id="sess-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/sessions.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{});});</script>
+</body>
+</html>

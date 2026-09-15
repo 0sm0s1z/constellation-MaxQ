@@ -3,81 +3,357 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaxQ</title>
+  <title>MaxQ · Operator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/mocha.css">
+  <style>
+    /* Home — pretty-pied status panel (demo + stream), soft glow */
+    .home-status {
+      margin: 0 0 1.85rem;
+      padding: 0;
+      overflow: hidden;
+    }
+    .home-status-head {
+      position: relative; z-index: 2;
+      display: flex; flex-wrap: wrap; gap: .55rem 1rem;
+      align-items: center; justify-content: space-between;
+      padding: .72rem 1.25rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--mauve) 16%, var(--border));
+      background: linear-gradient(
+        105deg,
+        color-mix(in srgb, var(--mauve) 14%, var(--card)),
+        color-mix(in srgb, var(--peach) 8%, var(--card)) 55%,
+        color-mix(in srgb, var(--lavender) 10%, var(--card))
+      );
+    }
+    .home-demo-main {
+      display: flex; flex-wrap: wrap; gap: .3rem .65rem; align-items: baseline;
+      min-width: 0;
+    }
+    .home-demo-kicker {
+      font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;
+      color: color-mix(in srgb, var(--muted-foreground) 88%, transparent); font-weight: 550;
+    }
+    .home-demo-line {
+      font-family: var(--font); font-size: .82rem; color: var(--foreground);
+      letter-spacing: -.01em; font-weight: 450;
+    }
+    .home-demo-line .dim { color: var(--muted-foreground); opacity: .7; }
+    .home-demo-line .warn { color: var(--peach); }
+    .home-demo-line .elev { color: var(--yellow, #f9e2af); }
+    .home-demo-links { display: flex; flex-wrap: wrap; gap: .25rem; }
+
+    .home-stream {
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+      padding: .9rem 1.15rem 1rem;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
+      min-width: 0;
+    }
+    .home-stream-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+      gap: .7rem .85rem;
+      align-items: stretch;
+      min-width: 0;
+      width: 100%;
+    }
+    .hs-cell[data-key="ram"] { min-width: 0; }
+    .hs-cta .hs-cta-link { font-size: .72rem; padding: .28rem .55rem; }
+    .hs-cell {
+      display: grid; gap: .28rem; min-width: 0;
+      overflow: hidden;
+    }
+    .hs-label {
+      font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted-foreground); font-weight: 550;
+    }
+    .hs-val {
+      font-family: var(--font); font-size: .88rem; font-weight: 550;
+      letter-spacing: -.015em;
+      color: var(--foreground);
+      min-width: 0; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hs-val.is-empty,
+    .hs-val:empty::after {
+      color: var(--muted-foreground);
+      font-weight: 450;
+    }
+    .hs-val.is-empty { opacity: .55; }
+    .hs-cell.elevated .hs-val { color: var(--yellow, #f9e2af); }
+    .hs-cell.elevated {
+      border-radius: calc(var(--radius) - 2px);
+      padding: .25rem .45rem;
+      box-sizing: border-box;
+      background: color-mix(in srgb, var(--yellow, #f9e2af) 7%, transparent);
+      border: 1px solid color-mix(in srgb, var(--yellow, #f9e2af) 18%, transparent);
+    }
+    .hs-cell.pressure .hs-val { color: var(--peach); }
+    .hs-cell.pressure {
+      border-radius: calc(var(--radius) - 2px);
+      padding: .25rem .45rem;
+      box-sizing: border-box;
+      background: color-mix(in srgb, var(--peach) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--peach) 22%, transparent);
+    }
+    .hs-cta {
+      display: flex; flex-wrap: wrap; gap: .35rem .4rem;
+      align-items: center; justify-content: flex-start;
+      width: 100%;
+      min-width: 0;
+      padding-top: .15rem;
+      border-top: 1px solid color-mix(in srgb, var(--mauve) 10%, var(--border));
+    }
+    .hs-cta[hidden] { display: none !important; }
+    .hs-cta-link[hidden] { display: none !important; }
+    .hs-cta .hs-cta-link:not(.secondary) { /* primary only when shown */ }
+    .hs-cta-link.locked {
+      opacity: .72;
+      cursor: default;
+      border-style: dashed;
+      text-decoration: none;
+    }
+    .hs-cta-link.locked:hover { opacity: .85; }
+
+    .home-fleet {
+      display: flex; flex-wrap: wrap; gap: .3rem .35rem;
+      align-items: center;
+      padding: .55rem 0;
+      margin: -.85rem 0 1.35rem;
+      border: 0; background: transparent; box-shadow: none;
+    }
+    .home-fleet-label {
+      font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted-foreground); margin-right: .35rem; font-weight: 550;
+    }
+    .home-fleet a.fleet-chip {
+      display: inline-flex; align-items: center; gap: .2rem;
+      padding: .16rem .5rem; border-radius: 999px;
+      font-family: var(--font); font-size: 10px; font-weight: 550;
+      letter-spacing: .02em;
+      text-decoration: none; color: var(--muted-foreground);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+      border: 1px solid color-mix(in srgb, var(--mauve) 14%, var(--border));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--mauve) 6%, transparent);
+    }
+    .home-fleet a.fleet-chip:hover {
+      color: var(--accent-foreground);
+      border-color: color-mix(in srgb, var(--mauve) 28%, var(--border));
+      background: var(--accent);
+    }
+    .home-fleet a.fleet-chip.current {
+      background: var(--accent);
+      border-color: color-mix(in srgb, var(--mauve) 24%, transparent);
+      color: var(--accent-foreground);
+    }
+    .home-fleet a.fleet-chip.frozen {
+      color: color-mix(in srgb, var(--peach) 75%, var(--muted-foreground));
+      background: transparent;
+      border-color: color-mix(in srgb, var(--peach) 22%, transparent);
+    }
+    .home-fleet .fleet-empty { font-size: .78rem; color: var(--muted-foreground); }
+    .home-agent-chat {
+      flex-basis: 100%; margin-top: .15rem;
+      font-family: var(--font); font-size: 11px; color: var(--muted-foreground);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      opacity: .85;
+    }
+    .hs-val a, a.hs-val {
+      color: inherit; text-decoration: none;
+      border-bottom: 1px solid color-mix(in srgb, var(--mauve) 22%, transparent);
+    }
+    .hs-val a:hover, a.hs-val:hover {
+      color: var(--accent-foreground); border-bottom-color: var(--accent-foreground);
+    }
+    @media (max-width: 520px) {
+      .home-stream-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
 </head>
 <body>
-  <main class="sheet">
-    <header>
-      <div>
-        <h1>MaxQ</h1>
-        <p class="tag">Take your Grok Bot to MaxQ.</p>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-role">OPERATOR</span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
       </div>
-      <span id="pill" class="pill">…</span>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
     </header>
 
-    <section id="status-card" class="card">
-      <h2>status</h2>
-      <dl>
-        <dt>state</dt><dd id="st-state">—</dd>
-        <dt>theme</dt><dd id="st-theme">—</dd>
-        <dt>gost</dt><dd id="st-gost">—</dd>
-        <dt>clis</dt><dd id="st-clis">—</dd>
-        <dt>api</dt><dd id="st-api">127.0.0.1:7432</dd>
-      </dl>
-    </section>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
 
-    <section class="card">
-      <h2>approvals</h2>
-      <p class="hint">Master approval policy for this box. Off means always allow; MaxQ policy is authoritative and host Auto-review must be skipped.</p>
-      <label class="row" for="approvals-enabled">
-        <input id="approvals-enabled" type="checkbox" role="switch">
-        <span>Allow approval prompts</span>
-      </label>
-      <p id="st-approvals" class="muted">Loading…</p>
-    </section>
-
-    <section class="card">
-      <h2>connections</h2>
-      <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
-      <form id="connection-form" class="connection-form">
-        <label>Name <input id="connection-name" required maxlength="120" placeholder="maxq-tester"></label>
-        <label>Base URL <input id="connection-url" required type="url" placeholder="http://100.96.0.5:7432"></label>
-        <label>Auth <input id="connection-auth" type="password" autocomplete="off" placeholder="Bearer token (optional)"></label>
-        <button type="submit">Add API</button>
-      </form>
-      <ul id="connections" class="connections" aria-live="polite"></ul>
-    </section>
-
-    <section class="card">
-      <h2>desktops</h2>
-      <p class="hint">Aggregated from every connected API and labeled by box identity.</p>
-      <div id="desktops" class="desktops" aria-live="polite"><p class="muted">Loading…</p></div>
-    </section>
-
-    <section class="card">
-      <h2>desired state</h2>
-      <div class="row">
-        <button type="button" id="btn-apply">Apply</button>
-        <button type="button" id="btn-revert" class="danger">Revert</button>
+    <main class="op-main">
+      <div class="op-hero">
+        <p class="op-kicker">Constellation · operator glass</p>
+        <h1>Co-pilot the bot box.</h1>
+        <p>Launch Desktops and Actions first. Leave frozen desks paused until you need them.</p>
       </div>
-    </section>
 
-    <section class="card">
-      <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
-      <div class="row">
-        <button type="button" id="btn-proxy-on">On</button>
-        <button type="button" id="btn-proxy-off">Off</button>
-      </div>
-    </section>
-    <nav class="soon">
-      <span title="later">vault</span>
-      <span title="later">oauth</span>
-      <span title="later">skills</span>
-    </nav>
-    <p id="msg" class="msg" hidden></p>
-  </main>
-  <script src="/sheet.js"></script>
+      <section id="home-status" class="home-status card" aria-label="Operator status">
+        <header id="home-demo-banner" class="home-status-head" aria-label="Morning demo readiness" hidden>
+          <div class="home-demo-main">
+            <span class="home-demo-kicker">Morning</span>
+            <span id="home-demo-line" class="home-demo-line">loading…</span>
+          </div>
+          <div class="home-demo-links">
+            <a href="/desktops">Desktops</a>
+            <a href="/actions">Actions</a>
+            <a href="/box">Box</a>
+          </div>
+        </header>
+
+        <div id="home-stream" class="home-stream" aria-label="Live stream status">
+          <div class="home-stream-metrics" role="group" aria-label="Stream metrics">
+            <div class="hs-cell" data-key="agent">
+              <span class="hs-label">Agent</span>
+              <strong id="hs-agent" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="live">
+              <span class="hs-label">Live · VNC</span>
+              <strong id="hs-live" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="cpu">
+              <span class="hs-label">CPU</span>
+              <strong id="hs-cpu" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="ram" id="hs-ram-cell">
+              <span class="hs-label">RAM · avail</span>
+              <strong id="hs-ram" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="gost">
+              <span class="hs-label">GOST</span>
+              <strong id="hs-gost" class="hs-val is-empty">waiting</strong>
+            </div>
+            <div class="hs-cell" data-key="state">
+              <span class="hs-label">State</span>
+              <strong id="hs-state" class="hs-val is-empty">waiting</strong>
+            </div>
+          </div>
+          <div class="hs-cta" id="hs-cta" hidden>
+            <a href="/actions#clear-ram" class="hs-cta-link" id="hs-cta-clear" hidden>Clear RAM</a>
+            <a href="/actions#freeze-quiet-desks" class="hs-cta-link secondary" id="hs-cta-freeze" hidden>Freeze quiet</a>
+            <a href="/actions#report-ram" class="hs-cta-link secondary" id="hs-cta-report" hidden>Report RAM</a>
+            <a href="/actions#resume-paused" class="hs-cta-link secondary" id="hs-cta-resume" hidden>Resume paused</a>
+            <a href="/actions#ensure-novnc" class="hs-cta-link secondary" id="hs-cta-novnc" hidden>Ensure noVNC</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="home-fleet" class="home-fleet" aria-label="Awake desktops" hidden>
+        <span class="home-fleet-label">Awake</span>
+        <span id="home-fleet-chips" class="fleet-empty">…</span>
+        <span id="home-agent-chat" class="home-agent-chat" hidden></span>
+      </section>
+
+      <nav class="launch-grid" aria-label="Operator apps">
+        <a class="tile" href="/desktops">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+          </span>
+          <h2 class="tile-name">Desktops</h2>
+          <p class="tile-desc">View, control, and switch the bot's live desktops.</p>
+          <p class="tile-foot" id="tile-desktops-foot">…</p>
+        </a>
+
+        <a class="tile" href="/actions">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          </span>
+          <h2 class="tile-name">Actions</h2>
+          <p class="tile-desc">Run named intents — Clear RAM, freeze quiet, report RAM — without shelling the box.</p>
+          <p class="tile-foot" id="tile-actions-foot">…</p>
+        </a>
+
+        <a class="tile" href="/processes">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/></svg>
+          </span>
+          <h2 class="tile-name">Processes</h2>
+          <p class="tile-desc">Inspect running processes and stop what should not be running.</p>
+          <p class="tile-foot" id="tile-processes-foot">…</p>
+        </a>
+
+        <a class="tile" href="/files">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20h16V8l-4-4H4z"/><path d="M12 12v5M9.5 14.5 12 12l2.5 2.5"/></svg>
+          </span>
+          <h2 class="tile-name">Files</h2>
+          <p class="tile-desc">Move files into and out of the bot box.</p>
+          <p class="tile-foot" id="tile-files-foot">…</p>
+        </a>
+
+        <a class="tile" href="/sessions">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.2"/><path d="M5 19c1.5-3.2 4-4.8 7-4.8S17.5 15.8 19 19"/></svg>
+          </span>
+          <h2 class="tile-name">Sessions</h2>
+          <p class="tile-desc">Manage OAuth and computer-use logins. Not secrets.</p>
+          <p class="tile-foot" id="tile-sessions-foot">…</p>
+        </a>
+
+        <a class="tile" href="/handoff">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 7h7v7M14 7l-8 8"/><path d="M17 17H10v-7M10 17l8-8"/></svg>
+          </span>
+          <h2 class="tile-name">Handoff</h2>
+          <p class="tile-desc">Securely hand an authentication step back to the operator.</p>
+          <p class="tile-foot" id="tile-handoff-foot">…</p>
+        </a>
+
+        <a class="tile" href="/vault">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <h2 class="tile-name">Vault</h2>
+          <p class="tile-desc">Manage credentials and bot secrets.</p>
+          <p class="tile-foot" id="tile-vault-foot">…</p>
+        </a>
+
+        <a class="tile" href="/ai">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+          </span>
+          <h2 class="tile-name">AI defaults</h2>
+          <p class="tile-desc">Set primary, secondary, and tertiary browser/search/chat services.</p>
+          <p class="tile-foot" id="tile-ai-foot">…</p>
+        </a>
+
+        <a class="tile" href="/skills">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 4.5 7v5c0 4.5 3.2 7.4 7.5 9 4.3-1.6 7.5-4.5 7.5-9V7z"/></svg>
+          </span>
+          <h2 class="tile-name">Skills</h2>
+          <p class="tile-desc">Manage shared skills and pre-appended agent context.</p>
+          <p class="tile-foot" id="tile-skills-foot">…</p>
+        </a>
+
+        <a class="tile muted" href="/box">
+          <span class="tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M12 12v8M3 8.5l9 3.5 9-3.5"/></svg>
+          </span>
+          <h2 class="tile-name">Box</h2>
+          <p class="tile-desc">Apply, revert, proxy, listen policy, and software inventory.</p>
+          <p class="tile-foot" id="tile-box-foot">…</p>
+        </a>
+      </nav>
+    </main>
+  </div>
+  <script src="/shell.js?v=a11c1ear"></script>
+  <script src="/home.js?v=a11c1ear"></script>
 </body>
 </html>

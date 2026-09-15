@@ -1,0 +1,291 @@
+/* Shared polish for Vault / AI / Skills / Handoff pages */
+.p2-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.85rem;
+}
+.p2-hero h1 {
+  margin: 0 0 .45rem; font-size: clamp(1.95rem, 2.8vw, 2.45rem); font-weight: 750;
+  letter-spacing: -.04em; line-height: 1.08;
+}
+.p2-hero p { margin: 0; color: var(--muted-foreground); max-width: 36rem; font-size: .95rem; line-height: 1.55; }
+.p2-toolbar {
+  display: flex; align-items: flex-end; gap: .65rem; flex-wrap: wrap;
+}
+.p2-meta {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .85rem; padding: 1.05rem 1.2rem; margin-bottom: 1.25rem;
+}
+.p2-meta div { display: grid; gap: .28rem; }
+.p2-meta span {
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted-foreground); font-weight: 550;
+}
+.p2-meta strong {
+  font-family: var(--font); font-size: .9rem; font-weight: 550; letter-spacing: -.015em;
+}
+.p2-table-wrap { overflow: auto; padding: 0; }
+.p2-table {
+  width: 100%; border-collapse: collapse; font-size: .86rem;
+}
+.p2-table th, .p2-table td {
+  padding: .55rem .75rem; border-bottom: 1px solid var(--rule);
+  text-align: left; vertical-align: top;
+}
+.p2-table th {
+  position: sticky; top: 0; z-index: 1;
+  background: color-mix(in srgb, var(--base) 92%, var(--mantle));
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted-foreground); font-weight: 550;
+}
+.p2-table td.mono { font-family: var(--mono); font-size: 12px; }
+.p2-empty { color: var(--overlay1); text-align: center; padding: 1.5rem !important; }
+.p2-badge {
+  display: inline-flex; align-items: center;
+  padding: .1rem .4rem; border-radius: 999px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  border: 1px solid var(--rule); color: var(--sub);
+}
+.p2-badge.ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
+.p2-badge.warn { color: var(--peach); border-color: color-mix(in srgb, var(--peach) 40%, transparent); }
+.p2-badge.secret { color: var(--sky); border-color: color-mix(in srgb, var(--sky) 40%, transparent); }
+.p2-badge.dim { color: var(--overlay1); }
+.p2-badge.bind {
+  color: var(--sky);
+  border-color: color-mix(in srgb, var(--sky) 35%, transparent);
+  background: color-mix(in srgb, var(--sky) 8%, transparent);
+}
+.p2-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 1rem;
+}
+.p2-card {
+  padding: 1.15rem 1.2rem; border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px); background: var(--card);
+  display: grid; gap: .5rem;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.p2-card:hover {
+  border-color: color-mix(in srgb, var(--mauve) 22%, var(--border));
+  box-shadow: var(--elev, 0 8px 28px color-mix(in srgb, #000 28%, transparent));
+}
+.p2-card h3 {
+  margin: 0; font-size: 1rem; letter-spacing: -.02em;
+}
+.p2-card p {
+  margin: 0; color: var(--sub); font-size: .86rem;
+}
+.p2-card .path {
+  font-family: var(--mono); font-size: 11px; color: var(--overlay1);
+  word-break: break-all;
+}
+.p2-card .row {
+  display: flex; gap: .35rem; flex-wrap: wrap; align-items: center;
+}
+.p2-form {
+  display: grid; gap: .85rem;
+}
+.p2-form label {
+  display: grid; gap: .3rem; font-size: .82rem; color: var(--sub);
+}
+.p2-form select, .p2-form input[type="url"], .p2-form input[type="text"] {
+  margin: 0; width: 100%;
+  background: var(--mantle); border: 1px solid var(--surface1);
+  border-radius: 8px; color: var(--text); padding: .5rem .65rem;
+}
+.p2-sites {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: .75rem;
+}
+.p2-steps {
+  display: grid; gap: .75rem; counter-reset: step;
+}
+.p2-step {
+  display: grid; grid-template-columns: auto 1fr; gap: .85rem;
+  padding: .9rem 1rem; border: 1px solid var(--rule);
+  border-radius: 12px; background: color-mix(in srgb, var(--base) 80%, transparent);
+}
+.p2-step .n {
+  width: 2rem; height: 2rem; border-radius: 999px;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--mauve); border: 1px solid color-mix(in srgb, var(--mauve) 35%, transparent);
+}
+.p2-step h3 { margin: 0 0 .2rem; font-size: .95rem; }
+.p2-step p { margin: 0; color: var(--sub); font-size: .86rem; }
+.p2-links { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+.p2-links a {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .7rem; border-radius: 8px;
+  border: 1px solid var(--rule); text-decoration: none; color: var(--sub);
+  font-size: .82rem;
+}
+.p2-links a:hover { color: var(--text); border-color: var(--surface1); }
+.p2-hint {
+  margin: 0 0 .75rem; color: var(--sub); font-size: .86rem;
+}
+.masked {
+  font-family: var(--mono); letter-spacing: .18em; color: var(--overlay1);
+}
+@media (max-width: 720px) {
+  .p2-meta { grid-template-columns: 1fr 1fr; }
+}
+
+/* Deep-link highlight from Home/Processes Clear RAM CTA */
+.p2-card.is-target {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--peach) 18%, transparent);
+}
+
+/* Handoff desk status pills */
+.ho-status{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;letter-spacing:.04em;border:1px solid rgba(205,214,244,.14);color:var(--subtext0)}
+.ho-status.live{color:var(--green);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+.ho-status.current{color:var(--mauve);border-color:color-mix(in srgb,var(--mauve) 40%,transparent)}
+.ho-status.frozen{color:var(--peach);border-color:color-mix(in srgb,var(--peach) 45%,transparent)}
+
+.p2-meta strong a { color: inherit; text-decoration: underline dashed; }
+.p2-meta strong a:hover { color: var(--mauve); }
+
+
+/* Catppuccin × shadcn — calm shared page polish (no carnival rails) */
+.p2-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.p2-card::before { content: none !important; display: none !important; }
+.p2-meta {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.p2-meta span { color: var(--muted-foreground) !important; }
+.p2-meta strong { color: var(--foreground); }
+.p2-table th {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted) 90%, var(--card));
+}
+.p2-toolbar button.primary,
+.p2-toolbar .btn-solid {
+  border-radius: calc(var(--radius) - 2px);
+}
+.p2-links a {
+  border-radius: calc(var(--radius) - 2px);
+  border-color: var(--border);
+}
+.p2-links a:hover {
+  color: var(--accent-foreground);
+  border-color: color-mix(in srgb, var(--mauve) 35%, var(--border));
+  background: var(--accent);
+}
+.p2-step {
+  background: var(--card);
+  border-color: var(--border);
+  border-radius: var(--radius);
+}
+.p2-step .n {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: color-mix(in srgb, var(--mauve) 28%, transparent);
+}
+.p2-card.is-target {
+  outline: 2px solid color-mix(in srgb, var(--peach) 70%, transparent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--peach) 12%, transparent);
+}
+
+/* Elegant-more — shared secondary sheet rhythm + motion */
+.p2-hero { margin-bottom: 1.85rem; }
+.p2-hero h1 {
+  font-size: clamp(1.85rem, 2.4vw, 2.2rem);
+  letter-spacing: -.038em;
+  line-height: 1.12;
+}
+.p2-badge {
+  font-family: var(--font) !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+  font-weight: 550 !important;
+  font-size: 10px !important;
+  padding: .12rem .5rem !important;
+}
+.p2-card {
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+}
+.p2-card:hover {
+  transform: translateY(-1px);
+}
+.p2-meta {
+  transition: border-color .16s ease;
+}
+.p2-links a {
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+.p2-step {
+  transition: border-color .16s ease;
+}
+.p2-form select, .p2-form input[type="url"], .p2-form input[type="text"] {
+  border: 1px solid var(--input, var(--border)) !important;
+  background: var(--background, var(--mantle)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.ho-status {
+  font-family: var(--font) !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+  font-weight: 550;
+  font-size: 10px !important;
+  padding: .12rem .5rem !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .p2-card:hover { transform: none; }
+  .p2-card, .p2-links a, .p2-form select, .p2-form input {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skills catalog filter + when kicker */
+.skills-filter { display: inline-flex; align-items: center; margin: 0; }
+.skills-filter input[type="search"] {
+  margin: 0; min-width: 14rem; max-width: 22rem;
+  background: var(--mantle); border: 1px solid var(--surface1);
+  border-radius: 8px; color: var(--text); padding: .45rem .65rem;
+  font: inherit; font-size: .86rem;
+}
+.skills-filter input[type="search"]:focus {
+  outline: none; border-color: color-mix(in srgb, var(--mauve) 45%, var(--surface1));
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.skills-when {
+  margin: 0; font-size: .84rem; color: var(--text);
+  line-height: 1.35;
+}
+.skills-when .k {
+  display: inline-block; margin-right: .35rem;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mauve);
+  border: 1px solid color-mix(in srgb, var(--mauve) 35%, transparent);
+  border-radius: 999px; padding: 1px 7px;
+}
+.skills-excerpt {
+  margin: 0; color: var(--sub); font-size: .82rem; line-height: 1.4;
+}
+.skills-card h3 { color: var(--text); }
+
+
+/* pretty-pied — soft panel glow on secondary cards */
+.p2-card:hover, .p2-meta {
+  box-shadow: var(--glow-panel, var(--elev));
+}
+
+
+/* Actions OOM strip — match Home/Desktops bands */
+#act-ram-tile.elevated strong { color: var(--yellow, #f9e2af); }
+#act-ram-tile.pressure strong { color: var(--red, #f38ba8); }
+#act-oom { text-transform: lowercase; }

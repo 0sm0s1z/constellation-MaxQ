@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaxQ · Skills</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/mocha.css">
+  <link rel="stylesheet" href="/pass2.css">
+</head>
+<body>
+  <div class="op-shell">
+    <header class="op-topbar">
+      <div class="op-brand">
+        <a class="op-brand-link" href="/" aria-label="MaxQ Operator Home">
+          <span class="op-logo">MaxQ</span>
+          <span class="op-slash">/</span>
+          <span class="op-crumb">OPERATOR / <strong>SKILLS</strong></span>
+        </a>
+        <span class="op-identity" title="Box identity">EVA</span>
+      </div>
+      <div id="op-conn" class="op-conn" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-label>…</span>
+      </div>
+    </header>
+    <div id="op-proof" class="op-proof" aria-label="Proof strip">loading…</div>
+
+    <main class="op-main wide">
+      <header class="p2-hero">
+        <div>
+          <p class="op-kicker">Catalog</p>
+          <h1>Skills</h1>
+          <p>Read-only catalog of shared skills under <code>$HOME/.config/maxq/skills</code>. Descriptions come from <code>SKILL.md</code> frontmatter when present.</p>
+        </div>
+        <div class="p2-toolbar">
+          <label class="skills-filter" for="skills-filter">
+            <span class="sr-only">Filter skills</span>
+            <input type="search" id="skills-filter" placeholder="Filter by name or when…" autocomplete="off" />
+          </label>
+          <button type="button" id="skills-refresh" class="primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="card p2-meta">
+        <div><span>skills</span><strong id="skills-count">—</strong></div>
+        <div><span>showing</span><strong id="skills-showing">—</strong></div>
+        <div><span>root</span><strong id="skills-root">—</strong></div>
+        <div><span>status</span><strong id="skills-status">idle</strong></div>
+      </section>
+
+      <section id="skills-grid" class="p2-cards" aria-live="polite">
+        <article class="p2-card"><p>loading…</p></article>
+      </section>
+      <p id="skills-msg" class="msg" hidden></p>
+    </main>
+  </div>
+  <script src="/shell.js"></script>
+  <script src="/skills.js"></script>
+  <script>window.addEventListener("DOMContentLoaded",()=>{MaxQShell.bootShell().catch(()=>{}); MaxQSkills.boot();});</script>
+</body>
+</html>
