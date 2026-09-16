@@ -77,6 +77,41 @@
     </section>
 
     <section class="card">
+      <h2>Entitlements / bot reach</h2>
+      <p class="hint">Merged allow/deny visibility with an explicit source on every row. Operator rows are editable here; Home Assistant rows are imported read-only from the HA allowlist above, and network rows are derived from local MaxQ network state.</p>
+      <form id="entitlements-form" class="connection-form">
+        <div class="entitlement-inputs">
+          <label>Action
+            <select id="entitlement-action">
+              <option value="allow">Allow</option>
+              <option value="deny">Deny</option>
+            </select>
+          </label>
+          <label>Kind
+            <select id="entitlement-kind">
+              <option value="host">Host</option>
+              <option value="cidr">CIDR</option>
+              <option value="service">Service</option>
+              <option value="tag">Tag</option>
+              <option value="ha-entity">HA entity ref</option>
+              <option value="network">Network marker</option>
+            </select>
+          </label>
+          <label>Value <input id="entitlement-value" placeholder="ha.home.arpa" autocomplete="off"></label>
+          <label>Label <input id="entitlement-label" placeholder="Home Assistant host" maxlength="200" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <button id="btn-entitlement-add" type="button">Add operator row</button>
+          <button id="btn-entitlement-save" type="submit">Save operator scope</button>
+        </div>
+      </form>
+      <p id="st-entitlements" class="muted">Loading…</p>
+      <div class="entitlement-head" aria-hidden="true"><span>Action</span><span>Kind</span><span>Value / label</span><span>Source</span><span></span></div>
+      <ul id="entitlements" class="entitlements" aria-live="polite"></ul>
+      <p class="hint entitlement-foot">To change imported HA entity scope, edit the <strong>Home Assistant allowlist</strong> card above. This is not a Tailscale cloud ACL editor and does not expose auth-key material.</p>
+    </section>
+
+    <section class="card">
       <h2>connections</h2>
       <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
       <form id="connection-form" class="connection-form">
