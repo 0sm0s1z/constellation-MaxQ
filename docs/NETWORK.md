@@ -26,6 +26,8 @@ tailscale up --login-server=https://headscale.example.invalid
 
 If `login_server` is empty or invalid, the request fails before `tailscale up` runs. MaxQ never silently retries against Tailscale SaaS after a Headscale validation or join failure.
 
+The settings sheet exposes the optional **Auth / preauth key** field in both Tailscale and Headscale modes. **Login server** remains Headscale-only. Leaving the key field blank keeps any stored key unchanged.
+
 ## Leave / disconnect
 
 The settings sheet exposes **Leave / Disconnect** beside **Save & join**. It sends a network action through the existing loopback `/policy` API and runs:
