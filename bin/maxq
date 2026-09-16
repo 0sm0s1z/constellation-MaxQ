@@ -1,66 +1,202 @@
 #!/usr/bin/env bash
 # constellation-MaxQ CLI front-end.
-# The pre-#69 implementation lives in maxq-core; this wrapper adds the desktop
-# release gate without perturbing unrelated installer logic.
+# Composes the current core with HOME-only split runtime modules and keeps the
+# #69 desktop gate as the final graphical release gate.
 set -u
 
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
+CONFIG="$PREFIX/.config/maxq"
 SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
 HERE="$(cd "$(dirname "$SELF")" && pwd)"
-CORE="$HERE/maxq-core"
-GATE="$HERE/maxq-desktop-gate"
 
-# A repo checkout may be invoking this before install.sh has copied siblings to
-# $HOME/bin. Keep the runtime pair current so install_self continues to copy
-# this wrapper (not the core) into $HOME/bin/maxq.
-if [ "$HERE" != "$BIN" ]; then
-  mkdir -p "$BIN"
-  if [ -f "$HERE/maxq-core" ]; then cp -f "$HERE/maxq-core" "$BIN/maxq-core"; chmod +x "$BIN/maxq-core"; fi
-  if [ -f "$HERE/maxq-desktop-gate" ]; then cp -f "$HERE/maxq-desktop-gate" "$BIN/maxq-desktop-gate"; chmod +x "$BIN/maxq-desktop-gate"; fi
-fi
+RUNTIME_PARTS=(
+  maxq-core
+  maxq-desktop-gate
+  maxq-desktop
+  maxq-desktop-ghostty
+  maxq-desktop-launcher
+  maxq-desktop-shortcuts
+  maxq-desktop-chrome
+  maxq-desktop-dark
+  maxq-packages
+  maxq-novnc
+)
 
-[ -f "$CORE" ] || CORE="$BIN/maxq-core"
-[ -x "$GATE" ] || GATE="$BIN/maxq-desktop-gate"
-[ -f "$CORE" ] || { echo "maxq: missing runtime core: $CORE" >&2; exit 1; }
-[ -x "$GATE" ] || { echo "maxq: missing desktop gate: $GATE" >&2; exit 1; }
+sync_checkout_runtime() {
+  [ "$HERE" != "$BIN" ] || return 0
+  local root part
+  root="$(cd "$HERE/.." && pwd)"
+  mkdir -p "$BIN" "$CONFIG/theme/src" "$CONFIG/api-src" "$CONFIG/icons-src"
+  cp -f "$SELF" "$BIN/maxq"
+  chmod +x "$BIN/maxq"
+  for part in "${RUNTIME_PARTS[@]}"; do
+    [ -f "$HERE/$part" ] || { echo "maxq: missing checkout runtime part: $HERE/$part" >&2; return 1; }
+    cp -f "$HERE/$part" "$BIN/$part"
+    chmod +x "$BIN/$part"
+  done
 
-# Load all legacy functions but do not execute its trailing main "$@". Sourcing
-# keeps $0 pointed at this wrapper, so core install_self preserves the wrapper.
+  # Direct `bin/maxq apply` from a checkout is a supported install path too.
+  [ ! -d "$root/share/theme" ] || cp -a "$root/share/theme/." "$CONFIG/theme/src/"
+  if [ -d "$root/cmd/maxq-api" ]; then
+    rm -rf "$CONFIG/api-src"
+    mkdir -p "$CONFIG/api-src"
+    cp -a "$root/cmd/maxq-api/." "$CONFIG/api-src/"
+  fi
+  [ ! -d "$root/share/icons" ] || cp -a "$root/share/icons/." "$CONFIG/icons-src/"
+}
+
+sync_checkout_runtime || exit 1
+
+CORE="$BIN/maxq-core"
+GATE="$BIN/maxq-desktop-gate"
+DESKTOP="$BIN/maxq-desktop"
+PACKAGES="$BIN/maxq-packages"
+NOVNC="$BIN/maxq-novnc"
+
+for part in "$CORE" "$GATE" "$DESKTOP" "$PACKAGES" "$NOVNC"; do
+  [ -x "$part" ] || { echo "maxq: missing split runtime: $part; rerun install.sh" >&2; exit 1; }
+done
+
+# Load the exact current core implementation but do not execute its trailing
+# main "$@". $0 remains this public shim, so core install_self preserves it.
 source <(sed '$d' "$CORE")
 
-cmd="${1:-status}"
+# Issue #20 is HOME-only. The historical core still contains optional /usr
+# convenience-link helpers; the public split-runtime shim disables them.
+optional_usr_link() { :; }
+remove_optional_usr_link() { :; }
 
-if [ "$cmd" = "prove" ]; then
-  # cmd_prove intentionally calls exit. Run it in a subshell, then enforce the
-  # #69 gate against the final APPLIED state and combine exit status honestly.
-  # Replace the legacy config-only Ghostty summary; the gate below reports the
-  # actual binary/version result.
+# Keep reconciliation HOME-only. maxq-desktop-chrome appends the full desired-
+# state reapply block after core apply, so Update recovery returns through this
+# public shim and therefore restores every split module.
+write_reconcile() {
+  cat > "$RECONCILE" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+PREFIX="${MAXQ_HOME:-$HOME}"
+mkdir -p "$PREFIX/bin" "$PREFIX/.config/maxq" "$PREFIX/.local" \
+  "$PREFIX/.config/maxq/ca" "$PREFIX/.config/maxq/theme" \
+  "$PREFIX/.config/maxq/cli-cache" "$PREFIX/.config/maxq/api-src" \
+  "$PREFIX/.config/maxq/icons-src" "$PREFIX/.local/share/themes" \
+  "$PREFIX/.local/share/icons" "$PREFIX/.local/share/backgrounds" \
+  "$PREFIX/.local/share/maxq"
+exit 0
+EOF
+  chmod +x "$RECONCILE"
+}
+
+remove_novnc_if_owned() {
+  local root="$PREFIX/.local/share/maxq/novnc"
+  if [ -f "$root/.maxq-owned" ]; then
+    rm -rf "$root"
+  fi
+}
+
+compose_apply() {
+  # Packages first intentionally: a truly fresh box needs HOME/bin/go before
+  # the core can build maxq-api from the installed api-src tree.
+  "$PACKAGES" apply
+  main apply
+  "$DESKTOP" apply
+  "$PACKAGES" sbom
+  "$NOVNC" install
+  # Preserve #69 as the final authority for Super+Space, live Plank pin,
+  # Ghostty runtime/theme, and graphical fail-closed behavior.
+  "$GATE" apply
+}
+
+compose_revert() {
+  local rc=0
   set +e
-  ( cmd_prove ) 2>&1 | sed 's/^ghostty_bin=skipped (no official linux amd64)$/ghostty_bin=validated-by-desktop-gate-below/'
+  # Gate first: it must unpin its live Plank item before desktop cleanup removes
+  # MaxQ dockitem files.
+  "$GATE" revert; [ "$?" -eq 0 ] || rc=1
+  "$PACKAGES" revert; [ "$?" -eq 0 ] || rc=1
+  "$DESKTOP" revert; [ "$?" -eq 0 ] || rc=1
+  remove_novnc_if_owned; [ "$?" -eq 0 ] || rc=1
+  main revert; [ "$?" -eq 0 ] || rc=1
+  set -e
+  return "$rc"
+}
+
+sbom_valid() {
+  python3 - "$CONFIG/sbom.json" <<'PY'
+import json,sys
+try:
+    data=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception:
+    raise SystemExit(1)
+if not isinstance(data,list) or not data:
+    raise SystemExit(1)
+for item in data:
+    if not isinstance(item,dict) or not {'name','version','path','source'} <= set(item):
+        raise SystemExit(1)
+PY
+}
+
+compose_prove() {
+  local package_boot_rc core_rc desktop_rc sbom_rc novnc_rc gate_apply_rc gate_rc
+  set +e
+
+  "$PACKAGES" apply
+  package_boot_rc=$?
+
+  # cmd_prove exits by design, so isolate it. This is the current #68 core proof
+  # unchanged except for the HOME-only function overrides above.
+  ( cmd_prove ) 2>&1 | sed 's/^ghostty_bin=skipped (no official linux amd64)$/ghostty_bin=validated-by-split-desktop-and-69-gate-below/'
   core_rc=${PIPESTATUS[0]}
+
+  "$DESKTOP" prove
+  desktop_rc=$?
+
+  "$PACKAGES" sbom
+  if [ "$?" -eq 0 ] && sbom_valid; then
+    echo "[PASS] split runtime SBOM is populated and well-formed"
+    sbom_rc=0
+  else
+    echo "[FAIL] split runtime SBOM is populated and well-formed"
+    sbom_rc=1
+  fi
+
+  "$NOVNC" install
+  if [ "$?" -eq 0 ] && [ "$($NOVNC status 2>/dev/null)" = "installed" ]; then
+    echo "[PASS] noVNC HOME runtime installed"
+    novnc_rc=0
+  else
+    echo "[FAIL] noVNC HOME runtime installed"
+    novnc_rc=1
+  fi
+
+  # #69 is last on purpose. Its eyes-proven live Plank/Super+Space/Ghostty
+  # assertions must remain the final graphical release gate.
   "$GATE" apply
   gate_apply_rc=$?
   "$GATE" prove
   gate_rc=$?
+
   set -e
-  if [ "$core_rc" -ne 0 ] || [ "$gate_apply_rc" -ne 0 ] || [ "$gate_rc" -ne 0 ]; then
-    exit 1
+  if [ "$package_boot_rc" -ne 0 ] || [ "$core_rc" -ne 0 ] || \
+     [ "$desktop_rc" -ne 0 ] || [ "$sbom_rc" -ne 0 ] || \
+     [ "$novnc_rc" -ne 0 ] || [ "$gate_apply_rc" -ne 0 ] || \
+     [ "$gate_rc" -ne 0 ]; then
+    return 1
   fi
-  exit 0
-fi
+  return 0
+}
 
-set +e
-main "$@"
-core_rc=$?
-set -e
-[ "$core_rc" -eq 0 ] || exit "$core_rc"
-
+cmd="${1:-status}"
 case "$cmd" in
   apply|configure)
-    "$GATE" apply
+    compose_apply
     ;;
   revert|unconfigure)
-    "$GATE" revert
+    compose_revert
+    ;;
+  prove)
+    compose_prove
+    ;;
+  *)
+    main "$@"
     ;;
 esac
