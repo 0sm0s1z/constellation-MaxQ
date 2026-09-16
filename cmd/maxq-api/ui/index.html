@@ -64,7 +64,18 @@
 
     <section class="card">
       <h2>Home Assistant allowlist</h2>
-      <p class="hint">Bot-visible curated entities only — never the full Home Assistant entity dump. This config surface does not fetch or control HA devices; live reach may still depend on network join.</p>
+      <p class="hint">Bot-visible curated entities only — never the full Home Assistant entity dump. Actions below only work for allowlisted IDs via a HOME-only HA connection (URL + token). No inventory browser.</p>
+      <form id="ha-connection-form" class="connection-form">
+        <div class="network-fields">
+          <label>HA base URL <input id="ha-base-url" type="url" placeholder="https://homeassistant.local:8123" autocomplete="off"></label>
+          <label>Long-lived token <input id="ha-token" type="password" placeholder="Optional; blank keeps stored token" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <button id="btn-ha-connection-save" type="submit">Save HA connection</button>
+          <button id="btn-ha-token-clear" type="button">Clear token</button>
+        </div>
+      </form>
+      <p id="st-ha-connection" class="muted">Loading…</p>
       <form id="ha-form" class="connection-form">
         <div class="network-fields">
           <label>Entity ID <input id="ha-entity-id" placeholder="light.kitchen" autocomplete="off"></label>
@@ -76,6 +87,7 @@
         </div>
       </form>
       <p id="st-ha" class="muted">Loading…</p>
+      <p id="st-ha-action" class="msg" hidden></p>
       <ul id="ha-entities" class="connections" aria-live="polite"></ul>
     </section>
 

@@ -22,6 +22,10 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
 | GET | `/ha/allowlist` | Returns only the curated bot-visible Home Assistant entity set, source path, and explicit `curated-allowlist-not-full-dump` semantics |
 | PUT | `/ha/allowlist` | Replaces the curated HA set with JSON `{entities:[{id,label?}]}`; empty is valid |
+| GET | `/ha/connection` | Returns HA `base_url`, `token_configured`, `configured` (never the token) |
+| PUT | `/ha/connection` | Sets `base_url` and optional `token` / `clear_token` (0600 HOME files) |
+| GET | `/ha/state/{id}` | Summarized HA state for an **allowlisted** entity only |
+| POST | `/ha/action` | Allowlist-gated HA service call (`turn_on`/`turn_off`/`toggle`/`set_temperature`) |
 | GET | `/entitlements` | Returns merged allow/deny visibility from operator, HA allowlist, network, and MaxQ sources; every row includes `source` |
 | PUT | `/entitlements` | Replaces only operator-owned entitlement rows; imported rows remain derived/read-only |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |

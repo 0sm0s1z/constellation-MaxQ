@@ -7,6 +7,7 @@ type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; networ
 type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
 type HAEntity = { id: string; label?: string };
+type HAConnection = { base_url: string; token_configured: boolean; configured: boolean; source: string };
 type HAAllowlist = { entities: HAEntity[]; source: string; semantics: "curated-allowlist-not-full-dump"; bot_visible_only: boolean };
 type EntitlementEntry = { action: "allow" | "deny"; kind: string; value: string; label?: string; source: string };
 type Entitlements = { entries: EntitlementEntry[]; source: string; semantics: "merged-allow-deny-with-source-labels" };
@@ -30,6 +31,7 @@ async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
 
 async function getStatus(): Promise<Status> { return requestJSON<Status>("/status"); }
 async function getPolicy(): Promise<Policy> { return requestJSON<Policy>("/policy"); }
+async function getHAConnection(): Promise<HAConnection> { return requestJSON<HAConnection>("/ha/connection"); }
 async function getHAAllowlist(): Promise<HAAllowlist> { return requestJSON<HAAllowlist>("/ha/allowlist"); }
 async function getEntitlements(): Promise<Entitlements> { return requestJSON<Entitlements>("/entitlements"); }
 async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
@@ -118,6 +120,35 @@ function renderNetworkUnavailable(message: string): void {
   $("st-network").textContent = "Unavailable · " + message;
 }
 
+
+function setHAActionMsg(text: string): void {
+  const el = $("st-ha-action");
+  el.hidden = !text;
+  el.textContent = text;
+}
+async function runHAAction(entityId: string, action: string, temperature?: number): Promise<void> {
+  setHAActionMsg("");
+  await act(async () => {
+    const body: { entity_id: string; action: string; temperature?: number } = { entity_id: entityId, action };
+    if (typeof temperature === "number") body.temperature = temperature;
+    const result = await postJSON<{ ok: boolean; error?: string; before?: { state?: string }; after?: { state?: string } }>("/ha/action", body);
+    const before = result.before?.state ? String(result.before.state) : "?";
+    const after = result.after?.state ? String(result.after.state) : "?";
+    setHAActionMsg(entityId + " · " + action + " · " + before + " → " + after);
+  });
+}
+function renderHAConnection(conn: HAConnection): void {
+  ($("ha-base-url") as HTMLInputElement).value = conn.base_url || "";
+  const parts = [];
+  if (conn.configured) parts.push("Ready");
+  else if (conn.base_url && !conn.token_configured) parts.push("URL set · token missing");
+  else if (!conn.base_url && conn.token_configured) parts.push("Token stored · URL missing");
+  else parts.push("Not configured");
+  if (conn.token_configured) parts.push("token stored");
+  else parts.push("no token stored");
+  $("st-ha-connection").textContent = parts.join(" · ");
+}
+
 function renderHA(): void {
   const list = $("ha-entities");
   list.replaceChildren();
@@ -132,9 +163,23 @@ function renderHA(): void {
       const text = document.createElement("div");
       const id = document.createElement("strong"); id.textContent = entity.id; text.append(id);
       if (entity.label) { const detail = document.createElement("small"); detail.textContent = entity.label; text.append(detail); }
+      const actions = document.createElement("div"); actions.className = "row";
+      const domain = entity.id.split(".")[0];
+      if (domain === "light" || domain === "switch" || domain === "input_boolean" || domain === "fan") {
+        const on = document.createElement("button"); on.type = "button"; on.textContent = "On";
+        on.addEventListener("click", () => runHAAction(entity.id, "turn_on"));
+        const off = document.createElement("button"); off.type = "button"; off.textContent = "Off";
+        off.addEventListener("click", () => runHAAction(entity.id, "turn_off"));
+        actions.append(on, off);
+      } else if (domain === "climate") {
+        const bump = document.createElement("button"); bump.type = "button"; bump.textContent = "Set 72°F";
+        bump.addEventListener("click", () => runHAAction(entity.id, "set_temperature", 72));
+        actions.append(bump);
+      }
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "remove"; remove.textContent = "Remove";
       remove.addEventListener("click", () => { haEntities.splice(index, 1); renderHA(); });
-      item.append(text, remove); list.append(item);
+      actions.append(remove);
+      item.append(text, actions); list.append(item);
     });
   }
   $("st-ha").textContent = haEntities.length + " curated entit" + (haEntities.length === 1 ? "y" : "ies") + " · not a full HA inventory";
@@ -156,7 +201,7 @@ function renderHAUnavailable(message: string): void {
   const list = $("ha-entities"); list.replaceChildren();
   const item = document.createElement("li"); item.className = "msg"; item.textContent = "Unavailable · " + message; list.append(item);
   $("st-ha").textContent = "Unavailable · " + message;
-  ["ha-entity-id", "ha-entity-label", "btn-ha-add", "btn-ha-save"].forEach((id) => { ($(id) as HTMLInputElement | HTMLButtonElement).disabled = true; });
+  ["ha-entity-id", "ha-entity-label", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save"].forEach((id) => { ($(id) as HTMLInputElement | HTMLButtonElement).disabled = true; });
 }
 
 function addHAEntityFromInputs(): void {
@@ -329,7 +374,7 @@ function setNetworkError(text: string): void {
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
@@ -362,7 +407,7 @@ async function act(fn: () => Promise<unknown>, opts?: { network?: boolean }): Pr
   }
 }
 async function refresh(): Promise<void> {
-  const [status, policy, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
+  const [status, policy, haConn, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
   const errors: string[] = [];
 
   if (status.status === "fulfilled") renderStatus(status.value);
@@ -371,6 +416,8 @@ async function refresh(): Promise<void> {
   if (policy.status === "fulfilled") { renderPolicy(policy.value); renderNetwork(policy.value.network); }
   else { const message = errorText(policy.reason); renderPolicyUnavailable(message); renderNetworkUnavailable(message); errors.push("settings: " + message); }
 
+  if (haConn.status === "fulfilled") renderHAConnection(haConn.value);
+  else { $("st-ha-connection").textContent = "Unavailable · " + errorText(haConn.reason); errors.push("HA connection: " + errorText(haConn.reason)); }
   if (ha.status === "fulfilled") renderHAAllowlist(ha.value);
   else { const message = errorText(ha.reason); renderHAUnavailable(message); errors.push("HA allowlist: " + message); }
 
@@ -415,6 +462,21 @@ window.addEventListener("DOMContentLoaded", () => {
     await postJSON("/policy", { network: { mode: mode.value, login_server: loginServer.value, clear_auth_key: true } });
     ($("network-auth-key") as HTMLInputElement).value = "";
   }, { network: true }));
+  $("ha-connection-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const baseURL = ($("ha-base-url") as HTMLInputElement).value;
+    const token = ($("ha-token") as HTMLInputElement).value;
+    act(async () => {
+      const body: { base_url: string; token?: string } = { base_url: baseURL };
+      if (token.trim()) body.token = token;
+      await putJSON("/ha/connection", body);
+      ($("ha-token") as HTMLInputElement).value = "";
+    });
+  });
+  $("btn-ha-token-clear").addEventListener("click", () => act(async () => {
+    const baseURL = ($("ha-base-url") as HTMLInputElement).value;
+    await putJSON("/ha/connection", { base_url: baseURL, clear_token: true });
+  }));
   $("btn-ha-add").addEventListener("click", addHAEntityFromInputs);
   $("ha-form").addEventListener("submit", (event) => {
     event.preventDefault();

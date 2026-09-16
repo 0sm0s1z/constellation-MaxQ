@@ -78,3 +78,38 @@ The **Entitlements / bot reach** card links this allowlist as read-only `source:
 P03 can PASS when the curated source is visible and editable through the loopback API/settings sheet and responses explicitly retain `curated-allowlist-not-full-dump` semantics.
 
 Live Home Assistant reach or actuation is outside this change. If the box still needs P01 network join to reach the HA host, that dependency remains; this allowlist does not attempt to bypass or replace it.
+
+## Allowlisted actions (P02)
+
+MaxQ can call Home Assistant **only** for entities on the curated allowlist. There is no inventory browser and no action against an ID outside the allowlist.
+
+### Connection (HOME secrets)
+
+```text
+$HOME/.config/maxq/ha-connection.json   # {"base_url":"https://ha.example"} mode 0600
+$HOME/.config/maxq/ha.token             # long-lived access token, mode 0600
+```
+
+`GET /ha/connection` returns `base_url`, `token_configured`, and `configured` — never the token. `PUT /ha/connection` sets `base_url` and optionally `token` or `clear_token`. IT installs the token on the prove box; do not paste tokens into chat.
+
+### State + action
+
+```http
+GET /ha/state/{entity_id}
+POST /ha/action
+Content-Type: application/json
+
+{"entity_id":"light.kitchen","action":"turn_on"}
+{"entity_id":"climate.living_room","action":"set_temperature","temperature":72}
+```
+
+Supported actions: `turn_on` / `turn_off` / `toggle` for light|switch|input_boolean|fan|siren, and `set_temperature` for climate (temperature required). Responses include summarized before/after state and never echo the token.
+
+### Settings sheet
+
+The Home Assistant card can save the connection, manage the allowlist, and run On/Off (or set-temp) **only** on allowlisted rows. This is a prove/debug affordance, not a fake device inventory.
+
+### P02 prove boundary
+
+P02 PASSes when ≥2 real allowlisted devices change state through `POST /ha/action` over the secured home path, with before/after stills. Environment photos alone are not prove.
+
