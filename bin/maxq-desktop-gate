@@ -5,6 +5,8 @@ set -u
 
 PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
+SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+HERE="$(cd "$(dirname "$SELF")" && pwd)"
 CONFIG="$PREFIX/.config/maxq"
 LOCAL="$PREFIX/.local"
 LAUNCHER_BIN="$BIN/maxq-launcher"
@@ -41,21 +43,36 @@ install_plank_item() {
   plank_expected || return 0
   mkdir -p "$PLANK_LAUNCHERS" "$LOCAL/share/applications"
 
-  # Core apply normally writes the desktop entry first. If it is missing (race /
-  # partial apply), write a minimal owned launcher entry so the dock pin is valid
-  # and bare `maxq apply` stays idempotent.
-  if [ ! -s "$LAUNCHER_DESKTOP" ]; then
-    cat > "$LAUNCHER_DESKTOP" <<EOF
+  # Core may write the desktop entry without Icon. Plank then refuses to draw
+  # the item (draw_icon: code should not be reached) so eyes still see a stock
+  # 3-icon dock even after dconf pin. Always rewrite with a real PNG icon.
+  local icon_src icon_dst
+  icon_dst="$LOCAL/share/icons/hicolor/128x128/apps/maxq-launcher.png"
+  mkdir -p "$(dirname "$icon_dst")"
+  icon_src=""
+  for cand in \
+    "$CONFIG/theme/src/launcher/maxq-launcher.png" \
+    "$CONFIG/theme/launcher/maxq-launcher.png" \
+    "$HERE/../share/theme/launcher/maxq-launcher.png"; do
+    if [ -s "$cand" ]; then icon_src="$cand"; break; fi
+  done
+  if [ -n "$icon_src" ]; then
+    cp -f "$icon_src" "$icon_dst"
+  elif [ ! -s "$icon_dst" ]; then
+    icon_dst="applications-system"
+  fi
+
+  cat > "$LAUNCHER_DESKTOP" <<EOF
 [Desktop Entry]
 Type=Application
 Name=MaxQ App Launcher
 Comment=Launch applications with the MaxQ launcher
 Exec=$LAUNCHER_BIN
+Icon=$icon_dst
 Terminal=false
 Categories=Utility;System;
 Keywords=launcher;rofi;apps;MaxQ;
 EOF
-  fi
 
   cat > "$PLANK_DOCKITEM" <<EOF
 [PlankDockItemPreferences]
@@ -321,6 +338,7 @@ prove_gate() {
   if plank_expected; then
     check "Plank MaxQ launcher dock item file" test -s "$PLANK_DOCKITEM"
     check "Plank MaxQ launcher dock item live-pinned" plank_item_live
+    check "MaxQ launcher desktop Icon set" grep -qE '^Icon=.+' "$LAUNCHER_DESKTOP"
   else
     check "non-Plank MaxQ launcher desktop entry" test -s "$LAUNCHER_DESKTOP"
     check "non-Plank shortcut declaration" grep -qF 'launcher = Super+Space' "$SHORTCUTS_FILE"
