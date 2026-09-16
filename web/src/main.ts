@@ -1,7 +1,8 @@
 import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
-  renderStack, renderRouter, renderCue, renderCrew, GITHUB, GET_MAXQ, WHY, type Route,
+  renderStack, renderCue, renderCrew, GITHUB, GET_MAXQ, WHY, type Route,
 } from "./pages";
+import { renderRouter } from "./router";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
@@ -21,8 +22,8 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   telemetry: { label: "telemetry", draw: () => renderWhy("telemetry") },
 };
 
-/* Topbar: the site is about MaxQ. The why pages sit in the bar; the other Constellation surfaces
-   fold into one Products menu, which the `#surfaces` tabs at the foot of the home page mirror. */
+/* Topbar: the site is about MaxQ. The why pages sit in the bar on MaxQ/why routes; product pages
+   keep the bar product-focused so the 01/02/03 rail does not read like dead secondary nav. */
 const PRODUCTS: { key: Route; num: string; note: string }[] = [
   { key: "router", num: "01", note: "spend the seats" },
   { key: "home", num: "02", note: "the bot's box" },
@@ -33,15 +34,22 @@ const PRODUCTS: { key: Route; num: string; note: string }[] = [
 
 function shell(inner: string, route: Route): string {
   const productOpen = (["router", "cue", "crew", "stack"] as Route[]).includes(route);
+  const comingSoonProduct = (["router", "cue", "crew"] as Route[]).includes(route);
   const products = PRODUCTS.map((p) => {
     const active = p.key === route && route !== "home" ? " active" : "";
     const label = p.key === "home" ? "maxq" : routes[p.key].label;
     return `<a class="menu-item${active}" href="#${p.key}"><span class="menu-num">${p.num}</span><span class="menu-label">${label}</span><span class="menu-note">${p.note}</span></a>`;
   }).join("");
-  const why = WHY.map((w) => {
+  const why = productOpen ? "" : WHY.map((w) => {
     const active = w.id === route ? " active" : "";
     return `<a class="${active}" href="#${w.id}"><span class="nav-num">${w.num}</span>${w.short}</a>`;
   }).join("");
+  const whyRail = why ? `<span class="nav-sep" aria-hidden="true"></span>${why}` : "";
+  const actions = comingSoonProduct
+    ? `<a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>`
+    : `<a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
+        <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
+        <a class="btn-solid btn-sm" href="#install">Install</a>`;
   return `
     <header class="topbar" data-topbar>
       <a class="brand" href="#home">
@@ -53,13 +61,10 @@ function shell(inner: string, route: Route): string {
           <summary>products <i aria-hidden="true"></i></summary>
           <div class="menu-sheet">${products}</div>
         </details>
-        <span class="nav-sep" aria-hidden="true"></span>
-        ${why}
+        ${whyRail}
       </nav>
       <div class="nav-end">
-        <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
-        <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-solid btn-sm" href="#install">Install</a>
+        ${actions}
         <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><span></span><span></span></button>
       </div>
     </header>
@@ -94,7 +99,6 @@ function bindTabs(root: HTMLElement) {
   const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-tab]")];
   const panels = [...root.querySelectorAll<HTMLElement>("[data-panel]")];
   if (!tabs.length) return;
-  // Panels crossfade (styles.css .panel). `hidden` is lifted before the fade-in and set after the fade-out.
   const show = (id: string) => {
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === id));
     panels.forEach((p) => {
@@ -108,11 +112,8 @@ function bindTabs(root: HTMLElement) {
       }
     });
   };
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => show(tab.dataset.tab ?? "router"));
-  });
+  tabs.forEach((tab) => tab.addEventListener("click", () => show(tab.dataset.tab ?? "router")));
 }
-
 
 function bindCarousel(root: HTMLElement) {
   const box = root.querySelector<HTMLElement>("[data-carousel]");
@@ -152,8 +153,6 @@ function bindCarousel(root: HTMLElement) {
   show(0);
 }
 
-/* The launch video is the master clock. Copy reveals key off `playing`; telemetry lights at
-   apogee (3.5s in the Cue composition); the video is not looped so the rocket holds at the top. */
 const APOGEE_S = 3.5;
 function bindLaunch(root: HTMLElement) {
   const launch = root.querySelector<HTMLElement>("[data-launch]");
@@ -189,7 +188,6 @@ function bindLaunch(root: HTMLElement) {
   video.addEventListener("ended", held, { once: true });
   video.addEventListener("error", showGif);
   video.querySelector("source")?.addEventListener("error", showGif);
-  // Autoplay refused (data saver, policy): show the copy anyway and hold the poster frame.
   window.setTimeout(() => {
     if (!launch.classList.contains("is-live")) {
       video.play().catch(() => undefined);
@@ -199,9 +197,6 @@ function bindLaunch(root: HTMLElement) {
   }, 900);
 }
 
-/* The glass cycles one shot at a time once the rocket is holding. The shot on screen names the
-   telemetry key that glows, so the bottom edge of the canvas keeps a heartbeat after the flight.
-   Split copy and the chip ripple with the slide — fast, not a typewriter. */
 const GLASS_PERIOD_MS = 6500;
 function bindGlass(launch: HTMLElement) {
   const glass = launch.querySelector<HTMLElement>("[data-glass]");
@@ -276,7 +271,6 @@ function bindGlass(launch: HTMLElement) {
   }
 }
 
-/* Products menu closes on outside click / Escape; the phone menu turns the nav into a sheet. */
 let menuListeners = false;
 function bindNav(root: HTMLElement) {
   const bar = root.querySelector<HTMLElement>("[data-topbar]");
@@ -286,7 +280,6 @@ function bindNav(root: HTMLElement) {
   if (nav) nav.id = "site-nav";
   if (menu) {
     if (!menuListeners) {
-      // The shell is redrawn per route; document listeners go on once and find the live menu.
       menuListeners = true;
       const live = () => document.querySelector<HTMLDetailsElement>("[data-menu]");
       document.addEventListener("click", (ev) => {
@@ -311,7 +304,6 @@ function bindNav(root: HTMLElement) {
   }
 }
 
-/* Staggered reveal for any block marked data-reveal (the why rail). */
 function bindReveal(root: HTMLElement) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   root.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) => {
@@ -340,9 +332,6 @@ function bindDesk(root: HTMLElement) {
   });
 }
 
-/* The console is block two of the side door. Nothing here is a screenshot: the desktop sheet cycles
-   its current display, the meters breathe, kill removes a process and the RAM bar drops by its
-   RSS, the switches flip. Hover or focus a panel and its clock stops; leave and it resumes. */
 const SHEET_PERIOD_MS = 2600;
 const METER_PERIOD_MS = 1400;
 const RAM_TOTAL_GB = 15.6;
@@ -353,7 +342,6 @@ function bindConsole(root: HTMLElement) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pad = (n: number) => String(n).padStart(2, "0");
 
-  /* Desktops */
   const sheet = grid.querySelector<HTMLElement>("[data-sheet]");
   const tiles = [...grid.querySelectorAll<HTMLButtonElement>("[data-tile]")];
   const liveTiles = tiles.filter((t) => t.classList.contains("is-live"));
@@ -384,7 +372,6 @@ function bindConsole(root: HTMLElement) {
     sheet.addEventListener("focusout", sheetPlay);
   }
 
-  /* Resources */
   const procs = grid.querySelector<HTMLElement>("[data-procs]");
   const log = grid.querySelector<HTMLElement>("[data-log]");
   const restore = grid.querySelector<HTMLButtonElement>("[data-restore]");
@@ -480,7 +467,6 @@ function bindConsole(root: HTMLElement) {
     panel?.addEventListener("mouseleave", meterPlay);
   }
 
-  /* Steer */
   const routeNote = grid.querySelector<HTMLElement>("[data-route-note]");
   const routes = [...grid.querySelectorAll<HTMLButtonElement>("[data-route]")];
   const ROUTE_NOTES: Record<string, string> = {
@@ -529,7 +515,6 @@ function bindConsole(root: HTMLElement) {
     }, reduced ? 0 : 900);
   });
 
-  /* Reveal + start clocks when the block is on screen */
   const start = () => {
     grid.classList.add("is-live");
     showTile(cur);
@@ -571,7 +556,6 @@ function draw() {
   if (id && id !== "home" && document.getElementById(id)) {
     document.getElementById(id)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   } else if (route !== "home") {
-    // A page route (access, control, …) is a new page: start at the top, not wherever the last one was.
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
   }
 }
