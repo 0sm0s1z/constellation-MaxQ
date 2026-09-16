@@ -29,6 +29,11 @@ type networkJoinError struct{ err error }
 func (e networkJoinError) Error() string { return e.err.Error() }
 func (e networkJoinError) Unwrap() error { return e.err }
 
+type networkLeaveError struct{ err error }
+
+func (e networkLeaveError) Error() string { return e.err.Error() }
+func (e networkLeaveError) Unwrap() error { return e.err }
+
 type networkConfig struct {
 	Mode        string
 	LoginServer string
@@ -38,9 +43,11 @@ type networkState struct {
 	Mode              string `json:"mode"`
 	LoginServer       string `json:"login_server"`
 	AuthKeyConfigured bool   `json:"auth_key_configured"`
+	Status            string `json:"status,omitempty"`
 }
 
 type networkUpdateReq struct {
+	Action       string  `json:"action,omitempty"`
 	Mode         string  `json:"mode"`
 	LoginServer  string  `json:"login_server"`
 	AuthKey      *string `json:"auth_key,omitempty"`
@@ -172,6 +179,9 @@ func (s *server) networkState(cfg networkConfig) networkState {
 }
 
 func (s *server) applyNetworkUpdate(req networkUpdateReq) (networkState, error) {
+	if strings.TrimSpace(req.Action) != "" {
+		return networkState{}, networkInputError{message: "network action cannot be combined with network settings"}
+	}
 	current, err := s.loadNetworkConfig()
 	if err != nil {
 		return networkState{}, err
@@ -230,14 +240,57 @@ func (s *server) applyNetworkUpdate(req networkUpdateReq) (networkState, error) 
 	if err := s.runTailscale(args...); err != nil {
 		return s.networkState(next), networkJoinError{err: err}
 	}
-	return s.networkState(next), nil
+	state := s.networkState(next)
+	state.Status = "up"
+	return state, nil
+}
+
+func (s *server) applyNetworkAction(req networkUpdateReq) (networkState, error) {
+	action := strings.ToLower(strings.TrimSpace(req.Action))
+	if action == "" {
+		return networkState{}, networkInputError{message: "network action is required"}
+	}
+	if strings.TrimSpace(req.Mode) != "" || strings.TrimSpace(req.LoginServer) != "" || req.AuthKey != nil || req.ClearAuthKey {
+		return networkState{}, networkInputError{message: "network action cannot be combined with network settings"}
+	}
+	if action != "leave" {
+		return networkState{}, networkInputError{message: "network action must be leave"}
+	}
+
+	cfg, err := s.loadNetworkConfig()
+	if err != nil {
+		return networkState{}, err
+	}
+	// `tailscale down` is deliberately reversible: it cuts tailnet/home-fabric
+	// reach while preserving the node identity and selected Tailscale/Headscale
+	// control plane. Save & join can therefore restore the existing enrollment.
+	if err := s.runTailscale("down"); err != nil {
+		return s.networkState(cfg), networkLeaveError{err: err}
+	}
+	state := s.networkState(cfg)
+	state.Status = "down"
+	return state, nil
 }
 
 var tailscaleCommandRunner func(*server, ...string) error
 
 func (s *server) runTailscale(args ...string) error {
+	operation := "tailscale"
+	if len(args) > 0 {
+		operation += " " + args[0]
+	}
 	if tailscaleCommandRunner != nil {
-		return tailscaleCommandRunner(s, args...)
+		if err := tailscaleCommandRunner(s, args...); err != nil {
+			msg := s.redactNetworkSecret(strings.TrimSpace(err.Error()))
+			if len(msg) > 800 {
+				msg = msg[:800]
+			}
+			if msg == "" {
+				return fmt.Errorf("%s failed", operation)
+			}
+			return fmt.Errorf("%s failed: %s", operation, msg)
+		}
+		return nil
 	}
 	bin := filepath.Join(s.prefix, "bin", "tailscale")
 	if info, err := os.Stat(bin); err != nil || info.IsDir() {
@@ -252,7 +305,7 @@ func (s *server) runTailscale(args ...string) error {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
-		return fmt.Errorf("tailscale up timed out")
+		return fmt.Errorf("%s timed out", operation)
 	}
 	if err != nil {
 		msg := s.redactNetworkSecret(strings.TrimSpace(string(out)))
@@ -260,9 +313,9 @@ func (s *server) runTailscale(args ...string) error {
 			msg = msg[:800]
 		}
 		if msg == "" {
-			return fmt.Errorf("tailscale up failed: %v", err)
+			return fmt.Errorf("%s failed: %v", operation, err)
 		}
-		return fmt.Errorf("tailscale up failed: %v: %s", err, msg)
+		return fmt.Errorf("%s failed: %v: %s", operation, err, msg)
 	}
 	return nil
 }
