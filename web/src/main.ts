@@ -21,8 +21,8 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   telemetry: { label: "telemetry", draw: () => renderWhy("telemetry") },
 };
 
-/* Topbar: the site is about MaxQ. The why pages sit in the bar; the other Constellation surfaces
-   fold into one Products menu, which the `#surfaces` tabs at the foot of the home page mirror. */
+/* Topbar: the site is about MaxQ. The why pages sit in the bar on MaxQ/why routes; product pages
+   keep the bar product-focused so the 01/02/03 rail does not read like dead secondary nav. */
 const PRODUCTS: { key: Route; num: string; note: string }[] = [
   { key: "router", num: "01", note: "spend the seats" },
   { key: "home", num: "02", note: "the bot's box" },
@@ -33,15 +33,22 @@ const PRODUCTS: { key: Route; num: string; note: string }[] = [
 
 function shell(inner: string, route: Route): string {
   const productOpen = (["router", "cue", "crew", "stack"] as Route[]).includes(route);
+  const comingSoonProduct = (["router", "cue", "crew"] as Route[]).includes(route);
   const products = PRODUCTS.map((p) => {
     const active = p.key === route && route !== "home" ? " active" : "";
     const label = p.key === "home" ? "maxq" : routes[p.key].label;
     return `<a class="menu-item${active}" href="#${p.key}"><span class="menu-num">${p.num}</span><span class="menu-label">${label}</span><span class="menu-note">${p.note}</span></a>`;
   }).join("");
-  const why = WHY.map((w) => {
+  const why = productOpen ? "" : WHY.map((w) => {
     const active = w.id === route ? " active" : "";
     return `<a class="${active}" href="#${w.id}"><span class="nav-num">${w.num}</span>${w.short}</a>`;
   }).join("");
+  const whyRail = why ? `<span class="nav-sep" aria-hidden="true"></span>${why}` : "";
+  const actions = comingSoonProduct
+    ? `<a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>`
+    : `<a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
+        <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
+        <a class="btn-solid btn-sm" href="#install">Install</a>`;
   return `
     <header class="topbar" data-topbar>
       <a class="brand" href="#home">
@@ -53,13 +60,10 @@ function shell(inner: string, route: Route): string {
           <summary>products <i aria-hidden="true"></i></summary>
           <div class="menu-sheet">${products}</div>
         </details>
-        <span class="nav-sep" aria-hidden="true"></span>
-        ${why}
+        ${whyRail}
       </nav>
       <div class="nav-end">
-        <a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
-        <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-solid btn-sm" href="#install">Install</a>
+        ${actions}
         <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><span></span><span></span></button>
       </div>
     </header>
