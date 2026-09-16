@@ -54,8 +54,9 @@ type networkUpdateReq struct {
 	ClearAuthKey bool    `json:"clear_auth_key,omitempty"`
 }
 
-func (s *server) networkPath() string     { return filepath.Join(s.config, "network.toml") }
-func (s *server) networkAuthPath() string { return filepath.Join(s.config, "network.authkey") }
+func (s *server) networkPath() string       { return filepath.Join(s.config, "network.toml") }
+func (s *server) networkAuthPath() string   { return filepath.Join(s.config, "network.authkey") }
+func (s *server) networkStatusPath() string { return filepath.Join(s.config, "network.status") }
 
 func (s *server) loadNetworkConfig() (networkConfig, error) {
 	path := s.networkPath()
@@ -165,6 +166,25 @@ func (s *server) clearNetworkAuthKey() error {
 	return err
 }
 
+func (s *server) saveNetworkStatus(status string) error {
+	if status != "up" && status != "down" {
+		return fmt.Errorf("invalid network status %q", status)
+	}
+	return writePrivateFileAtomic(s.config, "network-status-*.tmp", s.networkStatusPath(), []byte(status+"\n"))
+}
+
+func (s *server) loadNetworkStatus() string {
+	b, err := os.ReadFile(s.networkStatusPath())
+	if err != nil {
+		return ""
+	}
+	status := strings.TrimSpace(string(b))
+	if status == "up" || status == "down" {
+		return status
+	}
+	return ""
+}
+
 func (s *server) networkAuthConfigured() bool {
 	info, err := os.Stat(s.networkAuthPath())
 	return err == nil && info.Mode().IsRegular() && info.Size() > 0
@@ -175,6 +195,7 @@ func (s *server) networkState(cfg networkConfig) networkState {
 		Mode:              cfg.Mode,
 		LoginServer:       cfg.LoginServer,
 		AuthKeyConfigured: s.networkAuthConfigured(),
+		Status:            s.loadNetworkStatus(),
 	}
 }
 
@@ -240,9 +261,10 @@ func (s *server) applyNetworkUpdate(req networkUpdateReq) (networkState, error) 
 	if err := s.runTailscale(args...); err != nil {
 		return s.networkState(next), networkJoinError{err: err}
 	}
-	state := s.networkState(next)
-	state.Status = "up"
-	return state, nil
+	if err := s.saveNetworkStatus("up"); err != nil {
+		return s.networkState(next), fmt.Errorf("network joined but failed to persist status: %w", err)
+	}
+	return s.networkState(next), nil
 }
 
 func (s *server) applyNetworkAction(req networkUpdateReq) (networkState, error) {
@@ -267,9 +289,10 @@ func (s *server) applyNetworkAction(req networkUpdateReq) (networkState, error) 
 	if err := s.runTailscale("down"); err != nil {
 		return s.networkState(cfg), networkLeaveError{err: err}
 	}
-	state := s.networkState(cfg)
-	state.Status = "down"
-	return state, nil
+	if err := s.saveNetworkStatus("down"); err != nil {
+		return s.networkState(cfg), fmt.Errorf("network left but failed to persist status: %w", err)
+	}
+	return s.networkState(cfg), nil
 }
 
 var tailscaleCommandRunner func(*server, ...string) error
