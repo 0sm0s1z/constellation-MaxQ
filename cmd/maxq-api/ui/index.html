@@ -38,6 +38,25 @@
     </section>
 
     <section class="card">
+      <h2>network</h2>
+      <p class="hint">Tailscale uses the hosted control plane. Headscale requires an operator-supplied login server and never falls back to SaaS.</p>
+      <form id="network-form" class="connection-form">
+        <label>Control plane
+          <select id="network-mode">
+            <option value="tailscale">Tailscale</option>
+            <option value="headscale">Headscale</option>
+          </select>
+        </label>
+        <div id="headscale-fields" class="network-fields" hidden>
+          <label>Login server <input id="network-login-server" type="url" placeholder="https://headscale.example.invalid"></label>
+          <label>Auth / preauth key <input id="network-auth-key" type="password" autocomplete="off" placeholder="Optional; blank keeps stored key"></label>
+        </div>
+        <p id="st-network" class="muted">Loading…</p>
+        <button id="btn-network-save" type="submit">Save &amp; join</button>
+      </form>
+    </section>
+
+    <section class="card">
       <h2>connections</h2>
       <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
       <form id="connection-form" class="connection-form">
