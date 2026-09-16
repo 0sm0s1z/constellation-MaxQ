@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+# MaxQ desktop release gate (#69).
+# HOME-only XFCE/Plank integration and terminal/launcher proof.
+set -u
+
+PREFIX="${MAXQ_HOME:-$HOME}"
+BIN="$PREFIX/bin"
+CONFIG="$PREFIX/.config/maxq"
+LOCAL="$PREFIX/.local"
+LAUNCHER_BIN="$BIN/maxq-launcher"
+LAUNCHER_DESKTOP="$LOCAL/share/applications/maxq-launcher.desktop"
+SHORTCUTS_FILE="$CONFIG/shortcuts.conf"
+GHOSTTY_BIN="$BIN/ghostty"
+GHOSTTY_CONFIG="$PREFIX/.config/ghostty/config"
+GHOSTTY_THEME_FILE="$PREFIX/.config/ghostty/themes/catppuccin-mocha.conf"
+THEME_README="$CONFIG/theme/README.md"
+PLANK_LAUNCHERS="$PREFIX/.config/plank/dock1/launchers"
+PLANK_DOCKITEM="$PLANK_LAUNCHERS/maxq-launcher.dockitem"
+PLANK_OWNED="$PLANK_DOCKITEM.maxq-owned"
+XFCE_CHANNEL="xfce4-keyboard-shortcuts"
+XFCE_PROP='/commands/custom/<Super>space'
+XFCE_OLD_PROP='/commands/custom/<Primary><Super>space'
+GNOME_URI='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/maxq-launcher/'
+
+pass=0
+fail=0
+
+is_graphical() { [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; }
+
+launcher_backend_available() {
+  [ -x "$BIN/rofi" ] || [ -x "$BIN/fuzzel" ] || [ -x "$BIN/wofi" ] || [ -x "$BIN/dmenu_run" ] ||
+    command -v rofi >/dev/null 2>&1 || command -v fuzzel >/dev/null 2>&1 ||
+    command -v wofi >/dev/null 2>&1 || command -v dmenu_run >/dev/null 2>&1
+}
+
+plank_expected() {
+  command -v plank >/dev/null 2>&1 || [ -d "$PREFIX/.config/plank" ]
+}
+
+install_plank_item() {
+  plank_expected || return 0
+  mkdir -p "$PLANK_LAUNCHERS"
+  cat > "$PLANK_DOCKITEM" <<EOF
+[PlankDockItemPreferences]
+Launcher=file://$LAUNCHER_DESKTOP
+EOF
+  printf 'constellation-MaxQ\n' > "$PLANK_OWNED"
+}
+
+plank_item_configured() {
+  [ -s "$PLANK_DOCKITEM" ] && [ -f "$PLANK_OWNED" ] && grep -qF "Launcher=file://$LAUNCHER_DESKTOP" "$PLANK_DOCKITEM"
+}
+
+xfce_set_binding() {
+  command -v xfconf-query >/dev/null 2>&1 || return 1
+  if ! xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_PROP" -n -t string -s "$LAUNCHER_BIN" >/dev/null 2>&1; then
+    xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_PROP" -s "$LAUNCHER_BIN" >/dev/null 2>&1 || return 1
+  fi
+
+  # #69 tester evidence showed a stale Ctrl+Super+Space MaxQ binding. Remove
+  # that specific stale MaxQ binding only; never remove an unrelated command.
+  local old=""
+  old="$(xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_OLD_PROP" 2>/dev/null || true)"
+  case "$old" in
+    "$LAUNCHER_BIN"|maxq-launcher|*/maxq-launcher)
+      xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_OLD_PROP" -r >/dev/null 2>&1 || true
+      ;;
+  esac
+  return 0
+}
+
+xfce_binding_configured() {
+  command -v xfconf-query >/dev/null 2>&1 || return 1
+  [ "$(xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_PROP" 2>/dev/null || true)" = "$LAUNCHER_BIN" ]
+}
+
+gnome_set_binding() {
+  command -v gsettings >/dev/null 2>&1 || return 1
+  command -v dconf >/dev/null 2>&1 || return 1
+  local schema current updated
+  schema='org.gnome.settings-daemon.plugins.media-keys'
+  dconf write "${GNOME_URI}name" "'MaxQ App Launcher'" >/dev/null 2>&1 || return 1
+  dconf write "${GNOME_URI}command" "'$LAUNCHER_BIN'" >/dev/null 2>&1 || return 1
+  dconf write "${GNOME_URI}binding" "'<Super>space'" >/dev/null 2>&1 || return 1
+  current="$(gsettings get "$schema" custom-keybindings 2>/dev/null || printf '@as []')"
+  case "$current" in
+    *"$GNOME_URI"*) updated="$current" ;;
+    "@as []") updated="['$GNOME_URI']" ;;
+    *) updated="${current%]} , '$GNOME_URI']" ;;
+  esac
+  gsettings set "$schema" custom-keybindings "$updated" >/dev/null 2>&1
+}
+
+gnome_binding_configured() {
+  command -v dconf >/dev/null 2>&1 || return 1
+  [ "$(dconf read "${GNOME_URI}command" 2>/dev/null || true)" = "'$LAUNCHER_BIN'" ] &&
+    [ "$(dconf read "${GNOME_URI}binding" 2>/dev/null || true)" = "'<Super>space'" ]
+}
+
+launcher_binding_configured() {
+  if command -v xfconf-query >/dev/null 2>&1; then
+    xfce_binding_configured
+    return $?
+  fi
+  gnome_binding_configured
+}
+
+install_launcher_binding() {
+  # Prefer XFCE on Grok Bot; use GNOME only where XFCE tooling is absent.
+  if command -v xfconf-query >/dev/null 2>&1; then
+    xfce_set_binding
+    return $?
+  fi
+  gnome_set_binding
+}
+
+ghostty_ready() {
+  [ -x "$GHOSTTY_BIN" ] && "$GHOSTTY_BIN" --version >/dev/null 2>&1
+}
+
+ghostty_themed() {
+  [ -s "$GHOSTTY_THEME_FILE" ] && [ -s "$GHOSTTY_CONFIG" ] &&
+    grep -qF 'theme = catppuccin-mocha.conf' "$GHOSTTY_CONFIG" &&
+    grep -qF 'background = #1e1e2e' "$GHOSTTY_CONFIG"
+}
+
+update_runtime_theme_readme() {
+  [ -f "$THEME_README" ] || return 0
+  local tmp
+  tmp="${THEME_README}.maxq-69.$$"
+  awk -v bin="$GHOSTTY_BIN" '
+    /^Ghostty binary: skipped / {
+      print "Ghostty binary: required at " bin "; maxq desktop gate validates --version and Mocha config."
+      next
+    }
+    { print }
+  ' "$THEME_README" > "$tmp" && mv -f "$tmp" "$THEME_README"
+}
+
+apply_gate() {
+  local rc=0
+  install_plank_item || rc=1
+
+  if is_graphical; then
+    if ! [ -x "$LAUNCHER_BIN" ]; then
+      echo "maxq: desktop gate: launcher missing: $LAUNCHER_BIN" >&2
+      rc=1
+    fi
+    if ! launcher_backend_available; then
+      echo "maxq: desktop gate: no launcher backend (need rofi/fuzzel/wofi/dmenu_run)" >&2
+      rc=1
+    fi
+    if ! install_launcher_binding || ! launcher_binding_configured; then
+      echo "maxq: desktop gate: failed to configure real Super+Space binding" >&2
+      rc=1
+    fi
+  fi
+
+  if ! ghostty_ready; then
+    echo "maxq: desktop gate: Ghostty is required at $GHOSTTY_BIN and must answer --version" >&2
+    rc=1
+  fi
+  if ! ghostty_themed; then
+    echo "maxq: desktop gate: Ghostty Mocha theme/config is missing" >&2
+    rc=1
+  fi
+
+  if plank_expected && ! plank_item_configured; then
+    echo "maxq: desktop gate: Plank is present but MaxQ dock item is not configured" >&2
+    rc=1
+  fi
+  update_runtime_theme_readme || rc=1
+  return "$rc"
+}
+
+remove_xfce_binding_if_owned() {
+  command -v xfconf-query >/dev/null 2>&1 || return 0
+  local current=""
+  current="$(xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_PROP" 2>/dev/null || true)"
+  if [ "$current" = "$LAUNCHER_BIN" ]; then
+    xfconf-query -c "$XFCE_CHANNEL" -p "$XFCE_PROP" -r >/dev/null 2>&1 || true
+  fi
+}
+
+revert_gate() {
+  remove_xfce_binding_if_owned
+  if [ -f "$PLANK_OWNED" ]; then
+    rm -f "$PLANK_DOCKITEM" "$PLANK_OWNED"
+  fi
+}
+
+check() {
+  local name="$1"
+  shift
+  if "$@"; then
+    echo "[PASS] $name"
+    pass=$((pass + 1))
+  else
+    echo "[FAIL] $name"
+    fail=$((fail + 1))
+  fi
+}
+
+prove_gate() {
+  echo "=== MaxQ desktop release gate (#69) ==="
+  check "MaxQ launcher executable" test -x "$LAUNCHER_BIN"
+  check "launcher backend available (rofi/fuzzel/wofi/dmenu)" launcher_backend_available
+
+  if is_graphical; then
+    check "real Super+Space binding configured" launcher_binding_configured
+  else
+    echo "[INFO] no DISPLAY/WAYLAND_DISPLAY: live keypress check is not applicable; configured files remain inspectable"
+  fi
+
+  if plank_expected; then
+    check "Plank MaxQ launcher dock item" plank_item_configured
+  else
+    check "non-Plank MaxQ launcher desktop entry" test -s "$LAUNCHER_DESKTOP"
+    check "non-Plank shortcut declaration" grep -qF 'launcher = Super+Space' "$SHORTCUTS_FILE"
+  fi
+
+  check "Ghostty binary executable" test -x "$GHOSTTY_BIN"
+  check "Ghostty runtime answers --version" ghostty_ready
+  check "Ghostty Catppuccin Mocha config active" ghostty_themed
+  if ghostty_ready; then
+    echo "ghostty_bin=$($GHOSTTY_BIN --version 2>&1 | head -n1)"
+  else
+    echo "ghostty_bin=missing-or-unhealthy"
+  fi
+
+  echo "desktop_gate_passed=$pass"
+  echo "desktop_gate_failed=$fail"
+  [ "$fail" -eq 0 ]
+}
+
+case "${1:-prove}" in
+  apply) apply_gate ;;
+  revert) revert_gate ;;
+  prove) prove_gate ;;
+  *) echo "usage: maxq-desktop-gate apply|revert|prove" >&2; exit 2 ;;
+esac

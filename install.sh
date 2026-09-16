@@ -17,10 +17,14 @@ fi
 
 if [ -n "$HERE" ] && [ -f "$HERE/bin/maxq" ]; then
   cp -f "$HERE/bin/maxq" "$BIN/maxq"
+  cp -f "$HERE/bin/maxq-core" "$BIN/maxq-core"
+  cp -f "$HERE/bin/maxq-desktop-gate" "$BIN/maxq-desktop-gate"
 else
   curl -fsSL "$RAW_BASE/bin/maxq" -o "$BIN/maxq"
+  curl -fsSL "$RAW_BASE/bin/maxq-core" -o "$BIN/maxq-core"
+  curl -fsSL "$RAW_BASE/bin/maxq-desktop-gate" -o "$BIN/maxq-desktop-gate"
 fi
-chmod +x "$BIN/maxq"
+chmod +x "$BIN/maxq" "$BIN/maxq-core" "$BIN/maxq-desktop-gate"
 
 mkdir -p "$PREFIX/.config/maxq/theme/src" "$PREFIX/.config/maxq/api-src"
 
