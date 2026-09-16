@@ -85,11 +85,10 @@ function renderPolicyUnavailable(message: string): void {
 }
 
 function syncNetworkFields(): void {
-  const mode = $("network-mode") as HTMLSelectElement;
-  const loginServer = $("network-login-server") as HTMLInputElement;
-  const headscale = mode.value === "headscale";
+  const mode = ($("network-mode") as HTMLSelectElement).value;
+  const headscale = mode === "headscale";
   $("headscale-fields").hidden = !headscale;
-  loginServer.required = headscale;
+  $("headscale-enrollment-hint").hidden = !headscale;
 }
 
 function renderNetwork(network: Network): void {

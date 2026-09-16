@@ -26,6 +26,19 @@ tailscale up --login-server=https://headscale.example.invalid
 
 If `login_server` is empty or invalid, the request fails before `tailscale up` runs. MaxQ never silently retries against Tailscale SaaS after a Headscale validation or join failure.
 
+### Enrollment tags (Headscale)
+
+Many Headscale ACL policies only grant peer visibility to nodes that join with a **tagged** preauth key (for example a key minted with `tag:operator` or another tag your admin defines). An untagged key can still complete `tailscale up` and report Connected while listing **0 peers**.
+
+MaxQ does not mint tags, edit Headscale ACLs, or hard-code any deployment's tag names. For self-serve Headscale join:
+
+1. Ask your Headscale admin which tag(s) the ACL expects for operator/bot nodes.
+2. Mint a preauth key that includes those tags.
+3. Paste that key into the settings sheet and **Save & join**.
+
+If you already joined with an untagged key, leave/disconnect, clear the stored key if needed, paste a correctly tagged key, and join again. This guidance is product-generic; it does not document any one household's Headscale deployment.
+
+
 ## Leave / disconnect
 
 The settings sheet exposes **Leave / Disconnect** beside **Save & join**. It sends a network action through the existing loopback `/policy` API and runs:

@@ -40,6 +40,7 @@
     <section class="card">
       <h2>network</h2>
       <p class="hint">Tailscale uses the hosted control plane. Headscale needs your login server URL and never falls back to SaaS. Auth key works for Tailscale or Headscale. Leave disconnects the fabric with <code>tailscale down</code>; use Proxy Off below to stop the companion proxy path.</p>
+      <p id="headscale-enrollment-hint" class="hint" hidden>Headscale: many deployments require a <strong>tagged</strong> preauth key from your Headscale admin (ACL tag on the key). An untagged key can still show Connected with <strong>0 peers</strong>. MaxQ cannot invent tags — mint the key with the tags your policy expects.</p>
       <form id="network-form" class="connection-form">
         <label>Control plane
           <select id="network-mode">
