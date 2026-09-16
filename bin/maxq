@@ -21,6 +21,7 @@ RUNTIME_PARTS=(
   maxq-desktop-dark
   maxq-packages
   maxq-novnc
+  maxq-tabs
 )
 
 sync_checkout_runtime() {
@@ -53,8 +54,9 @@ GATE="$BIN/maxq-desktop-gate"
 DESKTOP="$BIN/maxq-desktop"
 PACKAGES="$BIN/maxq-packages"
 NOVNC="$BIN/maxq-novnc"
+TABS="$BIN/maxq-tabs"
 
-for part in "$CORE" "$GATE" "$DESKTOP" "$PACKAGES" "$NOVNC"; do
+for part in "$CORE" "$GATE" "$DESKTOP" "$PACKAGES" "$NOVNC" "$TABS"; do
   [ -x "$part" ] || { echo "maxq: missing split runtime: $part; rerun install.sh" >&2; exit 1; }
 done
 
@@ -136,7 +138,7 @@ PY
 }
 
 compose_prove() {
-  local package_boot_rc core_rc desktop_rc sbom_rc novnc_rc gate_apply_rc gate_rc
+  local package_boot_rc core_rc desktop_rc sbom_rc novnc_rc gate_apply_rc gate_rc tabs_rc
   set +e
 
   "$PACKAGES" apply
@@ -168,6 +170,9 @@ compose_prove() {
     novnc_rc=1
   fi
 
+  "$TABS" selftest
+  tabs_rc=$?
+
   # #69 is last on purpose. Its eyes-proven live Plank/Super+Space/Ghostty
   # assertions must remain the final graphical release gate.
   "$GATE" apply
@@ -178,8 +183,8 @@ compose_prove() {
   set -e
   if [ "$package_boot_rc" -ne 0 ] || [ "$core_rc" -ne 0 ] || \
      [ "$desktop_rc" -ne 0 ] || [ "$sbom_rc" -ne 0 ] || \
-     [ "$novnc_rc" -ne 0 ] || [ "$gate_apply_rc" -ne 0 ] || \
-     [ "$gate_rc" -ne 0 ]; then
+     [ "$novnc_rc" -ne 0 ] || [ "$tabs_rc" -ne 0 ] || \
+     [ "$gate_apply_rc" -ne 0 ] || [ "$gate_rc" -ne 0 ]; then
     return 1
   fi
   return 0
@@ -195,6 +200,10 @@ case "$cmd" in
     ;;
   prove)
     compose_prove
+    ;;
+  tabs)
+    shift
+    "$TABS" "$@"
     ;;
   *)
     main "$@"
