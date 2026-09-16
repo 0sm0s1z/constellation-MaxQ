@@ -46,6 +46,7 @@ runtime_parts=(
   maxq-desktop-dark
   maxq-packages
   maxq-novnc
+  maxq-tabs
 )
 for part in "${runtime_parts[@]}"; do
   install_script "bin/$part" "$BIN/$part"

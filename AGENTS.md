@@ -19,6 +19,8 @@ Keep installer and site work in their lanes. Do not merge unless Matthew says.
 - Stay off `10.0.0.0/16`.
 - Never write Chrome `ProxyMode` or `ProxyServer` policy.
 - Never restore `cxn-egress.json` unless Matthew asks.
+- After `browserUse` / `computerUse` browser automation, run `maxq tabs prune --task-url <active-task-url>` when the active task URL is known. This keeps at most one task-host tab plus optional ChatGPT and GitHub tabs, while failing soft if the current-display CDP endpoint is unavailable. Without a task URL, `maxq tabs prune` is intentionally conservative and only removes duplicate or blank/new-tab pages.
+- Do not call tab pruning from `maxq apply` or reconciliation: those lifecycle paths do not know which browser tab is task-relevant.
 
 ## Site rules
 

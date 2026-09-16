@@ -1,0 +1,553 @@
+#!/usr/bin/env python3
+"""HOME-only Chrome tab hygiene for constellation-MaxQ.
+
+Uses the current box Chrome CDP endpoint when it can be resolved without
+crossing DISPLAY/profile boundaries. Default pruning is deliberately
+conservative: exact duplicate URLs and idle blank/new-tab targets only.
+"""
+from __future__ import annotations
+
+import argparse
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import threading
+from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Iterable
+import urllib.error
+import urllib.parse
+import urllib.request
+
+TIMEOUT_SECONDS = 1.5
+IDLE_URLS = {
+    "about:blank",
+    "about:newtab",
+    "chrome://newtab",
+    "chrome://newtab/",
+    "chrome://new-tab-page",
+    "chrome://new-tab-page/",
+}
+
+
+class CdpUnavailable(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class Target:
+    id: str
+    title: str
+    url: str
+
+
+def _clean(value: object) -> str:
+    return str(value or "").replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()
+
+
+def _display_number(value: str) -> int | None:
+    match = re.search(r":([0-9]+)(?:\.[0-9]+)?$", value.strip())
+    if not match:
+        return None
+    number = int(match.group(1))
+    return number if number >= 0 else None
+
+
+def _loopback_endpoint(raw: str) -> str:
+    raw = raw.strip().rstrip("/")
+    if not raw:
+        raise ValueError("empty CDP URL")
+    if "://" not in raw:
+        raw = "http://" + raw
+    parsed = urllib.parse.urlsplit(raw)
+    if parsed.scheme != "http" or not parsed.hostname:
+        raise ValueError("CDP URL must be loopback HTTP")
+    host = parsed.hostname.lower()
+    loopback = host == "localhost"
+    if not loopback:
+        try:
+            loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            loopback = False
+    if not loopback:
+        raise ValueError("CDP URL must use a loopback host")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("CDP URL must not include credentials, query, or fragment")
+    if parsed.path not in ("", "/"):
+        raise ValueError("CDP URL must not include a path")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("invalid CDP port") from exc
+    if port is not None and not (1 <= port <= 65535):
+        raise ValueError("invalid CDP port")
+    host_text = f"[{host}]" if ":" in host else host
+    return f"http://{host_text}{':' + str(port) if port else ''}"
+
+
+def _profile_allowed(prefix: Path, candidate: Path) -> bool:
+    try:
+        prefix_real = prefix.expanduser().resolve(strict=False)
+        candidate_real = candidate.expanduser().resolve(strict=False)
+    except OSError:
+        return False
+    if candidate_real.parent != prefix_real:
+        return False
+    name = candidate_real.name
+    return name == "chrome-profile" or name.startswith("chrome-profile-")
+
+
+def _profile_candidates(prefix: Path, display: str) -> list[Path]:
+    candidates: list[Path] = []
+    explicit = os.environ.get("CHROME_USER_DATA_DIR", "").strip()
+    if explicit:
+        path = Path(explicit)
+        if _profile_allowed(prefix, path):
+            candidates.append(path)
+
+    number = _display_number(display)
+    if number is not None:
+        candidates.append(prefix / f"chrome-profile-{number}")
+        if number == 1:
+            candidates.append(prefix / "chrome-profile")
+
+    result: list[Path] = []
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path.expanduser().resolve(strict=False))
+        if key not in seen and _profile_allowed(prefix, path):
+            seen.add(key)
+            result.append(path)
+    return result
+
+
+def _endpoint_from_active_port(profile: Path) -> str | None:
+    active = profile / "DevToolsActivePort"
+    try:
+        if active.is_symlink() or not active.is_file():
+            return None
+        lines = active.read_text(encoding="utf-8", errors="replace").splitlines()
+        port = int(lines[0].strip()) if lines else 0
+    except (OSError, ValueError):
+        return None
+    if not (1 <= port <= 65535):
+        return None
+    return f"http://127.0.0.1:{port}"
+
+
+def _proc_args(pid_dir: Path) -> list[str]:
+    try:
+        raw = (pid_dir / "cmdline").read_bytes()
+    except OSError:
+        return []
+    return [part.decode("utf-8", "replace") for part in raw.split(b"\0") if part]
+
+
+def _proc_display(pid_dir: Path) -> str:
+    try:
+        raw = (pid_dir / "environ").read_bytes()
+    except OSError:
+        return ""
+    for part in raw.split(b"\0"):
+        if part.startswith(b"DISPLAY="):
+            return part[len(b"DISPLAY="):].decode("utf-8", "replace")
+    return ""
+
+
+def _arg_value(args: list[str], name: str) -> str:
+    prefix = name + "="
+    for index, arg in enumerate(args):
+        if arg.startswith(prefix):
+            return arg[len(prefix):]
+        if arg == name and index + 1 < len(args):
+            return args[index + 1]
+    return ""
+
+
+def _endpoint_from_current_display_process(prefix: Path, display: str) -> str | None:
+    if not display or not Path("/proc").is_dir():
+        return None
+    uid = os.getuid()
+    for pid_dir in Path("/proc").glob("[0-9]*"):
+        try:
+            if pid_dir.stat().st_uid != uid or _proc_display(pid_dir) != display:
+                continue
+        except OSError:
+            continue
+        args = _proc_args(pid_dir)
+        if not args:
+            continue
+        user_data = _arg_value(args, "--user-data-dir")
+        if not user_data:
+            continue
+        profile = Path(user_data)
+        if not _profile_allowed(prefix, profile):
+            continue
+        active = _endpoint_from_active_port(profile)
+        if active:
+            return active
+        raw_port = _arg_value(args, "--remote-debugging-port")
+        try:
+            port = int(raw_port)
+        except ValueError:
+            continue
+        if 1 <= port <= 65535:
+            return f"http://127.0.0.1:{port}"
+    return None
+
+
+def discover_endpoint(prefix: Path, display: str, explicit: str = "") -> str:
+    configured = explicit.strip() or os.environ.get("MAXQ_CDP_URL", "").strip()
+    if configured:
+        try:
+            return _loopback_endpoint(configured)
+        except ValueError as exc:
+            raise CdpUnavailable(str(exc)) from exc
+
+    for profile in _profile_candidates(prefix, display):
+        endpoint = _endpoint_from_active_port(profile)
+        if endpoint:
+            return endpoint
+
+    endpoint = _endpoint_from_current_display_process(prefix, display)
+    if endpoint:
+        return endpoint
+    detail = f" for DISPLAY={display}" if display else " (DISPLAY is unset)"
+    raise CdpUnavailable("no current-display Chrome CDP endpoint" + detail)
+
+
+def _load_json(endpoint: str, path: str) -> object:
+    request = urllib.request.Request(endpoint + path, headers={"User-Agent": "maxq-tabs/1"})
+    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_targets(endpoint: str) -> list[Target]:
+    last_error: Exception | None = None
+    for path in ("/json/list", "/json"):
+        try:
+            payload = _load_json(endpoint, path)
+            if not isinstance(payload, list):
+                raise ValueError("target list is not JSON array")
+            result: list[Target] = []
+            for item in payload:
+                if not isinstance(item, dict) or item.get("type") != "page":
+                    continue
+                target_id = _clean(item.get("id"))
+                if not target_id:
+                    continue
+                result.append(Target(target_id, _clean(item.get("title")), _clean(item.get("url"))))
+            return result
+        except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as exc:
+            last_error = exc
+    raise CdpUnavailable(f"CDP target list unavailable: {last_error}")
+
+
+def close_target(endpoint: str, target: Target) -> bool:
+    target_id = urllib.parse.quote(target.id, safe="")
+    request = urllib.request.Request(
+        endpoint + "/json/close/" + target_id,
+        headers={"User-Agent": "maxq-tabs/1"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            response.read()
+        return True
+    except (OSError, urllib.error.URLError):
+        return False
+
+
+def _url_key(raw: str) -> str:
+    raw = raw.strip()
+    try:
+        parsed = urllib.parse.urlsplit(raw)
+    except ValueError:
+        return raw.split("#", 1)[0]
+    if parsed.scheme in ("http", "https") and parsed.hostname:
+        host = parsed.hostname.lower()
+        try:
+            port = parsed.port
+        except ValueError:
+            port = None
+        default_port = (parsed.scheme == "http" and port == 80) or (parsed.scheme == "https" and port == 443)
+        netloc = host if port is None or default_port else f"{host}:{port}"
+        path = parsed.path or "/"
+        return urllib.parse.urlunsplit((parsed.scheme.lower(), netloc, path, parsed.query, ""))
+    return raw.split("#", 1)[0]
+
+
+def _host(raw: str) -> str:
+    value = raw.strip().lower()
+    if "://" not in value:
+        value = "https://" + value
+    try:
+        return (urllib.parse.urlsplit(value).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def _host_matches(target: Target, wanted: str) -> bool:
+    host = _host(target.url)
+    wanted = wanted.lower().strip(".")
+    return bool(host and wanted and (host == wanted or host.endswith("." + wanted)))
+
+
+def _idle(target: Target) -> bool:
+    return target.url.strip().lower() in IDLE_URLS
+
+
+def _scheme(target: Target) -> str:
+    try:
+        return urllib.parse.urlsplit(target.url).scheme.lower()
+    except ValueError:
+        return ""
+
+
+def _dedupe_and_idle(tabs: list[Target]) -> list[Target]:
+    if len(tabs) <= 1:
+        return []
+    close: list[Target] = []
+    seen: set[str] = set()
+    for tab in tabs:
+        if _idle(tab):
+            continue
+        key = _url_key(tab.url)
+        if key and key in seen:
+            close.append(tab)
+        elif key:
+            seen.add(key)
+
+    close_ids = {tab.id for tab in close}
+    non_idle_survivors = [tab for tab in tabs if tab.id not in close_ids and not _idle(tab)]
+    idle_survivors = [tab for tab in tabs if tab.id not in close_ids and _idle(tab)]
+    if non_idle_survivors:
+        close.extend(idle_survivors)
+    elif len(idle_survivors) > 1:
+        close.extend(idle_survivors[1:])
+    return close
+
+
+def _pick_host(tabs: Iterable[Target], host: str, preferred_key: str = "") -> Target | None:
+    matches = [tab for tab in tabs if _host_matches(tab, host) and not _idle(tab)]
+    if preferred_key:
+        for tab in matches:
+            if _url_key(tab.url) == preferred_key:
+                return tab
+    return matches[0] if matches else None
+
+
+def plan_prune(
+    tabs: list[Target],
+    task_url: str = "",
+    keep_hosts: Iterable[str] = (),
+    keep_chatgpt: bool = True,
+    keep_github: bool = True,
+) -> tuple[list[Target], str]:
+    if len(tabs) <= 1 or not task_url:
+        return _dedupe_and_idle(tabs), "conservative"
+
+    task_host = _host(task_url)
+    if not task_host:
+        raise ValueError("--task-url must be an http(s) URL with a host")
+    task_key = _url_key(task_url)
+    task = _pick_host(tabs, task_host, task_key)
+    if task is None:
+        return _dedupe_and_idle(tabs), "conservative (task URL not found)"
+
+    keep_ids = {task.id}
+    wanted_hosts = [host for host in (_host(value) for value in keep_hosts) if host]
+    if keep_chatgpt:
+        wanted_hosts.append("chatgpt.com")
+    if keep_github:
+        wanted_hosts.append("github.com")
+    for host in wanted_hosts:
+        chosen = _pick_host(tabs, host)
+        if chosen:
+            keep_ids.add(chosen.id)
+
+    # Non-web internal pages are not safe to classify as idle task leftovers.
+    for tab in tabs:
+        if not _idle(tab) and _scheme(tab) not in ("http", "https"):
+            keep_ids.add(tab.id)
+
+    close = [tab for tab in tabs if tab.id not in keep_ids]
+    if len(close) == len(tabs):
+        return [], "task-aware refused (no protected tab)"
+    return close, "task-aware"
+
+
+def _print_tabs(tabs: list[Target]) -> None:
+    if not tabs:
+        print("No page tabs found.")
+        return
+    print("ID\tTITLE\tURL")
+    for tab in tabs:
+        print(f"{tab.id}\t{_clean(tab.title)}\t{_clean(tab.url)}")
+
+
+def _execute_prune(endpoint: str, tabs: list[Target], args: argparse.Namespace) -> int:
+    try:
+        close, mode = plan_prune(
+            tabs,
+            task_url=args.task_url,
+            keep_hosts=args.keep_host,
+            keep_chatgpt=not args.no_chatgpt,
+            keep_github=not args.no_github,
+        )
+    except ValueError as exc:
+        print(f"maxq-tabs: {exc}", file=sys.stderr)
+        return 2
+
+    if mode.startswith("conservative (task URL not found)"):
+        print("maxq-tabs: task URL is not open; falling back to duplicate/idle-only pruning", file=sys.stderr)
+    if not close:
+        print(f"maxq-tabs: no tabs eligible for pruning ({mode})")
+        return 0
+
+    close_ids = {tab.id for tab in close}
+    survivors = [tab for tab in tabs if tab.id not in close_ids]
+    if not survivors:
+        print("maxq-tabs: refusing to close every page target", file=sys.stderr)
+        return 0
+
+    failed = 0
+    for tab in close:
+        action = "would close" if args.dry_run else "closing"
+        print(f"maxq-tabs: {action}: {tab.title or '(untitled)'} [{tab.url or '(no url)'}]")
+        if not args.dry_run and not close_target(endpoint, tab):
+            failed += 1
+            print(f"maxq-tabs: warning: CDP could not close target {tab.id}", file=sys.stderr)
+    if args.dry_run:
+        print(f"maxq-tabs: dry-run complete; eligible={len(close)} kept={len(survivors)} mode={mode}")
+    else:
+        print(f"maxq-tabs: prune complete; requested={len(close)} closed={len(close)-failed} kept={len(survivors)} mode={mode}")
+    return 0
+
+
+def _selftest() -> int:
+    fixture = [
+        {"id": "task", "type": "page", "title": "Work", "url": "https://example.test/work"},
+        {"id": "dup", "type": "page", "title": "Work duplicate", "url": "https://example.test/work"},
+        {"id": "blank", "type": "page", "title": "New Tab", "url": "about:blank"},
+        {"id": "chat", "type": "page", "title": "ChatGPT", "url": "https://chatgpt.com/c/123"},
+        {"id": "gh", "type": "page", "title": "GitHub", "url": "https://github.com/0sm0s1z/constellation-MaxQ"},
+        {"id": "stale", "type": "page", "title": "Old", "url": "https://old.example.test/"},
+        {"id": "worker", "type": "service_worker", "title": "ignored", "url": "https://example.test/sw.js"},
+    ]
+    closed: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *_args: object) -> None:
+            pass
+
+        def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+            if self.path in ("/json/list", "/json"):
+                payload = json.dumps(fixture).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+            if self.path.startswith("/json/close/"):
+                closed.append(urllib.parse.unquote(self.path.rsplit("/", 1)[-1]))
+                payload = b"Target is closing"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+            self.send_response(404)
+            self.end_headers()
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    endpoint = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        tabs = fetch_targets(endpoint)
+        assert len(tabs) == 6
+        conservative, mode = plan_prune(tabs)
+        assert mode == "conservative"
+        assert {tab.id for tab in conservative} == {"dup", "blank"}
+        print("[PASS] conservative pruning closes duplicate and idle tabs only")
+
+        task_plan, mode = plan_prune(tabs, task_url="https://example.test/work")
+        assert mode == "task-aware"
+        assert {tab.id for tab in task_plan} == {"dup", "blank", "stale"}
+        assert {tab.id for tab in tabs} - {tab.id for tab in task_plan} == {"task", "chat", "gh"}
+        print("[PASS] task-aware pruning keeps task + ChatGPT + GitHub")
+
+        missing, mode = plan_prune(tabs, task_url="https://missing.example.test/task")
+        assert mode.startswith("conservative")
+        assert {tab.id for tab in missing} == {"dup", "blank"}
+        assert plan_prune([tabs[0]])[0] == []
+        print("[PASS] missing task and single useful tab fail safe")
+
+        for tab in task_plan:
+            assert close_target(endpoint, tab)
+        assert set(closed) == {"dup", "blank", "stale"}
+        print("[PASS] loopback CDP list/close smoke")
+
+        for bad in ("http://example.com:9222", "https://127.0.0.1:9222", "http://127.0.0.1:9222/path"):
+            try:
+                _loopback_endpoint(bad)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"unsafe CDP endpoint accepted: {bad}")
+        print("[PASS] CDP endpoint remains loopback HTTP only")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+    return 0
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="maxq-tabs", description="List or safely prune current-display Chrome tabs through CDP.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="list current-display page tabs")
+    list_parser.add_argument("--cdp-url", default="", help="explicit loopback CDP URL (or MAXQ_CDP_URL)")
+
+    prune_parser = subparsers.add_parser("prune", help="prune duplicate/idle tabs, or bounded task leftovers")
+    prune_parser.add_argument("--cdp-url", default="", help="explicit loopback CDP URL (or MAXQ_CDP_URL)")
+    prune_parser.add_argument("--task-url", default="", help="active task URL; enables bounded task-aware pruning")
+    prune_parser.add_argument("--keep-host", action="append", default=[], help="additional hostname to keep (repeatable)")
+    prune_parser.add_argument("--no-chatgpt", action="store_true", help="do not preserve a ChatGPT tab in task-aware mode")
+    prune_parser.add_argument("--no-github", action="store_true", help="do not preserve a GitHub tab in task-aware mode")
+    prune_parser.add_argument("--dry-run", action="store_true", help="show eligible closes without changing Chrome")
+
+    subparsers.add_parser("selftest", help="run stdlib-only planning and loopback CDP smoke tests")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv:
+        argv = ["list"]
+    args = _parser().parse_args(argv)
+    if args.command == "selftest":
+        return _selftest()
+
+    prefix = Path(os.environ.get("MAXQ_HOME") or Path.home()).expanduser()
+    display = os.environ.get("DISPLAY", "").strip()
+    try:
+        endpoint = discover_endpoint(prefix, display, args.cdp_url)
+        tabs = fetch_targets(endpoint)
+    except CdpUnavailable as exc:
+        print(f"maxq-tabs: CDP unavailable: {exc}; nothing changed", file=sys.stderr)
+        return 0
+
+    if args.command == "list":
+        _print_tabs(tabs)
+        return 0
+    return _execute_prune(endpoint, tabs, args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

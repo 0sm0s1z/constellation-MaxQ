@@ -19,7 +19,7 @@ cp "$repo_root/install.sh" "$tmp/raw/install.sh"
 for part in \
   maxq maxq-core maxq-desktop-gate maxq-desktop maxq-desktop-ghostty \
   maxq-desktop-launcher maxq-desktop-shortcuts maxq-desktop-chrome \
-  maxq-desktop-dark maxq-packages maxq-novnc; do
+  maxq-desktop-dark maxq-packages maxq-novnc maxq-tabs; do
   cp "$repo_root/bin/$part" "$tmp/raw/bin/$part"
 done
 
@@ -60,6 +60,8 @@ HOME="$clone_home" MAXQ_HOME="$clone_home" bash "$repo_root/install.sh" status >
 [ -f "$clone_home/.config/maxq/api-src/go.mod" ]
 [ -f "$clone_home/.config/maxq/api-src/ui/index.html" ]
 [ -d "$clone_home/.config/maxq/tmp" ]
+[ -x "$clone_home/bin/maxq-tabs" ]
+HOME="$clone_home" MAXQ_HOME="$clone_home" "$clone_home/bin/maxq" tabs selftest >/dev/null
 
 # curl|bash proof: force the archive path and verify it before extraction.
 curl_home="$tmp/curl-home"
@@ -71,6 +73,8 @@ HOME="$curl_home" MAXQ_HOME="$curl_home" MAXQ_RAW_BASE="$base/raw" \
 [ -f "$curl_home/.config/maxq/api-src/go.mod" ]
 [ -f "$curl_home/.config/maxq/api-src/ui/index.html" ]
 [ -d "$curl_home/.config/maxq/tmp" ]
+[ -x "$curl_home/bin/maxq-tabs" ]
+HOME="$curl_home" MAXQ_HOME="$curl_home" "$curl_home/bin/maxq" tabs selftest >/dev/null
 
 # Fail-closed proof: a curl archive missing go.mod must not install.
 broken_root="$tmp/broken/constellation-MaxQ-test"
@@ -86,4 +90,4 @@ if HOME="$broken_home" MAXQ_HOME="$broken_home" MAXQ_RAW_BASE="$base/raw" \
   exit 1
 fi
 
-echo "install tests passed: clone-path, curl|bash checksum, and missing-go.mod fail-closed"
+echo "install tests passed: clone-path, curl|bash checksum, tab helper smoke, and missing-go.mod fail-closed"
