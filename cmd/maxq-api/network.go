@@ -243,6 +243,8 @@ func (s *server) applyNetworkUpdate(req networkUpdateReq) (networkState, error) 
 		if err := s.clearNetworkAuthKey(); err != nil {
 			return networkState{}, fmt.Errorf("failed to clear network auth key: %w", err)
 		}
+		// Clear is a storage action only — do not force a join with a missing key.
+		return s.networkState(next), nil
 	} else if req.AuthKey != nil {
 		if err := s.saveNetworkAuthKey(*req.AuthKey); err != nil {
 			return networkState{}, networkInputError{message: err.Error()}

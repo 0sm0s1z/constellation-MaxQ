@@ -129,3 +129,40 @@ func TestNetworkLeaveRejectsSettingsAndUnknownActions(t *testing.T) {
 }
 
 func stringPtr(v string) *string { return &v }
+
+
+func TestClearAuthKeyDoesNotJoin(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	s := &server{config: dir}
+	if err := s.saveNetworkConfig(networkConfig{Mode: networkModeTailscale}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.saveNetworkAuthKey("tskey-auth-expired-example"); err != nil {
+		t.Fatal(err)
+	}
+	joined := false
+	tailscaleCommandRunner = func(_ *server, args ...string) error {
+		joined = true
+		t.Fatalf("clear_auth_key must not run tailscale; got %v", args)
+		return nil
+	}
+	t.Cleanup(func() { tailscaleCommandRunner = nil })
+
+	state, err := s.applyNetworkUpdate(networkUpdateReq{
+		Mode:         networkModeTailscale,
+		ClearAuthKey: true,
+	})
+	if err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if joined {
+		t.Fatal("unexpected join")
+	}
+	if state.AuthKeyConfigured {
+		t.Fatal("expected auth key cleared")
+	}
+	if _, err := os.Stat(s.networkAuthPath()); !os.IsNotExist(err) {
+		t.Fatalf("auth file should be gone: %v", err)
+	}
+}
