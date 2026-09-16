@@ -717,82 +717,123 @@ export function renderStack(): string {
     <div class="device-row">
       ${bezel("/shots/router-dashboard.webp", "Constellation Router dashboard", "router · seats", "laptop", 1100, 535)}
       ${bezel("/shots/settings.webp", "MaxQ settings applied", "maxq · settings", "laptop", 1000, 624)}
-      ${bezel("/shots/cue-macos.webp", "Cue macOS: MaxQ launch region on the canvas", "cue · macOS", "laptop", 1100, 682)}
+      ${bezel("/shots/cue-macos.webp", "Cue macOS: MaxQ launch region on the canvas, inspector and filmstrip", "cue · macOS", "laptop", 1100, 682)}
     </div>`;
 }
 
 export function renderRouter(): string {
   const gh = "https://github.com/OpenSecurity-Infosec/constellation-router";
   return `
-    <article class="block router-hero">
-      <p class="coming-soon-badge" role="status">Coming Soon</p>
-      <p class="eyebrow">01 · Router</p>
-      <h1>One API for the <span class="grad">seats you already pay for.</span></h1>
-      <p class="lede">OpenAI-compatible subscription-seat gateway and routing control plane. Link ChatGPT Codex, SuperGrok, Claude Code, and Cursor seats — then call that catalog from OpenCode, ChatGPT Work, or another compatible client. <strong>Not a model host</strong> — it routes into subscriptions you already buy.</p>
-      <div class="cta-row">
-        <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-ghost" href="#home">MaxQ home</a>
-        <a class="btn-ghost" href="${gh}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
+    <main class="router-page" id="router-product">
+      <article class="block router-hero">
+        <p class="coming-soon-badge" role="status">Coming Soon</p>
+        <p class="eyebrow">01 · Constellation Router</p>
+        <h1>One API for the <span class="grad">seats you already pay for.</span></h1>
+        <p class="lede router-purpose-lede">An OpenAI-compatible <strong>subscription-seat gateway and routing control plane</strong>. Connect ChatGPT Codex, SuperGrok, Claude Code, Cursor, and custom seats; track usable capacity; expose the implemented catalog through one governed routing surface. <strong>Not a model host, model family, or foundation-model product.</strong></p>
+        <div class="cta-row">
+          <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
+          <a class="btn-ghost" href="${gh}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
+        </div>
+      </article>
+
+      <article class="block router-purpose-block">
+        <p class="eyebrow">Real purpose</p>
+        <h2>Route existing subscriptions. Do not pretend they are a new provider.</h2>
+        <div class="router-purpose-grid">
+          <section>
+            <h3>What it is</h3>
+            <p>A seat gateway and routing control plane: connect provider sessions, surface only implemented catalog capabilities, route compatible clients across available subscription capacity, and keep operational evidence about quota and routing outcomes.</p>
+          </section>
+          <section>
+            <h3>What it is not</h3>
+            <p>It does not host foundation models. The local sidecar does not become a provider. A model appearing in the catalog does not imply capabilities its adapter has not implemented.</p>
+          </section>
+        </div>
+      </article>
+
+      <article class="block router-topology-block">
+        <p class="eyebrow">Architecture in one glance</p>
+        <h2>Control plane. Infer hop. Transport sidecar.</h2>
+        <table class="cli router-topology"><thead><tr><th>plane</th><th>role</th></tr></thead><tbody>
+          <tr><td>Vercel + Neon</td><td class="dim"><code>constellation-router.vercel.app</code> is the login-gated control plane: connect, setup, settings, seats, dashboard, ops, and chat. Neon holds operational state such as seats, OAuth sessions, quota snapshots, and route decisions.</td></tr>
+          <tr><td>infer.shimcounty.com/api/v1</td><td class="dim">The long-lived OpenAI-compatible inference hop. OpenCode and compatible OpenAI clients use this base URL — not the Vercel hostname.</td></tr>
+          <tr><td>127.0.0.1:6630</td><td class="dim">ChatGPT Work and Grok CLI loopback transport. It injects the appropriate client credential and forwards to infer; it is not a model family or provider.</td></tr>
+        </tbody></table>
+        <p class="router-fact-note">Neon stores operational routing and quota evidence, not chat bodies. Router <code>/chat</code> threads stay in the browser's <code>localStorage</code>.</p>
+      </article>
+
+      <article class="block">
+        <p class="eyebrow">Verified product shape</p>
+        <h2>What the current code and handoff say is already real.</h2>
+      </article>
+      <div class="grid three router-feature-grid">
+        <section><h2>Multi-provider seats</h2><p><code>codex</code>, <code>xai</code>, <code>claude</code>, <code>cursor</code>, and <code>custom</code> seat types share one operator surface.</p></section>
+        <section><h2>Provider connection workflow</h2><p><code>/connect</code> is shipped. Cursor is a first-party browser-login/session adapter; Dashboard <code>key_</code> / <code>crsr_</code> credentials are not the supported path.</p></section>
+        <section><h2>Constellation Auto</h2><p><code>constellation/auto</code> is enabled unless <code>ROUTER_INTELLIGENCE=false</code>. It considers subscription efficiency, capacity/reset state, and task fit. ESTCT, walk/failover, and sticky pinning are in the routing contract; a named model bypasses Auto.</p></section>
+        <section><h2>Catalog honesty</h2><p>Router #71 established the rule that catalog/OpenCode metadata advertises only capabilities the selected adapter actually implements.</p></section>
+        <section><h2>OpenAI-compatible clients</h2><p>Compatible clients receive a bearer credential and use <code>https://infer.shimcounty.com/api/v1</code>. Settings can emit client artifacts, including sidecar configuration where needed.</p></section>
+        <section><h2>Quota + routing evidence</h2><p>Quota snapshots and route decisions support operator visibility without retaining prompts or browser chat bodies in Neon.</p></section>
+        <section><h2>Operator cockpit</h2><p><code>/ops</code> exposes routing, health-oriented, and trace evidence so the gateway can be operated rather than treated as a black-box model picker.</p></section>
+        <section><h2>Browser-local /chat</h2><p>The login-gated chat client uses the same seat gateway and real catalog; thread history stays in that browser's <code>localStorage</code>.</p></section>
+        <section><h2>Harness #65–#77</h2><p>Request IDs, thinking-token handling, stream viability, Responses SSE, and stability defaults are shipped harness contract rather than future architecture.</p></section>
       </div>
-    </article>
 
-    ${bezel("/shots/router-seats-fresh.webp", "Constellation Router seats: multi-provider seat list", "real capture · seats", "laptop", 1280, 800)}
+      <section class="block router-gallery" id="router-gallery">
+        <p class="eyebrow">Fresh captures · 2026-09-16</p>
+        <h2>Six real surfaces. No legacy stills, mock UI, or pending setup duplicate.</h2>
+        <p class="lede">These captures come from the live Router control plane and are grouped here as product evidence.</p>
+        <div class="router-gallery-grid">
+          ${shot("/shots/router-seats-fresh.webp", "Fresh live Constellation Router seats capture", "real capture · Seats · linked seat pool and provider state", 1280, 800)}
+          ${shot("/shots/router-dashboard-fresh.webp", "Fresh live Constellation Router dashboard capture", "real capture · /dashboard · routing and quota evidence", 1280, 800)}
+          ${shot("/shots/router-ops-fresh.webp", "Fresh live Constellation Router operator cockpit capture", "real capture · /ops · operator cockpit and operational evidence", 1280, 800)}
+          ${shot("/shots/router-connect-fresh.webp", "Fresh live Constellation Router provider connection capture", "real capture · /connect · provider connection workflow", 1280, 800)}
+          ${shot("/shots/router-clients-fresh.webp", "Fresh live Constellation Router Settings Clients capture", "real capture · Settings → Clients · client configuration; infer hop visible", 1100, 700)}
+          ${shot("/shots/router-chat-fresh.webp", "Fresh live Constellation Router chat model picker capture", "real capture · /chat · browser-local chat and current model picker", 1100, 700)}
+        </div>
+      </section>
 
-    <article class="block">
-      <p class="eyebrow">Purpose</p>
-      <h2>Subscription routing, not another model bill.</h2>
-      <p class="lede">Operators with several paid seats get one governed OpenAI-compatible surface. The Vercel control plane connects seats and issues client access. Inference runs at <code>https://infer.shimcounty.com/api/v1</code> — OpenCode points there, not at the Vercel hostname. ChatGPT Work and Grok CLI use local <code>127.0.0.1:6630</code> as <em>transport only</em> into that hop.</p>
-    </article>
+      <article class="block router-audience-block">
+        <p class="eyebrow">Who it is for</p>
+        <h2>Operators who already have the seats and need one controlled path through them.</h2>
+        <ul class="router-audience">
+          <li><strong>Multi-seat operators</strong><span>People or small teams already paying for several AI coding/model subscriptions and wanting one routing surface across those seats.</span></li>
+          <li><strong>Compatible-client users</strong><span>Developers using OpenCode, ChatGPT Work, Grok CLI, or Router <code>/chat</code> who want a common OpenAI-compatible catalog.</span></li>
+          <li><strong>Operational owners</strong><span>Teams that need seat status, quota state, routing outcomes, and provider health without turning Neon into a chat transcript store.</span></li>
+          <li><strong>Cursor Ultra operators</strong><span>Use Router as a parallel client path. Keep Ultra-backed models in Cursor's own picker; consume Router models through OpenCode, ChatGPT Work, or <code>/chat</code>, not Cursor's global Override OpenAI Base URL.</span></li>
+        </ul>
+      </article>
 
-    <article class="block">
-      <p class="eyebrow">Topology</p>
-      <h2>Control plane. Infer hop. Sidecar transport.</h2>
-      <table class="cli"><thead><tr><th>plane</th><th>role</th></tr></thead><tbody>
-        <tr><td>Vercel + Neon</td><td class="dim">login, connect, setup, settings, seats, dashboard, ops, chat — seats, credentials, quota snapshots, route decisions</td></tr>
-        <tr><td>infer.shimcounty.com/api/v1</td><td class="dim">OpenAI-compatible models / chat / responses — client base URL</td></tr>
-        <tr><td>127.0.0.1:6630</td><td class="dim">Work / Grok CLI loopback sidecar — injects credential, not a model family</td></tr>
-      </tbody></table>
-    </article>
+      <article class="block coming-soon-boundary">
+        <p class="coming-soon-badge coming-soon-badge--inline" role="status">Coming Soon</p>
+        <p class="eyebrow">The honest boundary</p>
+        <h2>The product shape is live. Production discipline and capability completion are still open.</h2>
+        <p class="lede"><strong>Coming Soon is not “mock product.”</strong> Seats, quota snapshots, routing evidence, client credentials, setup surfaces, browser-local chat, the operator cockpit, the working infer hop, provider adapters, and harness #65–#77 already exist. Router #71 established catalog honesty.</p>
+        <div class="router-boundary-grid">
+          <section>
+            <h3>Production discipline · #134</h3>
+            <p>Within the requested #135–#145 slice, <strong>#135–#137 and #139–#145 are P1</strong>; <strong>#138 is P2</strong>. The open program covers API auth behavior, bounded quota refresh, credential rate limiting, provider canaries, contract fixtures, build/version visibility, readiness, cockpit health, documentation hygiene, and realistic load/fairness.</p>
+          </section>
+          <section>
+            <h3>Capability plane · #78–#83</h3>
+            <p>Images/vision paths, hosted-tools completion, additional provider capability, and entitlement harvesting remain capability-plane work. They are not represented here as shipped.</p>
+          </section>
+        </div>
+        <p class="router-boundary-note"><strong>Computer use is intentionally omitted until it actually works.</strong> Catalog presence is not treated as proof of an unfinished capability.</p>
+      </article>
 
-    ${bezel("/shots/router-dashboard-fresh.webp", "Constellation Router dashboard: routing report and quota leftover", "real capture · /dashboard", "laptop", 1280, 800)}
-
-    <article class="block">
-      <p class="eyebrow">Shipped</p>
-      <h2>What the product already does.</h2>
-    </article>
-    <div class="grid three">
-      <section><h2>Multi-provider seats</h2><p>Codex, SuperGrok (xAI), Claude Code, Cursor, and custom seats in one pool.</p></section>
-      <section><h2>Constellation Auto</h2><p><code>constellation/auto</code> scores remaining quota, reset clocks, and task fit (off with <code>ROUTER_INTELLIGENCE=false</code>). Pin a catalog model to skip auto. ESTCT / walk / sticky pin are in the shipped routing contract.</p></section>
-      <section><h2>Catalog honesty</h2><p><code>GET /api/v1/models</code> advertises only what connected adapters actually implement — no invented capabilities.</p></section>
-      <section><h2>Clients + Setup</h2><p>Scoped credentials; Setup emits infer-hop client config. Cursor uses a first-party session adapter — not Dashboard <code>key_</code> / <code>crsr_</code> keys.</p></section>
-      <section><h2>Ops + evidence</h2><p>Ops cockpit plus Neon quota snapshots and a short route-decision log. Chat bodies stay out of Neon — <code>/chat</code> threads are browser localStorage only.</p></section>
-      <section><h2>Harness contract</h2><p>Request IDs, stream / Responses SSE, and stability defaults from Router #65–#77 are shipped — not prospective architecture.</p></section>
-    </div>
-
-    ${bezel("/shots/router-ops-fresh.webp", "Constellation Router ops cockpit", "real capture · /ops", "laptop", 1280, 800)}
-    ${bezel("/shots/router-connect-fresh.webp", "Constellation Router connect providers", "real capture · /connect", "laptop", 1280, 800)}
-
-    <div class="grid two-shots">
-      ${shot("/shots/router-clients-fresh.webp", "Settings → Clients with infer hop URL", "real capture · Settings → Clients", 1100, 700)}
-      ${shot("/shots/router-chat-fresh.webp", "Router /chat model picker", "real capture · /chat", 1100, 700)}
-    </div>
-
-    <article class="block">
-      <p class="eyebrow">Who it is for</p>
-      <h2>Operators with multiple paid seats and multiple clients.</h2>
-      <p class="lede">When capacity already exists across providers and you want OpenCode, Work, and local OpenAI-compatible clients on one gateway — not a separate endpoint per seat. Keep Cursor Ultra in Cursor’s own picker; consume router models from OpenCode, Work, or <code>/chat</code>.</p>
-    </article>
-
-    <article class="block coming-soon-boundary">
-      <p class="coming-soon-badge coming-soon-badge--inline" role="status">Coming Soon</p>
-      <p class="eyebrow">What that means</p>
-      <h2>The seat gateway is live. Public packaging is not.</h2>
-      <p class="lede"><strong>Coming Soon is not “mock product.”</strong> Control plane, infer hop, seats, catalog, ops, and chat already run. Constellation is not selling Router as public self-serve yet. Still open: production discipline <strong>#134</strong> (P1 children for auth, quota budget, rate limits, canaries, readiness, load) and capability plane <strong>#78–#83</strong> (images/vision, hosted tools, entitlements). Computer use is omitted until it actually works. Adapters advertise only what they implement.</p>
-      <div class="cta-row">
-        <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-ghost" href="${gh}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
-      </div>
-    </article>`;
+      <article class="block router-close">
+        <p class="eyebrow">Follow the build</p>
+        <h2>Router is being hardened. MaxQ is installable now.</h2>
+        <div class="cta-row">
+          <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
+          <a class="btn-ghost" href="${gh}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
+        </div>
+        <div class="router-install">
+          <p class="eyebrow">MaxQ install</p>
+          ${installLine()}
+        </div>
+      </article>
+    </main>`;
 }
 
 export function renderCue(): string {
