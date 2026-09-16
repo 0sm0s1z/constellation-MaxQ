@@ -8,6 +8,8 @@ type Connection = { id: string; name: string; base_url: string; auth_configured:
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
 type HAEntity = { id: string; label?: string };
 type HAAllowlist = { entities: HAEntity[]; source: string; semantics: "curated-allowlist-not-full-dump"; bot_visible_only: boolean };
+type EntitlementEntry = { action: "allow" | "deny"; kind: string; value: string; label?: string; source: string };
+type Entitlements = { entries: EntitlementEntry[]; source: string; semantics: "merged-allow-deny-with-source-labels" };
 
 const $ = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -29,6 +31,7 @@ async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
 async function getStatus(): Promise<Status> { return requestJSON<Status>("/status"); }
 async function getPolicy(): Promise<Policy> { return requestJSON<Policy>("/policy"); }
 async function getHAAllowlist(): Promise<HAAllowlist> { return requestJSON<HAAllowlist>("/ha/allowlist"); }
+async function getEntitlements(): Promise<Entitlements> { return requestJSON<Entitlements>("/entitlements"); }
 async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
 async function getDesktops(): Promise<{ desktops: Desktop[]; errors: { connection_name: string; error: string }[] }> { return requestJSON("/desktops"); }
 async function postJSON(path: string, body: unknown): Promise<unknown> {
@@ -56,8 +59,12 @@ function renderStatusUnavailable(message: string): void {
 let policyAvailable = false;
 let networkAvailable = false;
 let haAvailable = false;
+let entitlementsAvailable = false;
 let busyState = false;
 let haEntities: HAEntity[] = [];
+let operatorEntitlements: EntitlementEntry[] = [];
+let importedEntitlements: EntitlementEntry[] = [];
+let entitlementsSource = "";
 
 function renderPolicy(policy: Policy): void {
   policyAvailable = true;
@@ -166,6 +173,99 @@ function addHAEntityFromInputs(): void {
   renderHA();
 }
 
+function entitlementRow(entry: EntitlementEntry, operatorIndex: number | null): HTMLLIElement {
+  const row = document.createElement("li");
+  row.className = "entitlement-row" + (entry.source === "operator" ? "" : " readonly");
+
+  const action = document.createElement("span");
+  action.className = entry.action === "allow" ? "action-allow" : "action-deny";
+  action.textContent = entry.action;
+
+  const kind = document.createElement("span");
+  kind.textContent = entry.kind;
+
+  const value = document.createElement("span");
+  value.className = "entitlement-value";
+  const valueText = document.createElement("strong"); valueText.textContent = entry.value; value.append(valueText);
+  if (entry.label) { const label = document.createElement("small"); label.textContent = entry.label; value.append(label); }
+
+  const sourceWrap = document.createElement("span"); sourceWrap.className = "source-badge-wrap";
+  const source = document.createElement("span"); source.className = "source-badge"; source.textContent = entry.source; sourceWrap.append(source);
+
+  const remove = document.createElement("button"); remove.type = "button"; remove.className = "remove";
+  if (operatorIndex === null) {
+    remove.textContent = "Linked";
+    remove.disabled = true;
+  } else {
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => { operatorEntitlements.splice(operatorIndex, 1); renderEntitlementRows(); });
+  }
+
+  row.append(action, kind, value, sourceWrap, remove);
+  return row;
+}
+
+function renderEntitlementRows(): void {
+  const list = $("entitlements");
+  list.replaceChildren();
+  if (!operatorEntitlements.length && !importedEntitlements.length) {
+    const empty = document.createElement("li"); empty.className = "muted"; empty.textContent = "No entitlement rows are visible."; list.append(empty);
+  } else {
+    operatorEntitlements.forEach((entry, index) => list.append(entitlementRow(entry, index)));
+    importedEntitlements.forEach((entry) => list.append(entitlementRow(entry, null)));
+  }
+  const total = operatorEntitlements.length + importedEntitlements.length;
+  $("st-entitlements").textContent = total + " visible row" + (total === 1 ? "" : "s") + " · " + operatorEntitlements.length + " operator · " + importedEntitlements.length + " imported · operator source " + (entitlementsSource || "—");
+  ["entitlement-action", "entitlement-kind", "entitlement-value", "entitlement-label", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => {
+    ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = busyState || !entitlementsAvailable;
+  });
+}
+
+function renderEntitlements(state: Entitlements): void {
+  entitlementsAvailable = true;
+  entitlementsSource = state.source || "";
+  const entries = Array.isArray(state.entries) ? state.entries : [];
+  operatorEntitlements = entries.filter((entry) => entry.source === "operator").map((entry) => ({ ...entry, source: "operator" }));
+  importedEntitlements = entries.filter((entry) => entry.source !== "operator").map((entry) => ({ ...entry }));
+  renderEntitlementRows();
+}
+
+function renderEntitlementsUnavailable(message: string): void {
+  entitlementsAvailable = false;
+  operatorEntitlements = [];
+  importedEntitlements = [];
+  entitlementsSource = "";
+  const list = $("entitlements"); list.replaceChildren();
+  const item = document.createElement("li"); item.className = "msg"; item.textContent = "Unavailable · " + message; list.append(item);
+  $("st-entitlements").textContent = "Unavailable · " + message;
+  ["entitlement-action", "entitlement-kind", "entitlement-value", "entitlement-label", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => {
+    ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true;
+  });
+}
+
+function addEntitlementFromInputs(): void {
+  const action = $("entitlement-action") as HTMLSelectElement;
+  const kind = $("entitlement-kind") as HTMLSelectElement;
+  const value = $("entitlement-value") as HTMLInputElement;
+  const label = $("entitlement-label") as HTMLInputElement;
+  const trimmedValue = value.value.trim();
+  if (!trimmedValue) { showMsg("Entitlement value is required."); return; }
+  const entry: EntitlementEntry = {
+    action: action.value === "deny" ? "deny" : "allow",
+    kind: kind.value,
+    value: trimmedValue,
+    label: label.value.trim(),
+    source: "operator",
+  };
+  const existing = operatorEntitlements.find((candidate) => candidate.action === entry.action && candidate.kind === entry.kind && candidate.value === entry.value);
+  if (existing) existing.label = entry.label;
+  else operatorEntitlements.push(entry);
+  value.value = "";
+  label.value = "";
+  showMsg("");
+  renderEntitlementRows();
+}
+
 function renderConnections(connections: Connection[]): void {
   const list = $("connections"); list.replaceChildren();
   if (!connections.length) { const empty = document.createElement("li"); empty.className = "muted"; empty.textContent = "No remote APIs connected."; list.append(empty); return; }
@@ -207,20 +307,24 @@ function errorText(reason: unknown): string { return reason instanceof Error ? r
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-ha-add", "btn-ha-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
   ($("network-auth-key") as HTMLInputElement).disabled = on || !networkAvailable;
   ($("ha-entity-id") as HTMLInputElement).disabled = on || !haAvailable;
   ($("ha-entity-label") as HTMLInputElement).disabled = on || !haAvailable;
+  ($("entitlement-action") as HTMLSelectElement).disabled = on || !entitlementsAvailable;
+  ($("entitlement-kind") as HTMLSelectElement).disabled = on || !entitlementsAvailable;
+  ($("entitlement-value") as HTMLInputElement).disabled = on || !entitlementsAvailable;
+  ($("entitlement-label") as HTMLInputElement).disabled = on || !entitlementsAvailable;
 }
 async function act(fn: () => Promise<unknown>): Promise<void> {
   showMsg(""); busy(true);
   try { await fn(); await refresh(); } catch (e) { showMsg(errorText(e)); } finally { busy(false); }
 }
 async function refresh(): Promise<void> {
-  const [status, policy, ha, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAAllowlist(), getConnections(), getDesktops()]);
+  const [status, policy, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
   const errors: string[] = [];
 
   if (status.status === "fulfilled") renderStatus(status.value);
@@ -231,6 +335,9 @@ async function refresh(): Promise<void> {
 
   if (ha.status === "fulfilled") renderHAAllowlist(ha.value);
   else { const message = errorText(ha.reason); renderHAUnavailable(message); errors.push("HA allowlist: " + message); }
+
+  if (entitlements.status === "fulfilled") renderEntitlements(entitlements.value);
+  else { const message = errorText(entitlements.reason); renderEntitlementsUnavailable(message); errors.push("entitlements: " + message); }
 
   if (connections.status === "fulfilled") renderConnections(connections.value.connections);
   else { const message = errorText(connections.reason); renderConnectionsUnavailable(message); errors.push("connections: " + message); }
@@ -268,6 +375,11 @@ window.addEventListener("DOMContentLoaded", () => {
   $("ha-form").addEventListener("submit", (event) => {
     event.preventDefault();
     act(() => putJSON("/ha/allowlist", { entities: haEntities }));
+  });
+  $("btn-entitlement-add").addEventListener("click", addEntitlementFromInputs);
+  $("entitlements-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    act(() => putJSON("/entitlements", { entries: operatorEntitlements }));
   });
   $("connection-form").addEventListener("submit", (event) => {
     event.preventDefault();
