@@ -39,7 +39,7 @@
 
     <section class="card">
       <h2>network</h2>
-      <p class="hint">Tailscale uses the hosted control plane. Headscale requires an operator-supplied login server and never falls back to SaaS. Leave disconnects the fabric with <code>tailscale down</code>; use Proxy Off below to stop the companion proxy path.</p>
+      <p class="hint">Tailscale uses the hosted control plane. Headscale needs your login server URL and never falls back to SaaS. Auth key works for Tailscale or Headscale. Leave disconnects the fabric with <code>tailscale down</code>; use Proxy Off below to stop the companion proxy path.</p>
       <form id="network-form" class="connection-form">
         <label>Control plane
           <select id="network-mode">
@@ -49,8 +49,8 @@
         </label>
         <div id="headscale-fields" class="network-fields" hidden>
           <label>Login server <input id="network-login-server" type="url" placeholder="https://headscale.example.invalid"></label>
-          <label>Auth / preauth key <input id="network-auth-key" type="password" autocomplete="off" placeholder="Optional; blank keeps stored key"></label>
         </div>
+        <label>Auth / preauth key <input id="network-auth-key" type="password" autocomplete="off" placeholder="Optional; blank keeps stored key"></label>
         <p id="st-network" class="muted">Loading…</p>
         <div class="row">
           <button id="btn-network-save" type="submit">Save &amp; join</button>

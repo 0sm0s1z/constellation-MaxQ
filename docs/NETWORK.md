@@ -56,7 +56,7 @@ $HOME/.config/maxq/network.authkey   # only when an auth/preauth key is supplied
 $HOME/.config/maxq/network.status    # up/down marker after successful MaxQ network actions
 ```
 
-These files are written with mode `0600`. `network.toml` contains only mode and login-server configuration. An optional auth/preauth key is stored separately in `network.authkey` and is passed to the client as `--auth-key=file:<path>`, so the key itself is not present in the process arguments. The control API returns only `auth_key_configured: true|false`; it never returns the key value. Error output is also redacted against the stored key.
+These files are written with mode `0600`. `network.toml` contains only mode and login-server configuration. An optional auth/preauth key (Tailscale or Headscale) is stored separately in `network.authkey` and is passed to the client as `--auth-key=file:<path>`, so the key itself is not present in the process arguments. The control API returns only `auth_key_configured: true|false`; it never returns the key value. Error output is also redacted against the stored key.
 
 `maxq prove` does not invoke the network join or leave path, so auth material is not emitted into prove logs.
 
