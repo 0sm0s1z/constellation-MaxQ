@@ -18,7 +18,7 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/revert` | runs `maxq revert` (API exits) |
 | POST | `/proxy` | JSON `{enabled, upstream, iface}` — GOST process only |
 | GET | `/policy` | Reads MaxQ approval policy and network settings; missing approval policy is created as Approvals Off / always-allow, missing network config reports Tailscale mode |
-| POST | `/policy` | Approval JSON `{enabled}` or network JSON `{network:{mode, login_server, auth_key?, clear_auth_key?}}`; exactly one settings group per request |
+| POST | `/policy` | Approval JSON `{enabled}`, network settings JSON `{network:{mode, login_server, auth_key?, clear_auth_key?}}`, or leave JSON `{network:{action:"leave"}}`; exactly one settings group per request |
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
@@ -51,7 +51,11 @@ Network settings are HOME-only and persisted under `$HOME/.config/maxq/`. Tailsc
 
 The settings sheet's **Save & join** action posts a nested `network` object to `/policy`. Headscale mode requires an operator-supplied HTTP(S) `login_server`; a missing or invalid value fails before the client runs and MaxQ never falls back to the hosted Tailscale control plane after a Headscale failure.
 
-An optional auth/preauth key is stored separately in `$HOME/.config/maxq/network.authkey` with mode `0600`; `network.toml` also uses mode `0600`. The key is passed as `--auth-key=file:<path>` rather than as a raw command-line secret, is never returned by the API, and is represented only by `auth_key_configured`. See [NETWORK.md](NETWORK.md).
+The sheet's **Leave / Disconnect** action posts `{network:{action:"leave"}}` and runs `tailscale down`. This cuts active fabric reach without logging out the node, so **Save & join** can restore the existing Tailscale or Headscale enrollment. A leave request cannot be combined with network configuration fields. Successful MaxQ join/leave actions update the non-secret `network.status` marker returned by `GET /policy` as `up` or `down`.
+
+An optional auth/preauth key is stored separately in `$HOME/.config/maxq/network.authkey` with mode `0600`; `network.toml` and `network.status` also use mode `0600`. The key is passed as `--auth-key=file:<path>` rather than as a raw command-line secret, is never returned by the API, and is represented only by `auth_key_configured`. Network command errors are redacted against the stored key. See [NETWORK.md](NETWORK.md).
+
+The network leave action does not stop GOST. Use `POST /proxy {"enabled":false}`, `maxq proxy off`, or the sheet's **Proxy Off** control as the companion proxy kill.
 
 ## Sheet source
 

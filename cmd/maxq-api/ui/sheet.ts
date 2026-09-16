@@ -2,7 +2,7 @@
 type Gost = { enabled: boolean; running: boolean; listen: string; upstream: string; iface: string; intercept: boolean };
 type Clis = { installed: string; skipped: string };
 type Status = { state: string; theme: string; gost: Gost; clis: Clis; api: { listen: string } };
-type Network = { mode: "tailscale" | "headscale"; login_server: string; auth_key_configured: boolean };
+type Network = { mode: "tailscale" | "headscale"; login_server: string; auth_key_configured: boolean; status?: "up" | "down" };
 type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; network: Network; source: string; skip_auto_review: boolean };
 type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
@@ -85,6 +85,7 @@ function renderNetwork(network: Network): void {
   loginServer.value = network.login_server || "";
   syncNetworkFields();
   const parts = [network.mode === "headscale" ? "Headscale" : "Tailscale"];
+  if (network.status) parts.push(network.status === "down" ? "Disconnected" : "Up");
   if (network.mode === "headscale" && network.login_server) parts.push(network.login_server);
   if (network.auth_key_configured) parts.push("auth key stored");
   $("st-network").textContent = parts.join(" · ");
@@ -92,11 +93,12 @@ function renderNetwork(network: Network): void {
   loginServer.disabled = busyState;
   ($("network-auth-key") as HTMLInputElement).disabled = busyState;
   ($("btn-network-save") as HTMLButtonElement).disabled = busyState;
+  ($("btn-network-leave") as HTMLButtonElement).disabled = busyState;
 }
 
 function renderNetworkUnavailable(message: string): void {
   networkAvailable = false;
-  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
+  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save", "btn-network-leave"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
   $("st-network").textContent = "Unavailable · " + message;
 }
 
@@ -141,7 +143,7 @@ function errorText(reason: unknown): string { return reason instanceof Error ? r
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
@@ -175,6 +177,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
   $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
   $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
+  $("btn-network-leave").addEventListener("click", () => act(() => postJSON("/policy", { network: { action: "leave" } })));
   $("approvals-enabled").addEventListener("change", () => {
     const enabled = $("approvals-enabled") as HTMLInputElement;
     act(() => postJSON("/policy", { enabled: enabled.checked }));
