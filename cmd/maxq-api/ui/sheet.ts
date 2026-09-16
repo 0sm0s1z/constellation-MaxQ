@@ -103,17 +103,19 @@ function renderNetwork(network: Network): void {
   if (network.status) parts.push(network.status === "down" ? "Disconnected" : "Up");
   if (network.mode === "headscale" && network.login_server) parts.push(network.login_server);
   if (network.auth_key_configured) parts.push("auth key stored");
+  else parts.push("no auth key stored");
   $("st-network").textContent = parts.join(" · ");
   mode.disabled = busyState;
   loginServer.disabled = busyState;
   ($("network-auth-key") as HTMLInputElement).disabled = busyState;
   ($("btn-network-save") as HTMLButtonElement).disabled = busyState;
   ($("btn-network-leave") as HTMLButtonElement).disabled = busyState;
+  ($("btn-network-clear-key") as HTMLButtonElement).disabled = busyState || !network.auth_key_configured;
 }
 
 function renderNetworkUnavailable(message: string): void {
   networkAvailable = false;
-  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save", "btn-network-leave"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
+  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save", "btn-network-leave", "btn-network-clear-key"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
   $("st-network").textContent = "Unavailable · " + message;
 }
 
@@ -304,10 +306,31 @@ function renderDesktops(desktops: Desktop[], errors: { connection_name: string; 
 }
 
 function errorText(reason: unknown): string { return reason instanceof Error ? reason.message : String(reason); }
+function humanizeNetworkError(raw: string): string {
+  const s = raw.toLowerCase();
+  if (s.includes("expired") || s.includes("authkey expired") || s.includes("auth key expired")) {
+    return "Auth key expired. Paste a new key from your Tailscale/Headscale admin, then Save & join. Or Clear stored key first.";
+  }
+  if (s.includes("invalid") && (s.includes("auth") || s.includes("key") || s.includes("preauth"))) {
+    return "Auth key invalid. Paste a fresh key, then Save & join. Or Clear stored key.";
+  }
+  if (s.includes("checkprefs") || s.includes("access denied")) {
+    return "Tailscale permission error on this box (operator/prefs). Fix local Tailscale operator access, then retry Save & join.";
+  }
+  if (s.includes("login_server") || s.includes("login server")) {
+    return "Headscale login server missing or invalid. Set the login server URL, then Save & join.";
+  }
+  return raw;
+}
+function setNetworkError(text: string): void {
+  const el = $("st-network-error");
+  el.hidden = !text;
+  el.textContent = text;
+}
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
@@ -319,9 +342,25 @@ function busy(on: boolean): void {
   ($("entitlement-value") as HTMLInputElement).disabled = on || !entitlementsAvailable;
   ($("entitlement-label") as HTMLInputElement).disabled = on || !entitlementsAvailable;
 }
-async function act(fn: () => Promise<unknown>): Promise<void> {
-  showMsg(""); busy(true);
-  try { await fn(); await refresh(); } catch (e) { showMsg(errorText(e)); } finally { busy(false); }
+async function act(fn: () => Promise<unknown>, opts?: { network?: boolean }): Promise<void> {
+  showMsg("");
+  if (opts?.network) setNetworkError("");
+  busy(true);
+  try {
+    await fn();
+    await refresh();
+    if (opts?.network) setNetworkError("");
+  } catch (e) {
+    const raw = errorText(e);
+    const msg = opts?.network ? humanizeNetworkError(raw) : raw;
+    showMsg(msg);
+    if (opts?.network) {
+      setNetworkError(msg);
+      $("st-network").textContent = "Error · " + msg;
+    }
+  } finally {
+    busy(false);
+  }
 }
 async function refresh(): Promise<void> {
   const [status, policy, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
@@ -353,7 +392,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-revert").addEventListener("click", () => act(() => postJSON("/revert", {})));
   $("btn-proxy-on").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: true })));
   $("btn-proxy-off").addEventListener("click", () => act(() => postJSON("/proxy", { enabled: false })));
-  $("btn-network-leave").addEventListener("click", () => act(() => postJSON("/policy", { network: { action: "leave" } })));
+  $("btn-network-leave").addEventListener("click", () => act(() => postJSON("/policy", { network: { action: "leave" } }), { network: true }));
   $("approvals-enabled").addEventListener("change", () => {
     const enabled = $("approvals-enabled") as HTMLInputElement;
     act(() => postJSON("/policy", { enabled: enabled.checked }));
@@ -369,8 +408,14 @@ window.addEventListener("DOMContentLoaded", () => {
       if (authKey.value.trim()) body.auth_key = authKey.value;
       await postJSON("/policy", { network: body });
       authKey.value = "";
-    });
+    }, { network: true });
   });
+  $("btn-network-clear-key").addEventListener("click", () => act(async () => {
+    const mode = $("network-mode") as HTMLSelectElement;
+    const loginServer = $("network-login-server") as HTMLInputElement;
+    await postJSON("/policy", { network: { mode: mode.value, login_server: loginServer.value, clear_auth_key: true } });
+    ($("network-auth-key") as HTMLInputElement).value = "";
+  }, { network: true }));
   $("btn-ha-add").addEventListener("click", addHAEntityFromInputs);
   $("ha-form").addEventListener("submit", (event) => {
     event.preventDefault();
