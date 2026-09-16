@@ -103,6 +103,8 @@ POST /policy
 
 A network action cannot be combined with mode, login-server, or auth-key settings in the same request. A blank auth-key field in the settings sheet leaves an already stored key unchanged. API callers can remove a stored key with `"clear_auth_key": true`. Do not supply `auth_key` and `clear_auth_key` together.
 
+When Save & join fails because an auth/preauth key is expired or invalid (or the client reports a `checkprefs` block), the settings sheet shows a human **Error** status with a short fix line, keeps the masked auth-key field available for paste-and-retry, and offers **Clear stored key** (`clear_auth_key`) so a dead key is not left marked configured. The sheet never displays or logs the key value.
+
 The entitlements visibility surface imports a read-only `source: "network"` row from this local mode/status state. `status=up` is shown as locally joined; `down` or no successful MaxQ join marker is shown as not currently joined by MaxQ. That row does not evaluate or claim knowledge of Tailscale cloud ACLs and never exposes auth-key material. See [ENTITLEMENTS.md](ENTITLEMENTS.md).
 
 ## Prove P06 re-check

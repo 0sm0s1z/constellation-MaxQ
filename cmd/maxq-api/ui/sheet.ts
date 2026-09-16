@@ -65,6 +65,83 @@ let haEntities: HAEntity[] = [];
 let operatorEntitlements: EntitlementEntry[] = [];
 let importedEntitlements: EntitlementEntry[] = [];
 let entitlementsSource = "";
+let networkAuthConfigured = false;
+let networkErrorActive = false;
+
+type NetworkAuthErrorMap = { status: string; headline: string; fix: string };
+
+/** Map common Tailscale/Headscale auth-key join failures to short human fix lines. Never include key material. */
+function mapNetworkAuthError(raw: string): NetworkAuthErrorMap | null {
+  const text = String(raw || "");
+  const lower = text.toLowerCase();
+  if (/authkey expired|auth key expired|preauth(?:key)? expired|expired(?:\s+\w+){0,3}\s+auth(?:key)?|auth(?:key)?(?:\s+\w+){0,3}\s+expired/.test(lower)) {
+    return {
+      status: "Error · Auth key expired",
+      headline: "Auth key expired.",
+      fix: "Paste a new key and Save & join, or clear the stored key.",
+    };
+  }
+  if (/invalid authkey|authkey invalid|invalid auth key|auth key invalid|bad authkey|unauthorized.*auth(?:key)?|auth(?:key)?.{0,40}invalid/.test(lower)) {
+    return {
+      status: "Error · Auth key invalid",
+      headline: "Auth key invalid.",
+      fix: "Paste a valid key and Save & join, or clear the stored key.",
+    };
+  }
+  if (/\bcheckprefs\b|changing settings via 'tailscale (?:set|up)' requires.*checkprefs|prefs.*(?:denied|refused)/.test(lower)) {
+    return {
+      status: "Error · Client prefs blocked join",
+      headline: "Client prefs blocked join.",
+      fix: "Resolve the Tailscale prefs/checkprefs block, then retry Save & join.",
+    };
+  }
+  if (/authkey|auth key|preauth/.test(lower) && /fail|error|denied|reject|expired|invalid/.test(lower)) {
+    return {
+      status: "Error · Auth key rejected",
+      headline: "Auth key was rejected.",
+      fix: "Paste a new key and Save & join, or clear the stored key.",
+    };
+  }
+  return null;
+}
+
+function clearNetworkError(): void {
+  networkErrorActive = false;
+  const err = $("network-error");
+  err.hidden = true;
+  err.textContent = "";
+  $("st-network").classList.remove("error");
+}
+
+function showNetworkJoinError(reason: unknown): void {
+  const raw = errorText(reason);
+  const mapped = mapNetworkAuthError(raw);
+  networkErrorActive = true;
+  const status = $("st-network");
+  status.classList.add("error");
+  status.textContent = mapped ? mapped.status : "Error · Join failed";
+  const err = $("network-error");
+  if (mapped) {
+    err.hidden = false;
+    err.textContent = mapped.headline + " " + mapped.fix;
+    // Keep a short redacted backend line available without dumping only-raw UX.
+    showMsg(mapped.headline + " " + mapped.fix + (raw ? " · detail: " + raw : ""));
+  } else {
+    err.hidden = false;
+    err.textContent = "Join failed. Paste a new auth key and Save & join, or clear the stored key if the saved one is dead.";
+    showMsg(raw);
+  }
+  const authKey = $("network-auth-key") as HTMLInputElement;
+  authKey.disabled = busyState || !networkAvailable;
+  try { authKey.focus(); } catch { /* ignore */ }
+  syncClearAuthKeyButton();
+}
+
+function syncClearAuthKeyButton(): void {
+  const btn = $("btn-network-clear-key") as HTMLButtonElement;
+  btn.disabled = busyState || !networkAvailable || !networkAuthConfigured;
+  btn.hidden = !networkAvailable;
+}
 
 function renderPolicy(policy: Policy): void {
   policyAvailable = true;
@@ -94,6 +171,7 @@ function syncNetworkFields(): void {
 
 function renderNetwork(network: Network): void {
   networkAvailable = true;
+  networkAuthConfigured = !!network.auth_key_configured;
   const mode = $("network-mode") as HTMLSelectElement;
   const loginServer = $("network-login-server") as HTMLInputElement;
   mode.value = network.mode;
@@ -103,18 +181,23 @@ function renderNetwork(network: Network): void {
   if (network.status) parts.push(network.status === "down" ? "Disconnected" : "Up");
   if (network.mode === "headscale" && network.login_server) parts.push(network.login_server);
   if (network.auth_key_configured) parts.push("auth key stored");
+  clearNetworkError();
   $("st-network").textContent = parts.join(" · ");
   mode.disabled = busyState;
   loginServer.disabled = busyState;
   ($("network-auth-key") as HTMLInputElement).disabled = busyState;
   ($("btn-network-save") as HTMLButtonElement).disabled = busyState;
   ($("btn-network-leave") as HTMLButtonElement).disabled = busyState;
+  syncClearAuthKeyButton();
 }
 
 function renderNetworkUnavailable(message: string): void {
   networkAvailable = false;
-  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save", "btn-network-leave"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
+  networkAuthConfigured = false;
+  clearNetworkError();
+  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save", "btn-network-leave", "btn-network-clear-key"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
   $("st-network").textContent = "Unavailable · " + message;
+  syncClearAuthKeyButton();
 }
 
 function renderHA(): void {
@@ -307,7 +390,7 @@ function errorText(reason: unknown): string { return reason instanceof Error ? r
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-clear-key", "btn-network-leave", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
@@ -318,6 +401,7 @@ function busy(on: boolean): void {
   ($("entitlement-kind") as HTMLSelectElement).disabled = on || !entitlementsAvailable;
   ($("entitlement-value") as HTMLInputElement).disabled = on || !entitlementsAvailable;
   ($("entitlement-label") as HTMLInputElement).disabled = on || !entitlementsAvailable;
+  syncClearAuthKeyButton();
 }
 async function act(fn: () => Promise<unknown>): Promise<void> {
   showMsg(""); busy(true);
@@ -364,12 +448,42 @@ window.addEventListener("DOMContentLoaded", () => {
     const mode = $("network-mode") as HTMLSelectElement;
     const loginServer = $("network-login-server") as HTMLInputElement;
     const authKey = $("network-auth-key") as HTMLInputElement;
-    act(async () => {
-      const body: { mode: string; login_server: string; auth_key?: string } = { mode: mode.value, login_server: loginServer.value };
-      if (authKey.value.trim()) body.auth_key = authKey.value;
-      await postJSON("/policy", { network: body });
-      authKey.value = "";
-    });
+    // Never put authKey.value into status/logs/messages — only send when non-blank.
+    showMsg(""); busy(true);
+    (async () => {
+      try {
+        clearNetworkError();
+        const body: { mode: string; login_server: string; auth_key?: string } = { mode: mode.value, login_server: loginServer.value };
+        if (authKey.value.trim()) body.auth_key = authKey.value;
+        await postJSON("/policy", { network: body });
+        authKey.value = "";
+        networkErrorActive = false;
+        await refresh();
+      } catch (e) {
+        showNetworkJoinError(e);
+      } finally {
+        busy(false);
+      }
+    })();
+  });
+  $("btn-network-clear-key").addEventListener("click", () => {
+    const mode = $("network-mode") as HTMLSelectElement;
+    const loginServer = $("network-login-server") as HTMLInputElement;
+    const authKey = $("network-auth-key") as HTMLInputElement;
+    showMsg(""); busy(true);
+    (async () => {
+      try {
+        clearNetworkError();
+        await postJSON("/policy", { network: { mode: mode.value, login_server: loginServer.value, clear_auth_key: true } });
+        authKey.value = "";
+        networkErrorActive = false;
+        await refresh();
+      } catch (e) {
+        showNetworkJoinError(e);
+      } finally {
+        busy(false);
+      }
+    })();
   });
   $("btn-ha-add").addEventListener("click", addHAEntityFromInputs);
   $("ha-form").addEventListener("submit", (event) => {

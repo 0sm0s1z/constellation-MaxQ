@@ -52,8 +52,10 @@
         </div>
         <label>Auth / preauth key <input id="network-auth-key" type="password" autocomplete="off" placeholder="Optional; blank keeps stored key"></label>
         <p id="st-network" class="muted">Loading…</p>
+        <p id="network-error" class="msg" hidden></p>
         <div class="row">
           <button id="btn-network-save" type="submit">Save &amp; join</button>
+          <button id="btn-network-clear-key" type="button">Clear stored key</button>
           <button id="btn-network-leave" type="button" class="danger">Leave / Disconnect</button>
         </div>
       </form>
