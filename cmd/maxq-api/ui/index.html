@@ -39,7 +39,7 @@
 
     <section class="card">
       <h2>network</h2>
-      <p class="hint">Tailscale uses the hosted control plane. Headscale requires an operator-supplied login server and never falls back to SaaS.</p>
+      <p class="hint">Tailscale uses the hosted control plane. Headscale requires an operator-supplied login server and never falls back to SaaS. Leave disconnects the fabric with <code>tailscale down</code>; use Proxy Off below to stop the companion proxy path.</p>
       <form id="network-form" class="connection-form">
         <label>Control plane
           <select id="network-mode">
@@ -52,7 +52,10 @@
           <label>Auth / preauth key <input id="network-auth-key" type="password" autocomplete="off" placeholder="Optional; blank keeps stored key"></label>
         </div>
         <p id="st-network" class="muted">Loading…</p>
-        <button id="btn-network-save" type="submit">Save &amp; join</button>
+        <div class="row">
+          <button id="btn-network-save" type="submit">Save &amp; join</button>
+          <button id="btn-network-leave" type="button" class="danger">Leave / Disconnect</button>
+        </div>
       </form>
     </section>
 
@@ -84,7 +87,7 @@
 
     <section class="card">
       <h2>proxy</h2>
-      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer.</p>
+      <p class="hint">GOST process only. Never Chrome ProxyMode/ProxyServer. Proxy Off is the companion kill for the proxy path when fabric access is disconnected above.</p>
       <div class="row">
         <button type="button" id="btn-proxy-on">On</button>
         <button type="button" id="btn-proxy-off">Off</button>
