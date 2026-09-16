@@ -60,6 +60,23 @@
     </section>
 
     <section class="card">
+      <h2>Home Assistant allowlist</h2>
+      <p class="hint">Bot-visible curated entities only — never the full Home Assistant entity dump. This config surface does not fetch or control HA devices; live reach may still depend on network join.</p>
+      <form id="ha-form" class="connection-form">
+        <div class="network-fields">
+          <label>Entity ID <input id="ha-entity-id" placeholder="light.kitchen" autocomplete="off"></label>
+          <label>Label <input id="ha-entity-label" placeholder="Kitchen light" maxlength="200" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <button id="btn-ha-add" type="button">Add entity</button>
+          <button id="btn-ha-save" type="submit">Save allowlist</button>
+        </div>
+      </form>
+      <p id="st-ha" class="muted">Loading…</p>
+      <ul id="ha-entities" class="connections" aria-live="polite"></ul>
+    </section>
+
+    <section class="card">
       <h2>connections</h2>
       <p class="hint">Connected MaxQ APIs are queried together. Auth is stored locally and never listed.</p>
       <form id="connection-form" class="connection-form">
