@@ -71,6 +71,8 @@ The HOME settings sheet includes a **Home Assistant allowlist** card. Operators 
 
 The sheet does not present device toggles, HA state, discovery results, or other fake control surfaces. It only manages the visible allowlist source.
 
+The **Entitlements / bot reach** card links this allowlist as read-only `source: "ha-allowlist"` rows. Edit HA entity scope here; the entitlements artifact does not duplicate or override this source of truth. See [ENTITLEMENTS.md](ENTITLEMENTS.md).
+
 ## P03 prove boundary
 
 P03 can PASS when the curated source is visible and editable through the loopback API/settings sheet and responses explicitly retain `curated-allowlist-not-full-dump` semantics.
