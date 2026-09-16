@@ -214,6 +214,8 @@ func (s *server) serve() error {
 	mux.HandleFunc("GET /policy", s.handlePolicy)
 	mux.HandleFunc("POST /policy", s.handlePolicy)
 	mux.HandleFunc("POST /policy/decision", s.handlePolicyDecision)
+	mux.HandleFunc("GET /ha/allowlist", s.handleHAAllowlist)
+	mux.HandleFunc("PUT /ha/allowlist", s.handleHAAllowlist)
 	mux.HandleFunc("GET /connections", s.handleConnections)
 	mux.HandleFunc("POST /connections", s.handleAddConnection)
 	mux.HandleFunc("DELETE /connections/{id}", s.handleDeleteConnection)
@@ -537,7 +539,7 @@ func (s *server) postDesktopAction(parent *http.Request, c connection, desktopID
 	path := "/desktops/" + url.PathEscape(desktopID) + "/action"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL(c.BaseURL, path), strings.NewReader(string(data))); if err != nil { return 0, nil, err }
 	req.Header.Set("Content-Type", "application/json"); setAuth(req, c.Auth)
-	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req); if err != nil { return 0, nil, err }; defer resp.Body.Close()
+	resp, err := (&http.Client{Timeout: 8*time.Second}).Do(req); if err != nil { return 0, nil, err }; defer resp.Body.Close()
 	responseData, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)); if err != nil { return 0, nil, err }
 	var response any
 	if len(strings.TrimSpace(string(responseData))) > 0 { if err := json.Unmarshal(responseData, &response); err != nil { response = map[string]any{"body": string(responseData)} } }
