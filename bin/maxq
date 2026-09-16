@@ -476,7 +476,6 @@ gost_listen_port() {
 }
 
 parse_upstream() {
-  # sets UP_TYPE UP_ADDR from GOST_UPSTREAM
   UP_TYPE="http"
   UP_ADDR=""
   local u="${GOST_UPSTREAM:-}"
@@ -610,7 +609,6 @@ start_gost() {
 }
 
 apply_proxy_runtime() {
-  # Never touch Chrome managed policies.
   if [ "$GOST_ENABLED" = "true" ]; then
     start_gost
   else
@@ -638,14 +636,6 @@ seed_api_src() {
     if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$API_SRC" 2>/dev/null || true)" ]; then
       continue
     fi
-
-    # Keep api-src as a mirror of the selected source tree. Previous versions
-    # only copied changed files, leaving deleted upstream files behind. Those
-    # stale files can become part of the Go package and break builds.
-    #
-    # API_SRC itself is managed state under $HOME/.config/maxq. Remove only
-    # its contents; never remove the directory and never follow unrelated
-    # paths outside it.
     mkdir -p "$API_SRC"
     find "$API_SRC" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
     cp -a "$cand"/. "$API_SRC"/
@@ -793,7 +783,6 @@ start_api() {
   if api_is_running; then
     local pid
     pid="$(tr -d '[:space:]' < "$API_PID" 2>/dev/null || true)"
-    # If apply was invoked by the API itself, do not restart (would drop the HTTP call).
     if [ -n "$pid" ] && { [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ]; }; then
       return 0
     fi
@@ -854,9 +843,6 @@ mark_owned() {
   printf 'constellation-MaxQ\n' > "$1/.maxq-owned"
 }
 
-# HOME-only Chrome Mocha live-apply via External Extensions (per MaxQ chrome-profile*).
-# Matches Chrome's supported JSON: filename = store id, external_update_url for Web Store.
-# Never writes ProxyMode/ProxyServer or /etc/opt/chrome/policies/managed/.
 CHROME_THEME_LIVE_COUNT=0
 CHROME_EXT_UPDATE_URL="https://clients2.google.com/service/update2/crx"
 
@@ -901,7 +887,6 @@ revert_chrome_theme_live() {
     json="$(chrome_theme_ext_json "$profile")"
     sidecar="${json}.maxq-owned"
     ext_dir="$(dirname "$json")"
-    # Only remove MaxQ-owned activation artifacts; leave the rest of the profile intact.
     if [ -f "$sidecar" ]; then
       rm -f "$json" "$sidecar"
       echo "  $json" >> "$REVERT_LOG"
@@ -917,7 +902,6 @@ chrome_theme_live_summary() {
   if [ "${CHROME_THEME_LIVE_COUNT:-0}" -gt 0 ]; then
     printf 'external_extensions profiles=%s' "$CHROME_THEME_LIVE_COUNT"
   elif [ "$n" -gt 0 ]; then
-    # Count on-disk MaxQ activation artifacts if count unset (e.g. status/prove report).
     local profile json sidecar c=0
     while IFS= read -r profile; do
       json="$(chrome_theme_ext_json "$profile")"
@@ -951,7 +935,6 @@ seed_theme_src() {
   while IFS= read -r cand; do
     [ -n "$cand" ] || continue
     [ -d "$cand" ] || continue
-    # Do not copy THEME_SRC onto itself.
     if [ "$(readlink -f "$cand" 2>/dev/null || true)" = "$(readlink -f "$THEME_SRC" 2>/dev/null || true)" ]; then
       continue
     fi
@@ -1022,7 +1005,6 @@ except Exception:
 d.text((120, 280), "MaxQ", font=font_lg, fill=text+(255,))
 d.text((128, 420), "Pastel operator desktop", font=font_sm, fill=mauve+(255,))
 d.text((128, 480), "Take your Grok Bot to MaxQ.", font=font_xs, fill=sub+(255,))
-# Subtle terminal-style shortcut card in the top-right.
 card_x, card_y, card_w, card_h = 1210, 76, 610, 292
 d.rounded_rectangle((card_x, card_y, card_x+card_w, card_y+card_h), radius=18, fill=(255,255,255,185), outline=(173,132,207,180), width=2)
 d.text((card_x+26, card_y+18), "MAXQ // SHORTCUTS", font=font_xs, fill=mauve+(255,))
@@ -1248,7 +1230,6 @@ install_marked_block() {
 }
 
 extract_zip_dir() {
-  # extract_zip_dir zip dest [preferred-top-dir-glob]
   local zip="$1" dest="$2" prefer="${3:-}"
   local tmp pick
   [ -s "$zip" ] || return 1
@@ -1358,21 +1339,160 @@ install_wallpaper() {
   mark_owned "$WALLPAPER_DIR"
 }
 
+wallpaper_display_active() {
+  [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]
+}
+
+wallpaper_backend_available() {
+  # Visual paint backends only — xfconf-query persists path but does not repaint
+  # the Grok Bot root window, so it must not satisfy prove alone.
+  command -v gsettings >/dev/null 2>&1 ||
+    command -v feh >/dev/null 2>&1 ||
+    command -v nitrogen >/dev/null 2>&1 ||
+    command -v hsetroot >/dev/null 2>&1 ||
+    command -v swaymsg >/dev/null 2>&1
+}
+
+ensure_wallpaper_backend() {
+  mkdir -p "$BIN" "$CLI_CACHE" "$MANAGED_CLIS"
+  case ":$PATH:" in
+    *":$BIN:"*) ;;
+    *) PATH="$BIN:$PATH"; export PATH ;;
+  esac
+
+  if command -v feh >/dev/null 2>&1 && feh --version >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local cached="$CLI_CACHE/feh.bin"
+  if [ -x "$cached" ]; then
+    cp -f "$cached" "$BIN/feh"
+    chmod +x "$BIN/feh"
+    if "$BIN/feh" --version >/dev/null 2>&1; then
+      cli_claim feh
+      return 0
+    fi
+    rm -f "$BIN/feh" "$cached"
+  fi
+
+  # Rootless Debian/Ubuntu fallback: download/extract only; never apt install.
+  if command -v apt-get >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1; then
+    local tmp deb src
+    tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-feh.XXXXXX")"
+    if (cd "$tmp" && apt-get download feh >/dev/null 2>&1); then
+      deb="$(find "$tmp" -maxdepth 1 -type f -name 'feh_*.deb' -print -quit)"
+      if [ -n "$deb" ] && dpkg-deb -x "$deb" "$tmp/root" >/dev/null 2>&1; then
+        src="$tmp/root/usr/bin/feh"
+        if [ -x "$src" ]; then
+          cp -f "$src" "$cached"
+          chmod +x "$cached"
+          cp -f "$cached" "$BIN/feh"
+          chmod +x "$BIN/feh"
+          if "$BIN/feh" --version >/dev/null 2>&1; then
+            cli_claim feh
+            rm -rf "$tmp"
+            return 0
+          fi
+          rm -f "$BIN/feh" "$cached"
+        fi
+      fi
+    fi
+    rm -rf "$tmp"
+  fi
+
+  return 1
+}
+
+apply_wallpaper_xfce() {
+  command -v xfconf-query >/dev/null 2>&1 || return 1
+
+  local props prop ok=1
+  props="$(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E '/last-image$' || true)"
+  if [ -z "$props" ]; then
+    props="/backdrop/screen0/monitor0/workspace0/last-image
+/backdrop/screen0/monitorVirtual1/workspace0/last-image
+/backdrop/screen0/monitorHDMI-1/workspace0/last-image
+/backdrop/screen0/monitorDP-1/workspace0/last-image
+/backdrop/screen0/monitorVGA-1/workspace0/last-image"
+  fi
+
+  while IFS= read -r prop; do
+    [ -n "$prop" ] || continue
+    if xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" >/dev/null 2>&1; then
+      ok=0
+    fi
+  done <<< "$props"
+
+  if [ "$ok" -eq 0 ]; then
+    if command -v xfdesktop >/dev/null 2>&1; then
+      xfdesktop --reload >/dev/null 2>&1 || true
+    fi
+    return 0
+  fi
+  return 1
+}
+
 apply_wallpaper_live() {
-  # Live application is best-effort and never blocks apply on headless bots.
-  [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return 0
+  # Headless bots remain best-effort; graphical sessions fail closed.
+  # XFCE xfconf writes alone do NOT count as live success on Grok Bot boxes —
+  # the visible root must be painted (hsetroot/feh/nitrogen/swaymsg/gsettings).
+  wallpaper_display_active || return 0
+  [ -s "$WALLPAPER" ] || {
+    echo "maxq: live wallpaper missing: $WALLPAPER" >&2
+    return 1
+  }
+
   local uri="file://$WALLPAPER"
+  local painted=0
+
+  # Best-effort DE persistence only — never return success from this alone.
+  apply_wallpaper_xfce || true
+
   if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.background picture-uri "$uri" 2>/dev/null || true
-    gsettings set org.gnome.desktop.background picture-uri-dark "$uri" 2>/dev/null || true
+    if gsettings set org.gnome.desktop.background picture-uri "$uri" >/dev/null 2>&1; then
+      gsettings set org.gnome.desktop.background picture-uri-dark "$uri" >/dev/null 2>&1 || true
+      painted=1
+    fi
   fi
-  if command -v feh >/dev/null 2>&1; then
-    feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
-  elif command -v nitrogen >/dev/null 2>&1; then
-    nitrogen --set-zoom-fill "$WALLPAPER" >/dev/null 2>&1 || true
-  elif command -v swaymsg >/dev/null 2>&1; then
-    swaymsg output '*' bg "$WALLPAPER" fill >/dev/null 2>&1 || true
+
+  if command -v feh >/dev/null 2>&1 &&
+    feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1; then
+    painted=1
   fi
+
+  if [ "$painted" -eq 0 ] && command -v nitrogen >/dev/null 2>&1 &&
+    nitrogen --set-zoom-fill "$WALLPAPER" >/dev/null 2>&1; then
+    painted=1
+  fi
+
+  # Prefer hsetroot on Grok Bot boxes (often present when feh is not). Always
+  # attempt it so xfconf-only sessions still get a visible root paint.
+  if command -v hsetroot >/dev/null 2>&1; then
+    if hsetroot -fill "$WALLPAPER" >/dev/null 2>&1 ||
+      hsetroot -cover "$WALLPAPER" >/dev/null 2>&1; then
+      painted=1
+    fi
+  fi
+
+  if [ "$painted" -eq 0 ] && command -v swaymsg >/dev/null 2>&1 &&
+    swaymsg output '*' bg "$WALLPAPER" fill >/dev/null 2>&1; then
+    painted=1
+  fi
+
+  # If no painter worked and feh is missing, rootless-provision feh once.
+  if [ "$painted" -eq 0 ] && ! command -v feh >/dev/null 2>&1 && ensure_wallpaper_backend; then
+    if feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1; then
+      painted=1
+    fi
+  fi
+
+  if [ "$painted" -eq 1 ]; then
+    return 0
+  fi
+
+  # xsetroot only supports colors/bitmaps; it cannot render the MaxQ PNG.
+  echo "maxq: no live wallpaper paint succeeded (need feh/hsetroot/nitrogen/swaymsg/gsettings; xfconf alone is not enough)" >&2
+  return 1
 }
 
 install_launcher() {
@@ -1475,7 +1595,6 @@ install_ghostty_theme() {
   if ! has_profile_block "$GHOSTTY_CONFIG"; then
     ghostty_block | install_marked_block "$GHOSTTY_CONFIG"
   fi
-  # No official linux amd64 Ghostty binary. Config-only; do not install AppImage.
   if [ -e "$GHOSTTY_BIN" ]; then
     :
   fi
@@ -1518,11 +1637,13 @@ EOF
 }
 
 apply_theme() {
-  # Always Mocha for v0. Latte is a flag only.
   THEME="mocha"
+  local live_ok=0
   seed_theme_src
   install_wallpaper
-  apply_wallpaper_live
+  if apply_wallpaper_live; then
+    live_ok=1
+  fi
   install_launcher
   install_gtk_theme
   install_cursor_theme
@@ -1530,6 +1651,7 @@ apply_theme() {
   install_chrome_theme
   install_gtk_settings
   write_theme_readme
+  [ "$live_ok" -eq 1 ]
 }
 
 revert_theme() {
@@ -1550,7 +1672,6 @@ revert_theme() {
       echo "  $p" >> "$REVERT_LOG"
     fi
   done
-  # Drop empty parents we created, never $HOME/.local/share itself.
   rmdir "$LOCAL/share/maxq" 2>/dev/null || true
   rmdir "$GHOSTTY_DIR/themes" 2>/dev/null || true
   if [ -f "$GHOSTTY_CONFIG" ] && [ ! -s "$GHOSTTY_CONFIG" ]; then
@@ -1563,9 +1684,7 @@ revert_theme() {
   if [ -f "$GTK4_INI" ] && [ ! -s "$GTK4_INI" ]; then
     rm -f "$GTK4_INI"
   fi
-  # Keep $THEME_SRC (vendor cache) like the persist CA.
 }
-
 
 # --- operator CLIs (PLAN 9) -------------------------------------------------
 
@@ -1621,7 +1740,6 @@ cli_fetch() {
   rm -f "$tmp"
   return 1
 }
-
 
 cli_place() {
   local name="$1" src="$2"
@@ -1750,11 +1868,7 @@ apply_operator_clis() {
 # Revert deletes MaxQ-owned binaries only (markers in $MANAGED_CLIS).
 # Never delete ~/.ssh or Chrome.
 EOF
-
-  # herdr — official linux x86_64 release binary
   cli_try_raw herdr "https://github.com/herdrdev/herdr/releases/latest/download/herdr-linux-x86_64"
-
-  # Vercel fx — official linux x86_64 tarball
   local fxver
   fxver="$(cli_latest_text https://releases.fx.sh/latest.txt)"
   [ -n "$fxver" ] || fxver="v0.0.7"
@@ -1763,17 +1877,11 @@ EOF
     *) fxver="v${fxver}" ;;
   esac
   cli_try_targz fx "https://github.com/vercel-labs/fx/releases/download/${fxver}/fx-linux-x86_64.tar.gz"
-
-  # Grok Build CLI — official linux x86_64 gzip binary
   local gver
   gver="$(cli_latest_text https://x.ai/cli/stable)"
   [ -n "$gver" ] || gver="1.0.13"
   cli_try_gz grok "https://x.ai/cli/grok-${gver}-linux-x86_64.gz"
-
-  # OpenAI Codex CLI — official musl linux amd64 tarball
   cli_try_targz codex "https://github.com/openai/codex/releases/latest/download/codex-x86_64-unknown-linux-musl.tar.gz"
-
-  # Claude Code — official native linux-x64 binary
   local cver
   cver="$(cli_latest_text https://downloads.claude.ai/claude-code-releases/latest)"
   if [ -n "$cver" ]; then
@@ -1781,8 +1889,6 @@ EOF
   else
     cli_record claude skipped "no linux amd64 release pointer"
   fi
-
-  # OpenCode, Tailscale, and tailscaled are MaxQ-owned operator CLIs.
   cli_try_targz opencode "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz"
   cli_try_targz tailscale "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"
   cli_try_targz tailscaled "https://pkgs.tailscale.com/stable/tailscale_latest_amd64.tgz"
@@ -1805,9 +1911,7 @@ revert_operator_clis() {
     rm -f "$CLIS_TXT"
     echo "  $CLIS_TXT" >> "$REVERT_LOG"
   fi
-  # Keep $CLI_CACHE (like CA / theme vendor). Never ~/.ssh or Chrome.
 }
-
 
 # --- apply / revert / status ------------------------------------------------
 
@@ -1817,10 +1921,13 @@ cmd_apply() {
     "$CONFIG/theme" "$CLI_CACHE" "$API_SRC"
   load_settings
   THEME="mocha"
+  local theme_ok=1
   install_self
   install_gost_binary
   ensure_ca
-  apply_theme
+  if ! apply_theme; then
+    theme_ok=0
+  fi
   apply_operator_clis
   write_toml
   write_profile_snippet
@@ -1832,6 +1939,10 @@ cmd_apply() {
   optional_usr_link
   apply_proxy_runtime
   start_api
+  if [ "$theme_ok" -ne 1 ]; then
+    echo "maxq: apply failed: live wallpaper could not be applied on this graphical session" >&2
+    return 1
+  fi
   echo "MaxQ applied. theme=$THEME state=applied gost.enabled=$GOST_ENABLED intercept=$GOST_INTERCEPT prefix=$PREFIX api=$API_LISTEN chrome_theme=$CHROME_THEME_DIR chrome_theme_live=$(chrome_theme_live_summary) clis.installed=$CLI_INSTALLED clis.skipped=$CLI_SKIPPED"
 }
 
@@ -1841,7 +1952,6 @@ cmd_revert() {
   local ts host
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   host="$(hostname 2>/dev/null || echo unknown)"
-
   {
     echo "maxq revert $ts"
     echo "host=$host"
@@ -1849,28 +1959,19 @@ cmd_revert() {
     echo "user=${USER:-$(id -un 2>/dev/null || echo unknown)}"
     echo "removed:"
   } > "$REVERT_LOG"
-
   stop_gost
   echo "  gost process (pidfile)" >> "$REVERT_LOG"
   stop_api
   echo "  maxq-api process (pidfile)" >> "$REVERT_LOG"
-
   strip_profile_hook "$PREFIX/.profile"
   strip_profile_hook "$PREFIX/.bashrc"
   echo "  profile hooks (.profile .bashrc)" >> "$REVERT_LOG"
-
   remove_optional_usr_link
   echo "  optional usr link (if owned)" >> "$REVERT_LOG"
-
   revert_theme
   echo "  MaxQ-owned theme dest files" >> "$REVERT_LOG"
-
   revert_operator_clis
   echo "  MaxQ-owned operator CLIs" >> "$REVERT_LOG"
-
-  # Explicit MaxQ-owned paths only. Never $HOME, never .ssh, never Chrome.
-  # Never delete Chrome policies (cxn-egress.json, sand.json, …).
-  # Never destroy the persist CA.
   local p
   for p in "$TOML" "$PROFILE_SNIPPET" "$MANAGED" "$RECONCILE" "$GOST_YML" "$GOST_PID" "$GOST_LOG" "$API_TOML" "$API_PID" "$API_LOG"; do
     if [ -e "$p" ] || [ -L "$p" ]; then
@@ -1878,7 +1979,6 @@ cmd_revert() {
       echo "  $p" >> "$REVERT_LOG"
     fi
   done
-
   printf 'reverted\n' > "$STATE_FILE"
   {
     echo "preserved:"
@@ -1896,16 +1996,11 @@ cmd_revert() {
     echo "  operator CLIs are removed only when marked MaxQ-owned"
     echo "state=reverted"
   } >> "$REVERT_LOG"
-
   echo "MaxQ reverted. tombstone=$REVERT_LOG"
 }
 
 cmd_status() {
-  if is_applied; then
-    echo "applied"
-  else
-    echo "reverted"
-  fi
+  if is_applied; then echo "applied"; else echo "reverted"; fi
 }
 
 # --- proxy CLI --------------------------------------------------------------
@@ -1935,9 +2030,7 @@ clear_token() {
 
 cmd_proxy() {
   local sub="${1:-status}"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+  if [ "$#" -gt 0 ]; then shift; fi
   case "$sub" in
     status|show|"")
       [ -f "$TOML" ] || die "not applied; run maxq apply first"
@@ -1987,9 +2080,7 @@ cmd_proxy() {
       apply_proxy_runtime
       echo "proxy.intercept=$GOST_INTERCEPT"
       ;;
-    help|-h|--help)
-      usage
-      ;;
+    help|-h|--help) usage ;;
     *)
       echo "maxq: unknown proxy subcommand: $sub" >&2
       usage >&2
@@ -2039,15 +2130,12 @@ prove_nogrep() {
 }
 
 chrome_proxy_policy_absent() {
-  # MaxQ must never create these.
   [ ! -e "$CHROME_POLICY_DIR/maxq-proxy.json" ] && \
     [ ! -e /tmp/sand-egress-proxy ] && \
     [ ! -e "$CHROME_CXN_EGRESS" ]
 }
 
 cxn_egress_untouched() {
-  # We do not recreate cxn-egress.json. If someone else did, still never
-  # rewrite it; this check asserts MaxQ left it absent on this computer.
   [ ! -e "$CHROME_CXN_EGRESS" ]
 }
 
@@ -2067,7 +2155,6 @@ assert_chrome_theme_live_applied() {
     echo "[PASS] Chrome theme live-apply: no chrome-profile* dirs (nothing to activate)"
     PROVE_PASS=$((PROVE_PASS + 1))
   fi
-  # Disk artifacts prove activation was written; do not require Mocha UI pixels.
   prove_ok "no Chrome managed proxy/theme force-install from MaxQ" test ! -e "$CHROME_POLICY_DIR/maxq-proxy.json"
 }
 
@@ -2082,28 +2169,28 @@ assert_chrome_theme_live_reverted() {
   done < <(chrome_profile_dirs)
 }
 
+assert_wallpaper_live_applied() {
+  if ! wallpaper_display_active; then
+    echo "[PASS] live wallpaper: headless session (live check skipped)"
+    PROVE_PASS=$((PROVE_PASS + 1))
+    return 0
+  fi
+  prove_ok "live wallpaper backend available" wallpaper_backend_available
+  prove_ok "live wallpaper apply succeeds" apply_wallpaper_live
+}
+
 prove_api_src_mirror() {
   local orphan="$API_SRC/orphan-stale.go"
-
-  # Skip when api-src was never seeded (no go / no source available).
   [ -f "$API_SRC/main.go" ] || return 0
-
   cat > "$orphan" <<'EOF'
 package main
 
 func staleOrphanShouldDisappear() {}
 EOF
-
   prove_ok "api-src orphan planted" test -f "$orphan"
-
   seed_api_src
-
-  # Fail-closed: orphan must not survive mirror seed.
-  if [ -e "$orphan" ]; then
-    die "api-src orphan survived mirror seed"
-  fi
+  if [ -e "$orphan" ]; then die "api-src orphan survived mirror seed"; fi
   prove_ok "api-src orphan purged by mirror seed" true
-
   if command -v go >/dev/null 2>&1; then
     if (
       cd "$API_SRC"
@@ -2144,6 +2231,7 @@ assert_applied_tree() {
   prove_ok "cxn-egress.json not recreated" cxn_egress_untouched
   prove_ok "pastel wallpaper present" test -s "$WALLPAPER"
   prove_ok "wallpaper is owned" test -s "$WALLPAPER_DIR/.maxq-owned"
+  assert_wallpaper_live_applied
   prove_ok "MaxQ launcher executable" test -x "$LAUNCHER_BIN"
   prove_ok "MaxQ launcher desktop entry" test -s "$LAUNCHER_DESKTOP"
   prove_grep "Super+Space launcher shortcut" "$SHORTCUTS_FILE" "Super[+]Space"
@@ -2176,9 +2264,7 @@ assert_applied_tree() {
   fi
 }
 
-not_has_profile_block() {
-  ! has_profile_block "$1"
-}
+not_has_profile_block() { ! has_profile_block "$1"; }
 
 assert_reverted_tree() {
   prove_ok "maxq.toml gone" test ! -e "$TOML"
@@ -2228,12 +2314,10 @@ assert_proxy_toggle() {
   prove_ok "cxn-egress.json not written by proxy on" cxn_egress_untouched
   prove_ok "sand.json left in place" test -f "$CHROME_POLICY_DIR/sand.json"
   prove_ok "no /tmp/sand-egress-proxy after proxy on" test ! -e /tmp/sand-egress-proxy
-
   local host port
   host="$(gost_listen_host)"
   port="$(gost_listen_port)"
   prove_ok "gost listening on loopback" python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect((sys.argv[1], int(sys.argv[2]))); s.close()" "$host" "$port"
-
   echo "-- proxy upstream/iface roundtrip then clear --"
   cmd_proxy upstream "http://127.0.0.1:9"
   prove_grep "upstream persisted" "$TOML" 'upstream = "http://127.0.0.1:9"'
@@ -2243,7 +2327,6 @@ assert_proxy_toggle() {
   cmd_proxy iface none
   prove_grep "upstream cleared" "$TOML" 'upstream = ""'
   prove_grep "iface cleared" "$TOML" 'iface = ""'
-
   echo "-- proxy off (leave gost enabled=false, no intercept) --"
   cmd_proxy off
   prove_ok "gost not running after proxy off" gost_not_running
@@ -2259,13 +2342,11 @@ cmd_prove() {
   start_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   host="$(hostname 2>/dev/null || echo unknown)"
   self="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
-
   local had_ssh=0 had_chrome=0 had_github_key=0
   local owned_snapshot=""
   [ -d "$PREFIX/.ssh" ] && had_ssh=1
   [ -e "$PREFIX/.ssh/github-0sm0s1z" ] && had_github_key=1
   ls -d "$PREFIX"/chrome-profile* >/dev/null 2>&1 && had_chrome=1
-
   echo "=== MaxQ prove ==="
   echo "version=$MAXQ_VERSION"
   echo "host=$host"
@@ -2274,17 +2355,11 @@ cmd_prove() {
   echo "started_utc=$start_utc"
   echo "initial_status=$(cmd_status)"
   echo
-
   echo "-- step 1: revert if applied --"
-  if is_applied; then
-    cmd_revert
-  else
-    echo "already reverted; skipping initial revert"
-  fi
+  if is_applied; then cmd_revert; else echo "already reverted; skipping initial revert"; fi
   echo
-
   echo "-- step 2: apply --"
-  cmd_apply
+  prove_ok "apply command succeeds" cmd_apply
   owned_snapshot="$(ls "$MANAGED_CLIS" 2>/dev/null | tr '\n' ' ')"
   echo "owned_clis=${owned_snapshot}"
   echo "-- assert applied --"
@@ -2292,34 +2367,24 @@ cmd_prove() {
   echo "-- api-src mirror / orphan purge --"
   prove_api_src_mirror
   echo
-
   echo "-- step 2b: proxy on/off (do not leave proxy ON; no Chrome policy) --"
   assert_proxy_toggle
   echo
-
   echo "-- step 3: revert --"
   cmd_revert
   echo "-- assert reverted (markers gone, CA kept, tombstone present) --"
   assert_reverted_tree
-
-  if [ "$had_ssh" -eq 1 ]; then
-    prove_ok "SSH directory preserved" test -d "$PREFIX/.ssh"
-  fi
-  if [ "$had_github_key" -eq 1 ]; then
-    prove_ok "github-0sm0s1z key preserved" test -e "$PREFIX/.ssh/github-0sm0s1z"
-  fi
-  if [ "$had_chrome" -eq 1 ]; then
-    prove_ok "Chrome profiles preserved" sh -c "ls -d \"$PREFIX\"/chrome-profile* >/dev/null 2>&1"
-  fi
+  if [ "$had_ssh" -eq 1 ]; then prove_ok "SSH directory preserved" test -d "$PREFIX/.ssh"; fi
+  if [ "$had_github_key" -eq 1 ]; then prove_ok "github-0sm0s1z key preserved" test -e "$PREFIX/.ssh/github-0sm0s1z"; fi
+  if [ "$had_chrome" -eq 1 ]; then prove_ok "Chrome profiles preserved" sh -c "ls -d \"$PREFIX\"/chrome-profile* >/dev/null 2>&1"; fi
   prove_ok "HOME still exists" test -d "$PREFIX"
   local _n
   for _n in $owned_snapshot; do
     prove_ok "owned CLI $_n gone on revert" test ! -e "$BIN/$_n"
   done
   echo
-
   echo "-- step 4: apply again (leave APPLIED, gost enabled=false) --"
-  cmd_apply
+  prove_ok "final apply command succeeds" cmd_apply
   echo "-- assert applied (final) --"
   assert_applied_tree
   prove_ok "final gost not running (enabled=false)" gost_not_running
@@ -2330,11 +2395,8 @@ cmd_prove() {
     prove_ok "owned CLI $_n restored on final apply" test -x "$BIN/$_n"
   done
   echo
-
   local result="PASS"
-  if [ "$PROVE_FAIL" -ne 0 ]; then
-    result="FAIL"
-  fi
+  if [ "$PROVE_FAIL" -ne 0 ]; then result="FAIL"; fi
   echo "=== MaxQ proof report ==="
   echo "result=$result"
   echo "passed=$PROVE_PASS"
@@ -2355,18 +2417,13 @@ cmd_prove() {
   echo "clis_skipped=$(toml_clis skipped "")"
   echo "ended_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "left_state=APPLIED"
-
-  if [ "$result" = "PASS" ]; then
-    exit 0
-  fi
+  if [ "$result" = "PASS" ]; then exit 0; fi
   exit 1
 }
 
 main() {
   local cmd="${1:-status}"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+  if [ "$#" -gt 0 ]; then shift; fi
   case "$cmd" in
     apply|configure) cmd_apply "$@" ;;
     revert|unconfigure) cmd_revert "$@" ;;
