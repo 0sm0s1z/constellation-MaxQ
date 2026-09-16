@@ -1344,8 +1344,9 @@ wallpaper_display_active() {
 }
 
 wallpaper_backend_available() {
+  # Visual paint backends only — xfconf-query persists path but does not repaint
+  # the Grok Bot root window, so it must not satisfy prove alone.
   command -v gsettings >/dev/null 2>&1 ||
-    command -v xfconf-query >/dev/null 2>&1 ||
     command -v feh >/dev/null 2>&1 ||
     command -v nitrogen >/dev/null 2>&1 ||
     command -v hsetroot >/dev/null 2>&1 ||
@@ -1433,6 +1434,8 @@ apply_wallpaper_xfce() {
 
 apply_wallpaper_live() {
   # Headless bots remain best-effort; graphical sessions fail closed.
+  # XFCE xfconf writes alone do NOT count as live success on Grok Bot boxes —
+  # the visible root must be painted (hsetroot/feh/nitrogen/swaymsg/gsettings).
   wallpaper_display_active || return 0
   [ -s "$WALLPAPER" ] || {
     echo "maxq: live wallpaper missing: $WALLPAPER" >&2
@@ -1440,50 +1443,55 @@ apply_wallpaper_live() {
   }
 
   local uri="file://$WALLPAPER"
+  local painted=0
+
+  # Best-effort DE persistence only — never return success from this alone.
+  apply_wallpaper_xfce || true
 
   if command -v gsettings >/dev/null 2>&1; then
     if gsettings set org.gnome.desktop.background picture-uri "$uri" >/dev/null 2>&1; then
       gsettings set org.gnome.desktop.background picture-uri-dark "$uri" >/dev/null 2>&1 || true
-      return 0
+      painted=1
     fi
-  fi
-
-  if apply_wallpaper_xfce; then
-    return 0
   fi
 
   if command -v feh >/dev/null 2>&1 &&
     feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1; then
-    return 0
+    painted=1
   fi
 
-  if command -v nitrogen >/dev/null 2>&1 &&
+  if [ "$painted" -eq 0 ] && command -v nitrogen >/dev/null 2>&1 &&
     nitrogen --set-zoom-fill "$WALLPAPER" >/dev/null 2>&1; then
-    return 0
+    painted=1
   fi
 
+  # Prefer hsetroot on Grok Bot boxes (often present when feh is not). Always
+  # attempt it so xfconf-only sessions still get a visible root paint.
   if command -v hsetroot >/dev/null 2>&1; then
-    if hsetroot -cover "$WALLPAPER" >/dev/null 2>&1 ||
-      hsetroot -fill "$WALLPAPER" >/dev/null 2>&1; then
-      return 0
+    if hsetroot -fill "$WALLPAPER" >/dev/null 2>&1 ||
+      hsetroot -cover "$WALLPAPER" >/dev/null 2>&1; then
+      painted=1
     fi
   fi
 
-  if command -v swaymsg >/dev/null 2>&1 &&
+  if [ "$painted" -eq 0 ] && command -v swaymsg >/dev/null 2>&1 &&
     swaymsg output '*' bg "$WALLPAPER" fill >/dev/null 2>&1; then
-    return 0
+    painted=1
   fi
 
-  # If every on-PATH backend was absent or unusable, make one rootless attempt
-  # to provision feh under $HOME/bin and retry it before failing closed.
-  if ! command -v feh >/dev/null 2>&1 && ensure_wallpaper_backend; then
+  # If no painter worked and feh is missing, rootless-provision feh once.
+  if [ "$painted" -eq 0 ] && ! command -v feh >/dev/null 2>&1 && ensure_wallpaper_backend; then
     if feh --no-fehbg --bg-fill "$WALLPAPER" >/dev/null 2>&1; then
-      return 0
+      painted=1
     fi
+  fi
+
+  if [ "$painted" -eq 1 ]; then
+    return 0
   fi
 
   # xsetroot only supports colors/bitmaps; it cannot render the MaxQ PNG.
-  echo "maxq: no live wallpaper backend succeeded (gsettings/xfconf-query/feh/nitrogen/hsetroot/swaymsg)" >&2
+  echo "maxq: no live wallpaper paint succeeded (need feh/hsetroot/nitrogen/swaymsg/gsettings; xfconf alone is not enough)" >&2
   return 1
 }
 
