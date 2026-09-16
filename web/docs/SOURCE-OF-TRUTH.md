@@ -6,7 +6,7 @@
 | --- | --- |
 | Canonical repo | `0sm0s1z/constellation-MaxQ`; SSH key `~/.ssh/github-0sm0s1z` |
 | Site | Vite + TS in `web/`; scripts `dev`, `build`, `preview`; build is `tsc --noEmit && vite build` |
-| Production | https://maxq-pied.vercel.app — Vercel **maxq**, `prj_AfUTP6OHL2unAEnwkBtMNpjzMbDD` |
+| Production | https://maxq.cxn.sh — Vercel **maxq**, `prj_AfUTP6OHL2unAEnwkBtMNpjzMbDD` |
 | Team | `team_t8wJzdEfWlgI5RChftfK72Xr` / `0sm0s1zs-projects` |
 | Production link | `link: null`; file deploys are a stopgap |
 | Leftover project | **maxq-site**, `prj_163P0pSQLGFSA94GeHqMnzusyFNa`; git-linked; latest deploy ERROR; not live; never deploy here |
@@ -25,7 +25,7 @@ Until linked, file deploys must include all of `public/` (art/shots/logos) or im
 1. Identify the site branch and commit SHA.
 2. Run the web build; keep dist out of git.
 3. Confirm deployment belongs to project maxq, not maxq-site.
-4. Record the deployment URL and check https://maxq-pied.vercel.app.
+4. Record the deployment URL and check https://maxq.cxn.sh.
 5. Check art, shots, and logos for 404s.
 6. State whether the ship was git-linked or a temporary file deploy.
 
