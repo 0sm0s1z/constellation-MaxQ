@@ -39,16 +39,108 @@ plank_expected() {
 
 install_plank_item() {
   plank_expected || return 0
-  mkdir -p "$PLANK_LAUNCHERS"
+  mkdir -p "$PLANK_LAUNCHERS" "$LOCAL/share/applications"
+
+  # Core apply normally writes the desktop entry first. If it is missing (race /
+  # partial apply), write a minimal owned launcher entry so the dock pin is valid
+  # and bare `maxq apply` stays idempotent.
+  if [ ! -s "$LAUNCHER_DESKTOP" ]; then
+    cat > "$LAUNCHER_DESKTOP" <<EOF
+[Desktop Entry]
+Type=Application
+Name=MaxQ App Launcher
+Comment=Launch applications with the MaxQ launcher
+Exec=$LAUNCHER_BIN
+Terminal=false
+Categories=Utility;System;
+Keywords=launcher;rofi;apps;MaxQ;
+EOF
+  fi
+
   cat > "$PLANK_DOCKITEM" <<EOF
 [PlankDockItemPreferences]
 Launcher=file://$LAUNCHER_DESKTOP
 EOF
   printf 'constellation-MaxQ\n' > "$PLANK_OWNED"
+
+  # Plank only shows items listed in dconf dock-items — a file alone is invisible.
+  if ! plank_pin_live; then
+    echo "maxq: desktop gate: failed to pin MaxQ item into live Plank dock-items" >&2
+    return 1
+  fi
+}
+
+plank_dock_items_path() {
+  printf '/net/launchpad/plank/docks/dock1/dock-items'
+}
+
+plank_pin_live() {
+  command -v dconf >/dev/null 2>&1 || return 1
+  local path raw items out
+  path="$(plank_dock_items_path)"
+  raw="$(dconf read "$path" 2>/dev/null || true)"
+  if [ -z "$raw" ] || [ "$raw" = "@as []" ] || [ "$raw" = "[]" ]; then
+    # Seed from on-disk launchers so we do not wipe Chrome/Thunar/terminal.
+    items=""
+    local f base
+    for f in "$PLANK_LAUNCHERS"/*.dockitem; do
+      [ -e "$f" ] || continue
+      base="$(basename "$f")"
+      case "$base" in
+        *.dockitem) ;;
+        *) continue ;;
+      esac
+      if [ -z "$items" ]; then items="'$base'"; else items="$items, '$base'"; fi
+    done
+    if [ -z "$items" ]; then
+      items="'maxq-launcher.dockitem'"
+    elif [[ "$items" != *"'maxq-launcher.dockitem'"* ]]; then
+      items="$items, 'maxq-launcher.dockitem'"
+    fi
+    out="[$items]"
+  else
+    case "$raw" in
+      *"'maxq-launcher.dockitem'"*|*"\"maxq-launcher.dockitem\""*) out="$raw" ;;
+      *"]") out="${raw%]}, 'maxq-launcher.dockitem']" ;;
+      *) return 1 ;;
+    esac
+  fi
+  dconf write "$path" "$out" >/dev/null 2>&1 || return 1
+
+  # Force this DISPLAY's Plank to reload so eyes see the pin immediately.
+  plank_reload_current_display || true
+  plank_item_live
+}
+
+plank_reload_current_display() {
+  [ -n "${DISPLAY:-}" ] || return 0
+  command -v pgrep >/dev/null 2>&1 || return 0
+  local pid envdisp
+  for pid in $(pgrep -x plank 2>/dev/null || true); do
+    envdisp="$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^DISPLAY=//p' | head -n1 || true)"
+    if [ "$envdisp" = "$DISPLAY" ]; then
+      kill "$pid" 2>/dev/null || true
+    fi
+  done
+  # box-plank supervisor usually restarts; give it a beat.
+  sleep 1
+  return 0
+}
+
+plank_item_live() {
+  command -v dconf >/dev/null 2>&1 || return 1
+  local raw
+  raw="$(dconf read "$(plank_dock_items_path)" 2>/dev/null || true)"
+  case "$raw" in
+    *"'maxq-launcher.dockitem'"*|*"\"maxq-launcher.dockitem\""*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 plank_item_configured() {
-  [ -s "$PLANK_DOCKITEM" ] && [ -f "$PLANK_OWNED" ] && grep -qF "Launcher=file://$LAUNCHER_DESKTOP" "$PLANK_DOCKITEM"
+  [ -s "$PLANK_DOCKITEM" ] && [ -f "$PLANK_OWNED" ] &&
+    grep -qF "Launcher=file://$LAUNCHER_DESKTOP" "$PLANK_DOCKITEM" &&
+    plank_item_live
 }
 
 xfce_set_binding() {
@@ -186,6 +278,20 @@ revert_gate() {
   remove_xfce_binding_if_owned
   if [ -f "$PLANK_OWNED" ]; then
     rm -f "$PLANK_DOCKITEM" "$PLANK_OWNED"
+    if command -v dconf >/dev/null 2>&1; then
+      local path raw out
+      path="$(plank_dock_items_path)"
+      raw="$(dconf read "$path" 2>/dev/null || true)"
+      case "$raw" in
+        *"'maxq-launcher.dockitem'"*)
+          out="$(printf '%s' "$raw" | sed -E "s/, *'maxq-launcher\.dockitem'//; s/'maxq-launcher\.dockitem', *//; s/'maxq-launcher\.dockitem'//")"
+          # Avoid empty broken arrays
+          [ -n "$out" ] && [ "$out" != "[]" ] && [ "$out" != "[, ]" ] || out="@as []"
+          dconf write "$path" "$out" >/dev/null 2>&1 || true
+          plank_reload_current_display || true
+          ;;
+      esac
+    fi
   fi
 }
 
@@ -213,7 +319,8 @@ prove_gate() {
   fi
 
   if plank_expected; then
-    check "Plank MaxQ launcher dock item" plank_item_configured
+    check "Plank MaxQ launcher dock item file" test -s "$PLANK_DOCKITEM"
+    check "Plank MaxQ launcher dock item live-pinned" plank_item_live
   else
     check "non-Plank MaxQ launcher desktop entry" test -s "$LAUNCHER_DESKTOP"
     check "non-Plank shortcut declaration" grep -qF 'launcher = Super+Space' "$SHORTCUTS_FILE"
