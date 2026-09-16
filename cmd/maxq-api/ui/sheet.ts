@@ -40,12 +40,31 @@ function renderStatus(s: Status): void {
   const pill = $("pill"); pill.textContent = s.state; pill.className = "pill " + (s.state === "applied" ? "on" : "off");
 }
 
+function renderStatusUnavailable(message: string): void {
+  ["st-state", "st-theme", "st-gost", "st-clis"].forEach((id) => { $(id).textContent = "Unavailable"; });
+  const pill = $("pill"); pill.textContent = "status error"; pill.className = "pill off";
+  $("st-api").textContent = message;
+}
+
+let policyAvailable = false;
+let busyState = false;
+
 function renderPolicy(policy: Policy): void {
+  policyAvailable = true;
   const enabled = $("approvals-enabled") as HTMLInputElement;
   enabled.checked = policy.approvals.mode === "on";
+  enabled.disabled = busyState;
   $("st-approvals").textContent = policy.approvals.mode === "off"
     ? "Off · always allow · host Auto-review bypassed"
     : "On · approval prompts allowed";
+}
+
+function renderPolicyUnavailable(message: string): void {
+  policyAvailable = false;
+  const enabled = $("approvals-enabled") as HTMLInputElement;
+  enabled.checked = false;
+  enabled.disabled = true;
+  $("st-approvals").textContent = "Unavailable · " + message;
 }
 
 function renderConnections(connections: Connection[]): void {
@@ -60,6 +79,11 @@ function renderConnections(connections: Connection[]): void {
     remove.addEventListener("click", () => act(async () => { await requestJSON("/connections/" + encodeURIComponent(c.id), { method: "DELETE" }); }));
     item.append(text, remove); list.append(item);
   }
+}
+
+function renderConnectionsUnavailable(message: string): void {
+  const list = $("connections"); list.replaceChildren();
+  const item = document.createElement("li"); item.className = "msg"; item.textContent = "Unavailable · " + message; list.append(item);
 }
 
 function renderDesktops(desktops: Desktop[], errors: { connection_name: string; error: string }[]): void {
@@ -80,17 +104,34 @@ function renderDesktops(desktops: Desktop[], errors: { connection_name: string; 
   }
 }
 
+function errorText(reason: unknown): string { return reason instanceof Error ? reason.message : String(reason); }
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "approvals-enabled"].forEach((id) => { ($(id) as HTMLButtonElement | HTMLInputElement).disabled = on; });
+  busyState = on;
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
 }
 async function act(fn: () => Promise<unknown>): Promise<void> {
   showMsg(""); busy(true);
-  try { await fn(); await refresh(); } catch (e) { showMsg(e instanceof Error ? e.message : String(e)); } finally { busy(false); }
+  try { await fn(); await refresh(); } catch (e) { showMsg(errorText(e)); } finally { busy(false); }
 }
 async function refresh(): Promise<void> {
-  const [status, policy, connections, desktops] = await Promise.all([getStatus(), getPolicy(), getConnections(), getDesktops()]);
-  renderStatus(status); renderPolicy(policy); renderConnections(connections.connections); renderDesktops(desktops.desktops, desktops.errors || []);
+  const [status, policy, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getConnections(), getDesktops()]);
+  const errors: string[] = [];
+
+  if (status.status === "fulfilled") renderStatus(status.value);
+  else { const message = errorText(status.reason); renderStatusUnavailable(message); errors.push("status: " + message); }
+
+  if (policy.status === "fulfilled") renderPolicy(policy.value);
+  else { const message = errorText(policy.reason); renderPolicyUnavailable(message); errors.push("approvals: " + message); }
+
+  if (connections.status === "fulfilled") renderConnections(connections.value.connections);
+  else { const message = errorText(connections.reason); renderConnectionsUnavailable(message); errors.push("connections: " + message); }
+
+  if (desktops.status === "fulfilled") renderDesktops(desktops.value.desktops, desktops.value.errors || []);
+  else { const message = errorText(desktops.reason); renderDesktops([], [{ connection_name: "Desktops", error: message }]); errors.push("desktops: " + message); }
+
+  showMsg(errors.join(" · "));
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -109,5 +150,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const auth = $("connection-auth") as HTMLInputElement;
     act(async () => { await postJSON("/connections", { name: name.value, base_url: baseURL.value, auth: auth.value }); name.value = ""; baseURL.value = ""; auth.value = ""; });
   });
-  refresh().catch((e) => showMsg(e instanceof Error ? e.message : String(e)));
+  busy(false);
+  refresh().catch((e) => showMsg(errorText(e)));
 });
