@@ -1421,31 +1421,74 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .start { padding: 2.5rem 0 3rem; }
 }
 
-/* #71 / #73 Router Coming Soon — ATF badge must be unmistakable */
+/* #80 Router Coming Soon — status treatment + curated real-capture layout. */
 .coming-soon-badge {
   display: inline-flex;
   align-items: center;
+  gap: .5rem;
   margin: 0 0 1rem;
-  padding: .55rem 1.1rem;
+  padding: .38rem .72rem;
   border-radius: 999px;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
-  font-weight: 700;
-  letter-spacing: .04em;
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--surface0) 52%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+  font-family: IBM Plex Mono, ui-monospace, monospace;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--crust, #11111b);
-  background: var(--peach, #fab387);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--peach, #fab387) 55%, transparent);
+  color: var(--sub);
 }
-.coming-soon-badge--inline { margin-bottom: .75rem; }
-.router-hero { padding-top: .5rem; }
-.coming-soon-boundary { margin-top: 1.5rem; }
-.grid.two-shots {
+.coming-soon-badge::before {
+  content: "";
+  width: .42rem;
+  height: .42rem;
+  border-radius: 50%;
+  background: var(--mauve);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mauve) 45%, transparent);
+}
+.router-hero {
+  max-width: 52rem;
+  margin: 1.35rem 0 0;
+  padding: 2.5rem 0 1rem;
+}
+.router-hero .lede {
+  max-width: 47rem;
+  font-size: 1.05rem;
+}
+.router-purpose { max-width: 47rem; }
+.router-purpose .lede { max-width: none; font-size: 1.02rem; }
+.router-showcase {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  margin: 1.5rem 0;
+  gap: 1rem;
+  margin: 2.15rem 0 3rem;
 }
+.router-shot-pair { display: grid; gap: 1rem; }
+.router-screen { margin: 0; }
+.router-screen .screen-frame { aspect-ratio: 16 / 9; }
+.router-screen--wide .screen-frame { aspect-ratio: 2.15 / 1; }
+.router-screen .screen-frame img { object-position: 50% 0%; }
+.router-screen figcaption { color: var(--overlay1); }
+.router-points { margin-bottom: 2.8rem; }
+.router-points section {
+  padding-top: .85rem;
+  border-top: 1px solid var(--rule);
+}
+.router-points section h2 { margin-bottom: .35rem; }
+.router-who { max-width: 48rem; }
+.coming-soon-boundary {
+  max-width: 50rem;
+  margin: 3rem 0 4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid color-mix(in srgb, var(--mauve) 25%, var(--rule));
+}
+.coming-soon-boundary .lede { max-width: none; }
 @media (min-width: 900px) {
-  .grid.two-shots { grid-template-columns: 1fr 1fr; }
+  .router-shot-pair { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .router-hero { padding-top: 1.5rem; }
+  .router-showcase { margin: 1.6rem 0 2.4rem; }
+  .router-screen--wide .screen-frame { aspect-ratio: 16 / 9; }
+  .coming-soon-boundary { margin-bottom: 2.5rem; }
 }
