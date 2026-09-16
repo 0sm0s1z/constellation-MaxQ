@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# MaxQ HOME-only admin/dev runtimes + SBOM (PLAN 41-47).
+set -euo pipefail
+P="${MAXQ_HOME:-$HOME}"; B="$P/bin"; C="$P/.config/maxq"; L="$P/.local"
+S="$C/packages"; OWN="$S/owned"; BACKUP="$S/backup"; SRC="$S/source"; CACHE="$C/cli-cache"; SBOM="$C/sbom.json"
+NET_ROOT="$L/opt/netadmin"; NET_CACHE="$CACHE/netadmin"
+GO_VERSION="1.26.5"; GO_SHA256="5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"; GO_URL="https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+BUN_VERSION="1.4.0"; BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+NODE_VERSION="24.20.0"; NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz"
+TS_VERSION="7.0.2"
+DOCKER_VERSION="29.7.2"; DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz"
+GO_ROOT="$L/go"; BUN_ROOT="$L/opt/bun-${BUN_VERSION}"; NODE_ROOT="$L/opt/node-v${NODE_VERSION}"; TS_ROOT="$L/opt/typescript-${TS_VERSION}"; DOCKER_ROOT="$L/opt/docker-${DOCKER_VERSION}"
+export PATH="$B:$PATH"
+
+fail(){ echo "maxq-packages: $*" >&2; exit 1; }
+dirs(){ mkdir -p "$B" "$C" "$L/opt" "$S" "$OWN" "$BACKUP" "$SRC" "$CACHE" "$NET_CACHE"; }
+owned(){ [ -e "$OWN/$1" ]; }
+source_of(){ [ -f "$SRC/$1" ] && cat "$SRC/$1" || echo maxq; }
+set_source(){ printf '%s\n' "$2" > "$SRC/$1"; }
+claim_target(){
+  local n="$1" target="$B/$1"
+  if owned "$n"; then return 0; fi
+  if [ -e "$target" ] || [ -L "$target" ]; then rm -rf "$BACKUP/$n"; cp -a "$target" "$BACKUP/$n"; fi
+  : > "$OWN/$n"; set_source "$n" maxq
+}
+restore_target(){
+  local n="$1" target="$B/$1"
+  owned "$n" || return 0
+  rm -f "$target"
+  if [ -e "$BACKUP/$n" ] || [ -L "$BACKUP/$n" ]; then mv "$BACKUP/$n" "$target"; fi
+  rm -f "$OWN/$n" "$SRC/$n"; rm -rf "$BACKUP/$n"
+}
+fetch_cached(){
+  local url dest part attempt
+  url="$1"
+  dest="$2"
+  part="${dest}.part"
+  [ -s "$dest" ] && return 0
+  mkdir -p "$(dirname "$dest")"
+  for attempt in 1 2 3 4; do
+    rm -f "$part"
+    if curl -fL --retry 2 --retry-delay 1 -o "$part" "$url" && [ -s "$part" ]; then mv -f "$part" "$dest"; return 0; fi
+    sleep "$attempt"
+  done
+  rm -f "$part"; return 1
+}
+first_line(){ "$@" 2>&1 | head -n1 | tr '\t\r\n' '   ' | sed 's/[[:space:]]*$//' || true; }
+
+apt_download_one(){
+  local pkg="$1" attempt
+  compgen -G "$NET_CACHE/${pkg}_*.deb" >/dev/null && return 0
+  for attempt in 1 2 3; do
+    (cd "$NET_CACHE" && apt-get download "$pkg" >/dev/null 2>&1) && return 0
+    sleep "$attempt"
+  done
+  return 1
+}
+install_netadmin(){
+  if [ -x "$B/traceroute" ] && [ -x "$B/dig" ] && [ -x "$B/nslookup" ] && [ -x "$B/host" ] && [ -x "$B/pingpp" ] && [ -x "$B/ping" ] && owned traceroute && owned dig && owned nslookup && owned host && owned pingpp && owned ping; then return 0; fi
+  command -v apt-get >/dev/null 2>&1 && command -v apt-cache >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1 || fail 'apt-get/apt-cache/dpkg-deb required for HOME-only netadmin extract'
+  local tops=(traceroute bind9-dnsutils bind9-host) p dep real n
+  for p in "${tops[@]}"; do apt_download_one "$p" || fail "netadmin package download failed: $p"; done
+  while IFS= read -r dep; do [ -z "$dep" ] || apt_download_one "$dep" || true; done < <(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "${tops[@]}" 2>/dev/null | awk '/^[[:space:]|]*Depends:/ {gsub(/[<>]/,"",$2); if($2!="")print $2}' | sort -u)
+  rm -rf "$NET_ROOT"; mkdir -p "$NET_ROOT"
+  for p in "$NET_CACHE"/*.deb; do [ ! -f "$p" ] || dpkg-deb -x "$p" "$NET_ROOT" || true; done
+  for n in traceroute dig nslookup host; do
+    case "$n" in
+      traceroute) real="$(find "$NET_ROOT" -type f \( -name traceroute.db -o -name traceroute \) -perm -u+x -print | head -n1)" ;;
+      *) real="$(find "$NET_ROOT" -type f -name "$n" -perm -u+x -print | head -n1)" ;;
+    esac
+    [ -n "$real" ] || fail "netadmin extracted binary missing: $n"
+    claim_target "$n"
+    cat > "$B/$n" <<EOF
+#!/usr/bin/env bash
+export LD_LIBRARY_PATH="$NET_ROOT/usr/lib/x86_64-linux-gnu:$NET_ROOT/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH:-}"
+exec "$real" "\$@"
+EOF
+    chmod +x "$B/$n"
+  done
+  : > "$OWN/netadmin-root"
+  install_pingpp
+}
+install_pingpp(){
+  claim_target pingpp
+  cat > "$B/pingpp" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in --version|-version|-V) echo 'ping++ maxq 1.0 (TCP only; ICMP disabled)'; exit 0;; esac
+noicmp=0; target=''; port='443'; timeout='2'
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -no-icmp|--no-icmp) noicmp=1;;
+    -p|--port) shift; port="${1:-443}";;
+    -W|--timeout) shift; timeout="${1:-2}";;
+    -h|--help) echo 'usage: pingpp -no-icmp [-p port] [-W seconds] host'; exit 0;;
+    -*) ;;
+    *) [ -n "$target" ] || target="$1";;
+  esac
+  shift || true
+done
+[ "$noicmp" -eq 1 ] || { echo 'pingpp: -no-icmp is mandatory on Grok Bot' >&2; exit 2; }
+[ -n "$target" ] || { echo 'pingpp: target required' >&2; exit 2; }
+python3 - "$target" "$port" "$timeout" <<'PY'
+import ipaddress,socket,sys,time
+host,port,timeout=sys.argv[1],int(sys.argv[2]),float(sys.argv[3])
+try: addrs={x[4][0] for x in socket.getaddrinfo(host,port,type=socket.SOCK_STREAM)}
+except OSError as e: raise SystemExit(f'pingpp: resolve failed: {e}')
+blocked=ipaddress.ip_network('10.0.0.0/16')
+for a in addrs:
+    try: ip=ipaddress.ip_address(a)
+    except ValueError: continue
+    if ip.version==4 and ip in blocked: raise SystemExit('pingpp: refusing 10.0.0.0/16')
+last=None
+for a in addrs:
+    try:
+        t=time.monotonic(); s=socket.create_connection((a,port),timeout=timeout); ms=(time.monotonic()-t)*1000; s.close()
+        print(f'{host} ({a}) tcp/{port}: {ms:.1f} ms'); raise SystemExit(0)
+    except OSError as e: last=e
+raise SystemExit(f'pingpp: TCP connect failed: {last}')
+PY
+EOF
+  chmod +x "$B/pingpp"
+  claim_target ping
+  cat > "$B/ping" <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in --version|-version|-V) exec "$B/pingpp" --version;; esac
+exec "$B/pingpp" -no-icmp "\$@"
+EOF
+  chmod +x "$B/ping"
+}
+
+install_go(){
+  if [ -x "$B/go" ] && owned go && "$B/go" version 2>/dev/null | grep -q "go${GO_VERSION}"; then return 0; fi
+  local arc="$CACHE/go${GO_VERSION}.linux-amd64.tar.gz" tmp
+  fetch_cached "$GO_URL" "$arc" || fail 'Go download failed'
+  printf '%s  %s\n' "$GO_SHA256" "$arc" | sha256sum -c - >/dev/null 2>&1 || fail 'Go checksum failed'
+  if [ -e "$GO_ROOT" ] && [ ! -e "$OWN/go-root" ]; then
+    [ -x "$GO_ROOT/bin/go" ] || fail '$HOME/.local/go exists but is not a usable preexisting Go runtime'
+    claim_target go; ln -sfn "$GO_ROOT/bin/go" "$B/go"; set_source go preexisting; return 0
+  fi
+  rm -rf "$GO_ROOT"; tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-go.XXXXXX")"
+  tar -xzf "$arc" -C "$tmp"; mv "$tmp/go" "$GO_ROOT"; rmdir "$tmp" 2>/dev/null || true; : > "$OWN/go-root"
+  claim_target go; ln -sfn "$GO_ROOT/bin/go" "$B/go"
+  claim_target gofmt; ln -sfn "$GO_ROOT/bin/gofmt" "$B/gofmt"
+}
+install_bun(){
+  if [ -x "$B/bun" ] && owned bun && [ "$(first_line "$B/bun" --version)" = "$BUN_VERSION" ]; then return 0; fi
+  local arc="$CACHE/bun-v${BUN_VERSION}-linux-x64.zip" tmp real
+  fetch_cached "$BUN_URL" "$arc" || fail 'Bun download failed'
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-bun.XXXXXX")"
+  python3 - "$arc" "$tmp" <<'PY'
+import sys,zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:z.extractall(sys.argv[2])
+PY
+  real="$(find "$tmp" -type f -name bun -print | head -n1)"; [ -n "$real" ] || { rm -rf "$tmp"; fail 'Bun archive missing binary'; }
+  rm -rf "$BUN_ROOT"; mkdir -p "$BUN_ROOT/bin"; cp -f "$real" "$BUN_ROOT/bin/bun"; chmod +x "$BUN_ROOT/bin/bun"; rm -rf "$tmp"; : > "$OWN/bun-root"
+  claim_target bun; ln -sfn "$BUN_ROOT/bin/bun" "$B/bun"
+  claim_target bunx; ln -sfn "$BUN_ROOT/bin/bun" "$B/bunx"
+}
+install_node(){
+  if [ -x "$B/node" ] && owned node && "$B/node" --version 2>/dev/null | grep -q "v${NODE_VERSION}"; then return 0; fi
+  local arc="$CACHE/node-v${NODE_VERSION}-linux-x64.tar.gz" tmp src
+  fetch_cached "$NODE_URL" "$arc" || fail 'Node download failed'
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-node.XXXXXX")"; tar -xzf "$arc" -C "$tmp"
+  src="$tmp/node-v${NODE_VERSION}-linux-x64"; [ -x "$src/bin/node" ] || { rm -rf "$tmp"; fail 'Node archive missing binary'; }
+  rm -rf "$NODE_ROOT"; mv "$src" "$NODE_ROOT"; rm -rf "$tmp"; : > "$OWN/node-root"
+  local n; for n in node npm npx corepack; do [ -e "$NODE_ROOT/bin/$n" ] || continue; claim_target "$n"; ln -sfn "$NODE_ROOT/bin/$n" "$B/$n"; done
+}
+install_typescript(){
+  if [ -x "$B/tsc" ] && owned tsc && "$B/tsc" --version 2>/dev/null | grep -q "$TS_VERSION"; then return 0; fi
+  install_bun
+  rm -rf "$TS_ROOT"; mkdir -p "$TS_ROOT"
+  printf '{"private":true}\n' > "$TS_ROOT/package.json"
+  (cd "$TS_ROOT" && "$B/bun" add --exact --ignore-scripts "typescript@${TS_VERSION}" >/dev/null) || fail 'TypeScript install via Bun failed'
+  [ -x "$TS_ROOT/node_modules/.bin/tsc" ] || fail 'TypeScript tsc missing after Bun install'
+  : > "$OWN/typescript-root"; claim_target tsc; ln -sfn "$TS_ROOT/node_modules/.bin/tsc" "$B/tsc"
+}
+install_docker(){
+  if [ -x "$B/docker" ] && owned docker && "$B/docker" --version 2>/dev/null | grep -q "$DOCKER_VERSION"; then return 0; fi
+  local arc="$CACHE/docker-${DOCKER_VERSION}.tgz" tmp
+  fetch_cached "$DOCKER_URL" "$arc" || fail 'Docker CLI download failed'
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/maxq-docker.XXXXXX")"; tar -xzf "$arc" -C "$tmp"
+  [ -x "$tmp/docker/docker" ] || { rm -rf "$tmp"; fail 'Docker archive missing CLI'; }
+  rm -rf "$DOCKER_ROOT"; mkdir -p "$DOCKER_ROOT"; cp -f "$tmp/docker/docker" "$DOCKER_ROOT/docker"; chmod +x "$DOCKER_ROOT/docker"; rm -rf "$tmp"; : > "$OWN/docker-root"
+  claim_target docker; ln -sfn "$DOCKER_ROOT/docker" "$B/docker"
+}
+
+sbom_line(){ printf '%s\t%s\t%s\t%s\n' "$1" "${2//$'\t'/ }" "$3" "$4" >> "$S/sbom-lines"; }
+sbom_cmd(){
+  local n="$1" path="$2" source="$3"; shift 3
+  [ -x "$path" ] || return 0
+  sbom_line "$n" "$(first_line "$path" "$@")" "$path" "$source"
+}
+refresh_sbom(){
+  dirs; : > "$S/sbom-lines"
+  sbom_cmd traceroute "$B/traceroute" "$(source_of traceroute)" --version
+  sbom_cmd dig "$B/dig" "$(source_of dig)" -v
+  sbom_cmd nslookup "$B/nslookup" "$(source_of nslookup)" -version
+  sbom_cmd host "$B/host" "$(source_of host)" -V
+  sbom_cmd pingpp "$B/pingpp" "$(source_of pingpp)" --version
+  sbom_cmd ping "$B/ping" "$(source_of ping)" --version
+  sbom_cmd go "$B/go" "$(source_of go)" version
+  sbom_cmd bun "$B/bun" "$(source_of bun)" --version
+  sbom_cmd node "$B/node" "$(source_of node)" --version
+  sbom_cmd tsc "$B/tsc" "$(source_of tsc)" --version
+  sbom_cmd docker "$B/docker" "$(source_of docker)" --version
+  local py; py="$(command -v python3 2>/dev/null || true)"; [ -n "$py" ] && sbom_cmd python3 "$py" preexisting --version
+  local dd; dd="$(command -v dockerd 2>/dev/null || true)"; if [ -n "$dd" ]; then sbom_cmd docker-daemon "$dd" preexisting --version; else sbom_line docker-daemon missing '' preexisting; fi
+  [ -x "$B/ghostty" ] && sbom_cmd ghostty "$B/ghostty" "$([ -f "$C/desktop/ghostty-owned" ] && echo maxq || echo preexisting)" --version
+  [ -x "$B/rofi" ] && sbom_cmd rofi "$B/rofi" "$([ -f "$C/desktop/rofi-owned" ] && echo maxq || echo preexisting)" -version
+  [ -x "$B/gost" ] && sbom_cmd gost "$B/gost" maxq -V
+  local n
+  for n in herdr fx grok codex claude opencode tailscale tailscaled; do
+    [ -x "$B/$n" ] || continue
+    sbom_line "$n" installed "$B/$n" "$([ -e "$C/managed-clis/$n" ] && echo maxq || echo preexisting)"
+  done
+  python3 - "$S/sbom-lines" "$SBOM" <<'PY'
+import json,sys,os
+rows=[]
+for line in open(sys.argv[1],encoding='utf-8'):
+    p=line.rstrip('\n').split('\t',3)
+    if len(p)==4: rows.append(dict(name=p[0],version=p[1],path=p[2],source=p[3]))
+tmp=sys.argv[2]+'.tmp'
+with open(tmp,'w',encoding='utf-8') as f: json.dump(rows,f,indent=2); f.write('\n')
+os.replace(tmp,sys.argv[2])
+PY
+}
+
+apply_packages(){
+  dirs; install_netadmin; install_go; install_bun; install_node; install_typescript; install_docker
+  command -v python3 >/dev/null 2>&1 || fail 'preexisting python3 missing'
+  refresh_sbom
+}
+revert_packages(){
+  dirs
+  local n; for n in traceroute dig nslookup host pingpp ping go gofmt bun bunx node npm npx corepack tsc docker; do restore_target "$n"; done
+  [ -e "$OWN/netadmin-root" ] && rm -rf "$NET_ROOT" && rm -f "$OWN/netadmin-root"
+  [ -e "$OWN/go-root" ] && rm -rf "$GO_ROOT" && rm -f "$OWN/go-root"
+  [ -e "$OWN/bun-root" ] && rm -rf "$BUN_ROOT" && rm -f "$OWN/bun-root"
+  [ -e "$OWN/node-root" ] && rm -rf "$NODE_ROOT" && rm -f "$OWN/node-root"
+  [ -e "$OWN/typescript-root" ] && rm -rf "$TS_ROOT" && rm -f "$OWN/typescript-root"
+  [ -e "$OWN/docker-root" ] && rm -rf "$DOCKER_ROOT" && rm -f "$OWN/docker-root"
+  rm -f "$SBOM" "$S/sbom-lines"
+}
+sbom_has(){ python3 - "$SBOM" "$1" "$2" <<'PY'
+import json,sys
+try:d=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception:raise SystemExit(1)
+name,source=sys.argv[2:]
+raise SystemExit(0 if any(x.get('name')==name and x.get('source')==source for x in d) else 1)
+PY
+}
+api_sbom_matches(){
+  command -v curl >/dev/null 2>&1 || return 1
+  local remote="$S/sbom-api.json"
+  curl -fsS "http://127.0.0.1:7432/sbom" -o "$remote" || return 1
+  python3 - "$SBOM" "$remote" <<'PY'
+import json,sys
+try:a=json.load(open(sys.argv[1]));b=json.load(open(sys.argv[2]))
+except Exception:raise SystemExit(1)
+raise SystemExit(0 if a==b else 1)
+PY
+}
+prove_packages(){
+  local failn=0 n
+  apply_packages
+  check(){ local label="$1"; shift; if "$@" >/dev/null 2>&1; then echo "[PASS] $label"; else echo "[FAIL] $label"; failn=$((failn+1)); fi; }
+  check 'traceroute version' "$B/traceroute" --version
+  check 'dig version' "$B/dig" -v
+  check 'nslookup version' "$B/nslookup" -version
+  check 'host version' "$B/host" -V
+  check 'ping++ version only (no ICMP)' "$B/pingpp" --version
+  check 'ping wrapper version only (no ICMP)' "$B/ping" --version
+  check 'Go version' "$B/go" version
+  check 'Bun version' "$B/bun" --version
+  check 'Node version' "$B/node" --version
+  check 'TypeScript version' "$B/tsc" --version
+  check 'Docker CLI version' "$B/docker" --version
+  check 'Python 3 preexisting version' python3 --version
+  refresh_sbom
+  check 'sbom.json exists' test -s "$SBOM"
+  for n in traceroute dig nslookup host pingpp ping go bun node tsc docker; do check "SBOM maxq $n" sbom_has "$n" maxq; done
+  check 'SBOM required MaxQ dig' sbom_has dig maxq
+  check 'SBOM required MaxQ go' sbom_has go maxq
+  check 'SBOM required MaxQ bun' sbom_has bun maxq
+  check 'SBOM required MaxQ node' sbom_has node maxq
+  check 'SBOM required MaxQ docker' sbom_has docker maxq
+  check 'SBOM python3 preexisting' sbom_has python3 preexisting
+  check 'GET /sbom matches sbom.json' api_sbom_matches
+  [ "$failn" -eq 0 ]
+}
+
+case "${1:-status}" in
+  apply|configure) apply_packages;;
+  revert|unconfigure) revert_packages;;
+  sbom|refresh-sbom) refresh_sbom;;
+  prove) prove_packages;;
+  status) [ -s "$SBOM" ] && echo applied || echo reverted;;
+  *) fail 'usage: maxq-packages apply|revert|sbom|prove|status';;
+esac

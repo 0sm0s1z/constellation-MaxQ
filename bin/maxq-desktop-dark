@@ -1,0 +1,148 @@
+# sourced by maxq-desktop
+DARK_THEME="MaxQ-Catppuccin-Mocha"
+XFCONF_DIR="$P/.config/xfce4/xfconf/xfce-perchannel-xml"
+XFWM_XML="$XFCONF_DIR/xfwm4.xml"
+XSET_XML="$XFCONF_DIR/xsettings.xml"
+DARK_PREV="$S/dark-prev.json"
+
+xfconf_get(){ xfconf-query -c "$1" -p "$2" 2>/dev/null || true; }
+xfconf_set(){
+  local ch="$1" prop="$2" type="$3" value="$4"
+  if xfconf-query -c "$ch" -p "$prop" -s "$value" >/dev/null 2>&1; then return 0; fi
+  xfconf-query -c "$ch" -p "$prop" -n -t "$type" -s "$value" >/dev/null 2>&1
+}
+xfconf_reset(){ xfconf-query -c "$1" -p "$2" -r >/dev/null 2>&1 || true; }
+
+xml_get(){
+  python3 - "$1" "$2" <<'PY'
+import sys,xml.etree.ElementTree as ET
+path,key=sys.argv[1:]; parts=[p for p in key.split('/') if p]
+try: root=ET.parse(path).getroot()
+except Exception: raise SystemExit(0)
+cur=root
+for part in parts:
+    cur=next((x for x in cur.findall('property') if x.get('name')==part),None)
+    if cur is None: raise SystemExit(0)
+print(cur.get('value',''))
+PY
+}
+
+xml_set(){
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+import os,sys,xml.etree.ElementTree as ET
+path,channel,key,typ,value=sys.argv[1:]
+parts=[p for p in key.split('/') if p]
+os.makedirs(os.path.dirname(path),exist_ok=True)
+try:
+    tree=ET.parse(path); root=tree.getroot()
+except Exception:
+    root=ET.Element('channel',{'name':channel,'version':'1.0'}); tree=ET.ElementTree(root)
+if root.tag!='channel': raise SystemExit(1)
+root.set('name',channel); root.set('version',root.get('version','1.0'))
+cur=root
+for i,part in enumerate(parts):
+    child=next((x for x in cur.findall('property') if x.get('name')==part),None)
+    if child is None:
+        child=ET.SubElement(cur,'property',{'name':part,'type':'empty' if i < len(parts)-1 else typ})
+    cur=child
+cur.set('type',typ); cur.set('value',value)
+ET.indent(tree,space='  ')
+tmp=path+'.maxq.tmp'; tree.write(tmp,encoding='UTF-8',xml_declaration=True); os.replace(tmp,path)
+PY
+}
+
+xml_remove(){
+  python3 - "$1" "$2" <<'PY'
+import os,sys,xml.etree.ElementTree as ET
+path,key=sys.argv[1:]; parts=[p for p in key.split('/') if p]
+try: tree=ET.parse(path); root=tree.getroot()
+except Exception: raise SystemExit(0)
+cur=root
+for part in parts[:-1]:
+    cur=next((x for x in cur.findall('property') if x.get('name')==part),None)
+    if cur is None: raise SystemExit(0)
+for child in list(cur.findall('property')):
+    if child.get('name')==parts[-1]: cur.remove(child)
+ET.indent(tree,space='  ')
+tmp=path+'.maxq.tmp'; tree.write(tmp,encoding='UTF-8',xml_declaration=True); os.replace(tmp,path)
+PY
+}
+
+current_setting(){
+  local ch="$1" prop="$2" xml="$3" key="$4" v=""
+  if [ -n "${DISPLAY:-}" ] && command -v xfconf-query >/dev/null 2>&1; then v="$(xfconf_get "$ch" "$prop")"; fi
+  [ -n "$v" ] || v="$(xml_get "$xml" "$key")"
+  printf '%s' "$v"
+}
+
+save_dark_previous(){
+  [ -e "$DARK_PREV" ] && return 0
+  mkdir -p "$S" "$XFCONF_DIR"
+  python3 - "$DARK_PREV" \
+    "$(current_setting xfwm4 /general/theme "$XFWM_XML" /general/theme)" \
+    "$(current_setting xsettings /Net/ThemeName "$XSET_XML" /Net/ThemeName)" \
+    "$(current_setting xsettings /Net/CursorThemeName "$XSET_XML" /Net/CursorThemeName)" \
+    "$(current_setting xsettings /Gtk/ApplicationPreferDarkTheme "$XSET_XML" /Gtk/ApplicationPreferDarkTheme)" <<'PY'
+import json,sys,os
+p=sys.argv[1]; vals=sys.argv[2:]
+data={'xfwm_theme':vals[0],'net_theme':vals[1],'cursor_theme':vals[2],'prefer_dark':vals[3]}
+tmp=p+'.tmp'; open(tmp,'w',encoding='utf-8').write(json.dumps(data,indent=2)+'\n'); os.replace(tmp,p)
+PY
+}
+
+prev_get(){
+  python3 - "$DARK_PREV" "$1" <<'PY'
+import json,sys
+try:d=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception:d={}
+print(str(d.get(sys.argv[2],'')),end='')
+PY
+}
+
+apply_dark_mode(){
+  [ -d "$GTK/xfwm4" ] || fail 'Mocha xfwm4 theme missing after core apply'
+  save_dark_previous
+  mkdir -p "$XFCONF_DIR"
+  if [ -n "${DISPLAY:-}" ]; then
+    command -v xfconf-query >/dev/null 2>&1 || fail 'DISPLAY set but xfconf-query is unavailable'
+    xfconf_set xfwm4 /general/theme string "$DARK_THEME" || fail 'failed to set live xfwm4 theme'
+    xfconf_set xsettings /Net/ThemeName string "$DARK_THEME" || fail 'failed to set live GTK theme'
+    xfconf_set xsettings /Net/CursorThemeName string "$DARK_THEME" || fail 'failed to set live cursor theme'
+    xfconf_set xsettings /Gtk/ApplicationPreferDarkTheme bool true || fail 'failed to enable live GTK dark preference'
+  fi
+  xml_set "$XFWM_XML" xfwm4 /general/theme string "$DARK_THEME"
+  xml_set "$XSET_XML" xsettings /Net/ThemeName string "$DARK_THEME"
+  xml_set "$XSET_XML" xsettings /Net/CursorThemeName string "$DARK_THEME"
+  xml_set "$XSET_XML" xsettings /Gtk/ApplicationPreferDarkTheme bool true
+}
+
+dark_xml_ok(){
+  [ "$(xml_get "$XFWM_XML" /general/theme)" = "$DARK_THEME" ] && \
+  [ "$(xml_get "$XSET_XML" /Net/ThemeName)" = "$DARK_THEME" ] && \
+  [ "$(xml_get "$XSET_XML" /Net/CursorThemeName)" = "$DARK_THEME" ] && \
+  [ "$(xml_get "$XSET_XML" /Gtk/ApplicationPreferDarkTheme)" = true ]
+}
+
+dark_live_ok(){
+  command -v xfconf-query >/dev/null 2>&1 || return 1
+  [ "$(xfconf_get xfwm4 /general/theme)" = "$DARK_THEME" ] && \
+  [ "$(xfconf_get xsettings /Net/ThemeName)" = "$DARK_THEME" ] && \
+  [ "$(xfconf_get xsettings /Net/CursorThemeName)" = "$DARK_THEME" ] && \
+  case "$(xfconf_get xsettings /Gtk/ApplicationPreferDarkTheme)" in true|1) true;; *) false;; esac
+}
+
+restore_one(){
+  local ch="$1" prop="$2" type="$3" xml="$4" key="$5" value="$6"
+  if [ -n "${DISPLAY:-}" ] && command -v xfconf-query >/dev/null 2>&1; then
+    if [ -n "$value" ]; then xfconf_set "$ch" "$prop" "$type" "$value" || true; else xfconf_reset "$ch" "$prop"; fi
+  fi
+  if [ -n "$value" ]; then xml_set "$xml" "$ch" "$key" "$type" "$value"; else xml_remove "$xml" "$key"; fi
+}
+
+restore_dark_mode(){
+  [ -s "$DARK_PREV" ] || return 0
+  restore_one xfwm4 /general/theme string "$XFWM_XML" /general/theme "$(prev_get xfwm_theme)"
+  restore_one xsettings /Net/ThemeName string "$XSET_XML" /Net/ThemeName "$(prev_get net_theme)"
+  restore_one xsettings /Net/CursorThemeName string "$XSET_XML" /Net/CursorThemeName "$(prev_get cursor_theme)"
+  restore_one xsettings /Gtk/ApplicationPreferDarkTheme bool "$XSET_XML" /Gtk/ApplicationPreferDarkTheme "$(prev_get prefer_dark)"
+}
