@@ -726,10 +726,10 @@ export function renderRouter(): string {
     <article class="block">
       <p class="eyebrow">01 · Router · Coming Soon</p>
       <h1>One API for the <span class="grad">seats you already pay for.</span></h1>
-      <p class="lede">Constellation Router is a standalone OpenAI-compatible seat gateway and control plane. Connect supported ChatGPT Codex, SuperGrok, Claude Code, and Cursor seats, then use the catalog from OpenCode, ChatGPT Work, or another compatible client. Router is not a model provider: it routes work into linked subscription seats.</p>
+      <p class="lede">A standalone OpenAI-compatible seat gateway. Link ChatGPT Codex, SuperGrok, Claude Code, and Cursor seats you already pay for, then call that catalog from OpenCode, ChatGPT Work, or another compatible client. Not a model host — it routes into those subscriptions.</p>
       <div class="cta-row">
         <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-ghost" href="#home">Back to MaxQ</a>
+        <a class="btn-ghost" href="#home">MaxQ home</a>
         <a class="btn-ghost" href="https://github.com/OpenSecurity-Infosec/constellation-router" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
       </div>
     </article>
@@ -739,13 +739,13 @@ export function renderRouter(): string {
     <article class="block">
       <p class="eyebrow">Purpose</p>
       <h2>Subscription routing, not another model bill.</h2>
-      <p class="lede">Router is for operators carrying multiple paid AI seats who want one OpenAI-compatible surface for those subscriptions. The control plane connects seats and issues client access; the inference hop at <code>https://infer.shimcounty.com/api/v1</code> serves the model catalog and inference traffic. ChatGPT Work uses the local <code>127.0.0.1:6630</code> sidecar as transport into that hop.</p>
+      <p class="lede">Operators with several paid seats get one OpenAI-compatible surface instead of another token bill. Control plane links seats and issues client access. Inference runs at <code>https://infer.shimcounty.com/api/v1</code>. ChatGPT Work uses local <code>127.0.0.1:6630</code> as transport into that hop — not as a model family.</p>
     </article>
 
     <div class="grid three">
-      <section><h2>Constellation Auto</h2><p><code>constellation/auto</code> scores linked-seat candidates across subscription efficiency, capacity/reset clocks, and task fit. Pin a catalog model when you want to bypass auto.</p></section>
-      <section><h2>Connected-seat catalog</h2><p><code>GET /api/v1/models</code> advertises models the connected seats can actually run. Router does not invent seat-type models or advertise unimplemented product tools.</p></section>
-      <section><h2>Seat walking</h2><p>Requests bind through the eligible provider pool. Refresh and transport failures can walk to another linked seat before the client sees an error.</p></section>
+      <section><h2>Constellation Auto</h2><p><code>constellation/auto</code> scores linked seats on remaining quota, reset clocks, and task fit. Pin a catalog model to skip auto.</p></section>
+      <section><h2>Connected-seat catalog</h2><p><code>GET /api/v1/models</code> lists what the connected seats can actually run. No invented models. No tools the adapters do not implement.</p></section>
+      <section><h2>Seat walking</h2><p>A request binds to the eligible seat pool. Refresh or transport failure can walk to another linked seat before the client sees an error.</p></section>
     </div>
 
     ${shot("/shots/router-seats.webp", "Constellation Router seats table", "real capture · linked seats", 900, 420)}
@@ -753,13 +753,13 @@ export function renderRouter(): string {
     <article class="block">
       <p class="eyebrow">Control plane</p>
       <h2>Connect the seats. Scope the clients. Keep the evidence.</h2>
-      <p class="lede">The shipped operator surfaces include login, setup, connect, chat, ops, settings, and the seat cockpit. Client credentials require inference scope and can be restricted to allowed models or seats. Cursor connects through its first-party session flow rather than Dashboard API keys. Setup emits client configuration for the infer hop.</p>
+      <p class="lede">Login, setup, connect, chat, ops, settings, and the seat cockpit are shipped. Client credentials need inference scope and can pin allowed models or seats. Cursor uses its first-party session, not Dashboard keys. Setup emits infer-hop client config.</p>
     </article>
 
     <div class="grid three">
-      <section><h2>Quota + reset clocks</h2><p>Quota snapshots and cycle timing feed routing and the operator view, so subscription capacity can influence where a turn lands.</p></section>
-      <section><h2>Routing evidence</h2><p>Neon keeps quota snapshots, daily route statistics, and a short recent route-decision log for served turns. Chat bodies are not stored by that routing log.</p></section>
-      <section><h2>Local chat</h2><p><code>/chat</code> uses the same seat gateway, while its thread history stays in that browser's local storage and can be cleared locally.</p></section>
+      <section><h2>Quota + reset clocks</h2><p>Quota snapshots and cycle clocks feed routing and the operator view, so remaining capacity can decide where a turn lands.</p></section>
+      <section><h2>Routing evidence</h2><p>Neon stores quota snapshots, daily route stats, and a short route-decision log. Chat bodies stay out of that log.</p></section>
+      <section><h2>Local chat</h2><p><code>/chat</code> uses the same seat gateway. Thread history stays in that browser's localStorage and can be cleared there.</p></section>
     </div>
 
     <article class="block">
@@ -776,16 +776,16 @@ export function renderRouter(): string {
     <article class="block">
       <p class="eyebrow">Who it is for</p>
       <h2>Operators with multiple paid seats and multiple clients.</h2>
-      <p class="lede">Use Router when subscription capacity already exists across providers and you want OpenCode, Work, and local OpenAI-compatible clients to consume it through one governed gateway instead of managing each seat as a separate endpoint.</p>
+      <p class="lede">When the seats already exist across providers and you want OpenCode, Work, and local OpenAI-compatible clients on one governed gateway — not a separate endpoint per seat.</p>
     </article>
 
     <article class="block">
       <p class="eyebrow">What “Coming Soon” means</p>
-      <h2>The topology and harness are shipped. The public product boundary is still being hardened.</h2>
-      <p class="lede">This is not a mock and it is not an unfinished feature presented as live. The router is already serving its control plane, infer hop, seat gateway, catalog, and operator surfaces. “Coming Soon” on this site means Constellation's public packaging is waiting on the open production-discipline program (#134 and its P1 children) and the capability-plane backlog (#78–#83). Those capability issues are specifically about adding real subscription features only after the adapters implement and can honestly advertise them.</p>
+      <h2>The topology and harness are shipped. Public packaging is not.</h2>
+      <p class="lede">Not a mock. Control plane, infer hop, seat gateway, catalog, and operator surfaces already run. Coming Soon here means Constellation is not selling Router as public self-serve yet — production discipline and the capability plane still have to land (Router #134, #78–#83). Adapters advertise only what they actually implement.</p>
       <div class="cta-row">
         <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-ghost" href="https://github.com/OpenSecurity-Infosec/constellation-router" target="_blank" rel="noopener noreferrer">Read the Router repo</a>
+        <a class="btn-ghost" href="https://github.com/OpenSecurity-Infosec/constellation-router" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
       </div>
     </article>`;
 }
