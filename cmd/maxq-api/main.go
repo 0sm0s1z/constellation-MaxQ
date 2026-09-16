@@ -216,6 +216,8 @@ func (s *server) serve() error {
 	mux.HandleFunc("POST /policy/decision", s.handlePolicyDecision)
 	mux.HandleFunc("GET /ha/allowlist", s.handleHAAllowlist)
 	mux.HandleFunc("PUT /ha/allowlist", s.handleHAAllowlist)
+	mux.HandleFunc("GET /entitlements", s.handleEntitlements)
+	mux.HandleFunc("PUT /entitlements", s.handleEntitlements)
 	mux.HandleFunc("GET /connections", s.handleConnections)
 	mux.HandleFunc("POST /connections", s.handleAddConnection)
 	mux.HandleFunc("DELETE /connections/{id}", s.handleDeleteConnection)
