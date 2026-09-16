@@ -1,7 +1,7 @@
 import { kitIcons, type KitIcon } from "./icons/pack";
 
 export type Route =
-  | "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier"
+  | "home" | "stack" | "router" | "sidecar" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier"
   | "access" | "control" | "telemetry";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
@@ -11,7 +11,7 @@ export const GET_MAXQ = "https://maxq.cxn.sh";
 
 const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "why", "surfaces", "start"]);
 const KNOWN: Route[] = [
-  "home", "stack", "router", "cue", "crew", "install", "invariants", "ops", "frontier",
+  "home", "stack", "router", "sidecar", "cue", "crew", "install", "invariants", "ops", "frontier",
   "access", "control", "telemetry",
 ];
 
@@ -111,6 +111,20 @@ const surfaces = [
     h: 535,
     pos: "50% 0%",
     href: "#router",
+  },
+  {
+    id: "sidecar",
+    num: "02",
+    label: "Sidecar",
+    title: "Local transport into the catalog.",
+    lede: "OpenAI-compatible loopback transport for Work, Grok Build, and OpenCode — adapts harness shape and injects credentials. Not a model host.",
+    src: "/shots/sidecar-cmd-crop.webp",
+    alt: "Constellation Sidecar cmd directory with four entrypoints",
+    cap: "sidecar · cmd",
+    w: 932,
+    h: 653,
+    pos: "50% 0%",
+    href: "#sidecar",
   },
   {
     id: "maxq",
