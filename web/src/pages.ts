@@ -6,9 +6,8 @@ export type Route =
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
-/** #63 sell CTA — live Google Form waitlist (CEO/Crew). Keep Install as curl path. */
-export const GET_MAXQ =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdfNiCNPrs29G1zbMRTiKvd19QyuMIECLX-4ob-_86UhiNJig/viewform";
+/** #65 soft-link CTA — canonical MaxQ production URL. Keep Install as curl path. */
+export const GET_MAXQ = "https://maxq.cxn.sh";
 
 const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "why", "surfaces", "start"]);
 const KNOWN: Route[] = [
