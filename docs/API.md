@@ -17,15 +17,15 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/apply` | runs `maxq apply` |
 | POST | `/revert` | runs `maxq revert` (API exits) |
 | POST | `/proxy` | JSON `{enabled, upstream, iface}` — GOST process only |
-| GET | `/policy` | Reads MaxQ approval policy; missing policy is created as Approvals Off / always-allow |
-| POST | `/policy` | JSON `{enabled}`; `false` writes `mode="off"` + `always_allow=true`, `true` writes `mode="on"` + `always_allow=false` |
+| GET | `/policy` | Reads MaxQ approval policy and network settings; missing approval policy is created as Approvals Off / always-allow, missing network config reports Tailscale mode |
+| POST | `/policy` | Approval JSON `{enabled}` or network JSON `{network:{mode, login_server, auth_key?, clear_auth_key?}}`; exactly one settings group per request |
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
 | DELETE | `/connections/{id}` | Remove a saved remote API |
 | GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
-| GET | `/` | thin settings sheet (status, approvals, connections, aggregate desktops, proxy) |
+| GET | `/` | thin settings sheet (status, approvals, network, connections, aggregate desktops, proxy) |
 
 Vault, OAuth, and skills are placeholders for later pages.
 
@@ -44,6 +44,14 @@ The host's `sand-data/settings.json` Auto-review state is deliberately **not** d
 Instead, host/browser tooling must consult MaxQ policy **before** invoking Auto-review. When `/policy/decision` returns `skip_auto_review=true` (equivalently, `mode=off` and `always_allow=true`), the action is already authorized by the box policy and Auto-review must not run. This applies to `browserUse` social/external-outbound actions as well as other always-allow actions. A missing or `isEnabled=true` host Auto-review setting cannot override MaxQ Approvals Off.
 
 When Approvals is On, `/policy/decision` returns `approval_required=true` and `skip_auto_review=false`, allowing normal host review behavior.
+
+## Network control plane
+
+Network settings are HOME-only and persisted under `$HOME/.config/maxq/`. Tailscale is the default when no network file exists. Fresh `maxq apply` behavior is unchanged: apply manages the Tailscale client binaries but does not automatically run `tailscale up`.
+
+The settings sheet's **Save & join** action posts a nested `network` object to `/policy`. Headscale mode requires an operator-supplied HTTP(S) `login_server`; a missing or invalid value fails before the client runs and MaxQ never falls back to the hosted Tailscale control plane after a Headscale failure.
+
+An optional auth/preauth key is stored separately in `$HOME/.config/maxq/network.authkey` with mode `0600`; `network.toml` also uses mode `0600`. The key is passed as `--auth-key=file:<path>` rather than as a raw command-line secret, is never returned by the API, and is represented only by `auth_key_configured`. See [NETWORK.md](NETWORK.md).
 
 ## Sheet source
 
