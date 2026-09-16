@@ -121,3 +121,18 @@ The entitlements visibility surface imports a read-only `source: "network"` row 
 ## Prove P06 re-check
 
 For the P06 ACCESS re-check, establish home-fabric reach first, then use **Leave / Disconnect**. The Tailscale client should go down and the bot should lose tailnet/home-fabric reach. If the proxy path also needs to be removed, run `maxq proxy off` or press **Proxy Off**. Restore fabric reach with **Save & join**, then restore the proxy separately with `maxq proxy on` / **Proxy On** if required.
+
+## Bot skill (self-serve walkthrough)
+
+Alongside the settings-sheet UI path, MaxQ ships an installable bot skill so an
+operator can ask the box bot for a guided Tailscale/Headscale setup.
+
+- Source in repo: `share/skills/tailscale-setup-maxq-self-serve/SKILL.md`
+- Installed by `maxq apply` to `$HOME/.local/share/maxq/skills/tailscale-setup-maxq-self-serve/SKILL.md`
+- When `$HOME/agent-data/workflows` exists (MaxQ bot box), apply also mirrors the skill there
+
+The skill walks: pick Tailscale vs Headscale → set `login_server` when Headscale →
+paste auth key **only in the sheet** → Save & join → verify status → Leave /
+Clear stored key. It never collects keys in chat and never bakes a household's
+home paths or keys. See issue #93.
+
