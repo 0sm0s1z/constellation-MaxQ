@@ -12,6 +12,8 @@ PREFIX="${MAXQ_HOME:-$HOME}"
 BIN="$PREFIX/bin"
 CONFIG="$PREFIX/.config/maxq"
 LOCAL="$PREFIX/.local"
+SKILLS_DEST="$LOCAL/share/maxq/skills"
+SKILL_NETWORK_SETUP="tailscale-setup-maxq-self-serve"
 TOML="$CONFIG/maxq.toml"
 STATE_FILE="$CONFIG/state"
 PROFILE_SNIPPET="$CONFIG/profile.sh"
@@ -1915,10 +1917,44 @@ revert_operator_clis() {
 
 # --- apply / revert / status ------------------------------------------------
 
+skill_pack_candidates() {
+  local here src
+  src="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  here="$(cd "$(dirname "$src")" && pwd)"
+  printf '%s\n' "$here/../share/skills"
+  printf '%s\n' "$here/share/skills"
+}
+
+install_skills() {
+  mkdir -p "$SKILLS_DEST"
+  local cand skill_src=""
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    [ -d "$cand/$SKILL_NETWORK_SETUP" ] || continue
+    [ -s "$cand/$SKILL_NETWORK_SETUP/SKILL.md" ] || continue
+    skill_src="$cand"
+    break
+  done < <(skill_pack_candidates)
+  if [ -z "$skill_src" ]; then
+    echo "maxq: warning: network setup skill pack not found under share/skills" >&2
+    return 0
+  fi
+  mkdir -p "$SKILLS_DEST/$SKILL_NETWORK_SETUP"
+  cp -f "$skill_src/$SKILL_NETWORK_SETUP/SKILL.md" "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
+  chmod 0644 "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
+  if [ -d "$PREFIX/agent-data/workflows" ]; then
+    mkdir -p "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP"
+    cp -f "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md" \
+      "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
+    chmod 0644 "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
+  fi
+}
+
+
 cmd_apply() {
   mkdir -p "$BIN" "$CONFIG" "$LOCAL" "$CA_DIR" \
     "$LOCAL/share/themes" "$LOCAL/share/icons" "$LOCAL/share/backgrounds" \
-    "$CONFIG/theme" "$CLI_CACHE" "$API_SRC"
+    "$CONFIG/theme" "$CLI_CACHE" "$API_SRC" "$SKILLS_DEST"
   load_settings
   THEME="mocha"
   local theme_ok=1
@@ -1928,6 +1964,7 @@ cmd_apply() {
   if ! apply_theme; then
     theme_ok=0
   fi
+  install_skills
   apply_operator_clis
   write_toml
   write_profile_snippet
@@ -2255,6 +2292,7 @@ assert_applied_tree() {
   prove_ok "GET /status is 200 after apply" api_status_200
   prove_ok "GET /status json state applied" api_status_applied
   prove_ok "GET / serves settings sheet" api_ui_ok
+  prove_ok "network setup skill installed" test -s "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
   prove_grep "profile prepends HOME/bin" "$PROFILE_SNIPPET" 'PATH="\$HOME/bin:\$PATH"'
   local _n
   if [ -d "$MANAGED_CLIS" ]; then
