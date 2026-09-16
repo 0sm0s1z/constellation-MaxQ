@@ -26,6 +26,26 @@ tailscale up --login-server=https://headscale.example.invalid
 
 If `login_server` is empty or invalid, the request fails before `tailscale up` runs. MaxQ never silently retries against Tailscale SaaS after a Headscale validation or join failure.
 
+## Leave / disconnect
+
+The settings sheet exposes **Leave / Disconnect** beside **Save & join**. It sends a network action through the existing loopback `/policy` API and runs:
+
+```text
+tailscale down
+```
+
+MaxQ intentionally uses `tailscale down` rather than `tailscale logout`. `down` removes active tailnet/home-fabric reach while preserving the node identity and the selected Tailscale or Headscale control-plane binding. That makes the operation reversible: the operator can restore the same enrollment with **Save & join**. The leave path is identical in Tailscale and Headscale modes and never supplies a login server, so a Headscale leave cannot fall back to Tailscale SaaS.
+
+After a successful join or leave, MaxQ records only the non-secret runtime marker `up` or `down` in `$HOME/.config/maxq/network.status`; `GET /policy` and the sheet surface that state. Failed operations do not overwrite the last successful marker.
+
+The network leave path does **not** stop GOST. The proxy path is a separate documented control. To cut both fabric access and the proxy path, use **Leave / Disconnect** and then either:
+
+```text
+maxq proxy off
+```
+
+or the sheet's **Proxy Off** button. Restoring both paths is **Save & join** followed by `maxq proxy on` / **Proxy On** when the proxy is required.
+
 ## Persistence and secret handling
 
 Network state is stored under the MaxQ HOME prefix:
@@ -33,11 +53,12 @@ Network state is stored under the MaxQ HOME prefix:
 ```text
 $HOME/.config/maxq/network.toml
 $HOME/.config/maxq/network.authkey   # only when an auth/preauth key is supplied
+$HOME/.config/maxq/network.status    # up/down marker after successful MaxQ network actions
 ```
 
-Both files are written with mode `0600`. `network.toml` contains only mode and login-server configuration. An optional auth/preauth key is stored separately in `network.authkey` and is passed to the client as `--auth-key=file:<path>`, so the key itself is not present in the process arguments. The control API returns only `auth_key_configured: true|false`; it never returns the key value. Error output is also redacted against the stored key.
+These files are written with mode `0600`. `network.toml` contains only mode and login-server configuration. An optional auth/preauth key is stored separately in `network.authkey` and is passed to the client as `--auth-key=file:<path>`, so the key itself is not present in the process arguments. The control API returns only `auth_key_configured: true|false`; it never returns the key value. Error output is also redacted against the stored key.
 
-`maxq prove` does not invoke the network join path, so auth material is not emitted into prove logs.
+`maxq prove` does not invoke the network join or leave path, so auth material is not emitted into prove logs.
 
 ## Control API
 
@@ -50,7 +71,8 @@ Network settings are exposed through the existing loopback-only settings endpoin
   "network": {
     "mode": "tailscale",
     "login_server": "",
-    "auth_key_configured": false
+    "auth_key_configured": false,
+    "status": "down"
   }
 }
 ```
@@ -68,4 +90,19 @@ POST /policy
 }
 ```
 
-A blank auth-key field in the settings sheet leaves an already stored key unchanged. API callers can remove a stored key with `"clear_auth_key": true`. Do not supply `auth_key` and `clear_auth_key` together.
+To disconnect the fabric without discarding enrollment:
+
+```json
+POST /policy
+{
+  "network": {
+    "action": "leave"
+  }
+}
+```
+
+A network action cannot be combined with mode, login-server, or auth-key settings in the same request. A blank auth-key field in the settings sheet leaves an already stored key unchanged. API callers can remove a stored key with `"clear_auth_key": true`. Do not supply `auth_key` and `clear_auth_key` together.
+
+## Prove P06 re-check
+
+For the P06 ACCESS re-check, establish home-fabric reach first, then use **Leave / Disconnect**. The Tailscale client should go down and the bot should lose tailnet/home-fabric reach. If the proxy path also needs to be removed, run `maxq proxy off` or press **Proxy Off**. Restore fabric reach with **Save & join**, then restore the proxy separately with `maxq proxy on` / **Proxy On** if required.
