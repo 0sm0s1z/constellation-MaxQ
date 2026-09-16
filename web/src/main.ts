@@ -7,6 +7,9 @@ import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
+import { inject, track } from "@vercel/analytics";
+
+inject();
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
@@ -548,6 +551,31 @@ function bindConsole(root: HTMLElement) {
   io.observe(grid);
 }
 
+
+function trackHashPageview(route: Route) {
+  track("hash_pageview", { route });
+}
+
+function bindAnalyticsCtas(root: HTMLElement) {
+  root.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
+    const href = a.getAttribute("href") || "";
+    const label = (a.textContent || "").trim().toLowerCase();
+    const isGet =
+      href === GET_MAXQ ||
+      label === "get maxq" ||
+      label === "explore maxq";
+    const isInstall = href === "#install" || label === "install";
+    if (!isGet && !isInstall) return;
+    a.addEventListener("click", () => {
+      track("cta_click", {
+        cta: isGet ? (label.includes("explore") ? "explore_maxq" : "get_maxq") : "install",
+        href,
+        route: drawn ?? parseRoute(),
+      });
+    });
+  });
+}
+
 let drawn: Route | null = null;
 function draw() {
   const app = document.getElementById("app");
@@ -564,6 +592,8 @@ function draw() {
     bindConsole(app);
     bindNav(app);
     bindReveal(app);
+    bindAnalyticsCtas(app);
+    trackHashPageview(route);
     app.querySelectorAll<HTMLAnchorElement>("[data-section]").forEach(link => link.addEventListener("click", e => {
       const section = document.getElementById(link.dataset.section!);
       if (!section) return;
