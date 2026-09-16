@@ -170,14 +170,21 @@ func (s *server) handlePolicy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.Network != nil {
-			network, err := s.applyNetworkUpdate(*req.Network)
+			var network networkState
+			var err error
+			if strings.TrimSpace(req.Network.Action) != "" {
+				network, err = s.applyNetworkAction(*req.Network)
+			} else {
+				network, err = s.applyNetworkUpdate(*req.Network)
+			}
 			if err != nil {
 				var input networkInputError
 				var join networkJoinError
+				var leave networkLeaveError
 				switch {
 				case errors.As(err, &input):
 					writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
-				case errors.As(err, &join):
+				case errors.As(err, &join), errors.As(err, &leave):
 					writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error(), "network": network})
 				default:
 					writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
