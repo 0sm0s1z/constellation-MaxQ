@@ -3,6 +3,7 @@ import {
   renderStack, renderCue, renderCrew, GITHUB, GET_MAXQ, WHY, type Route,
 } from "./pages";
 import { renderRouter } from "./router";
+import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
@@ -11,6 +12,7 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
   stack: { label: "stack", draw: renderStack },
   router: { label: "router", draw: renderRouter },
+  sidecar: { label: "sidecar", draw: renderSidecar },
   cue: { label: "cue", draw: renderCue },
   crew: { label: "crew", draw: renderCrew },
   install: { label: "install", draw: renderInstall },
@@ -26,15 +28,16 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
    keep the bar product-focused so the 01/02/03 rail does not read like dead secondary nav. */
 const PRODUCTS: { key: Route; num: string; note: string }[] = [
   { key: "router", num: "01", note: "spend the seats" },
-  { key: "home", num: "02", note: "the bot's box" },
-  { key: "cue", num: "03", note: "native glass, macOS" },
-  { key: "crew", num: "04", note: "steer computers" },
+  { key: "sidecar", num: "02", note: "local transport" },
+  { key: "home", num: "03", note: "the bot's box" },
+  { key: "cue", num: "04", note: "native glass, macOS" },
+  { key: "crew", num: "05", note: "steer computers" },
   { key: "stack", num: "··", note: "all four, one page" },
 ];
 
 function shell(inner: string, route: Route): string {
-  const productOpen = (["router", "cue", "crew", "stack"] as Route[]).includes(route);
-  const comingSoonProduct = (["router", "cue", "crew"] as Route[]).includes(route);
+  const productOpen = (["router", "sidecar", "cue", "crew", "stack"] as Route[]).includes(route);
+  const comingSoonProduct = (["router", "sidecar", "cue", "crew"] as Route[]).includes(route);
   const products = PRODUCTS.map((p) => {
     const active = p.key === route && route !== "home" ? " active" : "";
     const label = p.key === "home" ? "maxq" : routes[p.key].label;
