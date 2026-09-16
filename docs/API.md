@@ -22,12 +22,14 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
 | GET | `/ha/allowlist` | Returns only the curated bot-visible Home Assistant entity set, source path, and explicit `curated-allowlist-not-full-dump` semantics |
 | PUT | `/ha/allowlist` | Replaces the curated HA set with JSON `{entities:[{id,label?}]}`; empty is valid |
+| GET | `/entitlements` | Returns merged allow/deny visibility from operator, HA allowlist, network, and MaxQ sources; every row includes `source` |
+| PUT | `/entitlements` | Replaces only operator-owned entitlement rows; imported rows remain derived/read-only |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
 | DELETE | `/connections/{id}` | Remove a saved remote API |
 | GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
-| GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, connections, aggregate desktops, proxy) |
+| GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, entitlements, connections, aggregate desktops, proxy) |
 
 Vault, OAuth, and skills are placeholders for later pages.
 
@@ -64,6 +66,16 @@ The network leave action does not stop GOST. Use `POST /proxy {"enabled":false}`
 `$HOME/.config/maxq/ha-allowlist.json` is the visible source of truth for the Home Assistant entities exposed to bot tooling through MaxQ. The file is written atomically with mode `0600`. A missing file is a valid empty curated set and does not cause MaxQ to discover or expose the complete HA inventory.
 
 `GET /ha/allowlist` always returns the explicit semantics marker `curated-allowlist-not-full-dump` plus `bot_visible_only: true`. `PUT /ha/allowlist` replaces the set, validates simple lower-case `domain.object_id` IDs, trims labels, and deduplicates repeated IDs. MaxQ does not add a live HA websocket client or device-control surface here. See [HA.md](HA.md) for the P03 prove boundary and examples.
+
+## Entitlements / bot reach
+
+`$HOME/.config/maxq/entitlements.json` stores only operator-managed allow/deny rows and is written atomically with mode `0600`. A missing file is a valid empty operator set.
+
+`GET /entitlements` builds a merged view each time from four source classes: `operator`, `ha-allowlist`, `network`, and `maxq`. Every returned row includes its `source`. Home Assistant entities are imported from the existing #86 allowlist and are not copied into the entitlements artifact. The network row is derived only from MaxQ's locally known network mode plus `network.status`; it does not claim to evaluate Tailscale cloud ACLs. The MaxQ row documents the loopback control API reach that the product itself exposes.
+
+`PUT /entitlements` replaces only the `operator` rows. Requests cannot write derived source labels, and secret-looking fields such as auth keys, tokens, passwords, credentials, or authorization fields are rejected. `/entitlements` never returns the network auth/preauth key or `auth_key_configured`; authentication state stays on the existing `/policy` contract.
+
+The response includes top-level `source` (the operator artifact path) and `semantics: "merged-allow-deny-with-source-labels"`. See [ENTITLEMENTS.md](ENTITLEMENTS.md) for merge rules, source meanings, examples, and the P04 prove boundary.
 
 ## Sheet source
 
