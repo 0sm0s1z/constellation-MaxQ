@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,12 +21,14 @@ type approvalPolicy struct {
 
 type policyState struct {
 	Approvals      approvalPolicy `json:"approvals"`
+	Network        networkState   `json:"network"`
 	Source         string         `json:"source"`
 	SkipAutoReview bool           `json:"skip_auto_review"`
 }
 
 type policyUpdateReq struct {
-	Enabled *bool `json:"enabled"`
+	Enabled *bool             `json:"enabled"`
+	Network *networkUpdateReq `json:"network,omitempty"`
 }
 
 type policyDecisionReq struct {
@@ -125,13 +128,18 @@ always_allow = %t
 	return os.Rename(tmpName, s.policyPath())
 }
 
-func (s *server) approvalState(policy approvalPolicy) policyState {
+func (s *server) settingsState(policy approvalPolicy) (policyState, error) {
+	network, err := s.loadNetworkConfig()
+	if err != nil {
+		return policyState{}, err
+	}
 	skip := policy.Mode == approvalModeOff && policy.AlwaysAllow
 	return policyState{
 		Approvals:      policy,
+		Network:        s.networkState(network),
 		Source:         s.policyPath(),
 		SkipAutoReview: skip,
-	}
+	}, nil
 }
 
 func (s *server) handlePolicy(w http.ResponseWriter, r *http.Request) {
@@ -145,11 +153,38 @@ func (s *server) handlePolicy(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, s.approvalState(policy))
+		state, err := s.settingsState(policy)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, state)
 	case http.MethodPost:
 		var req policyUpdateReq
-		if err := decodeJSON(r, &req); err != nil || req.Enabled == nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "json enabled boolean is required"})
+		if err := decodeJSON(r, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid json"})
+			return
+		}
+		if (req.Enabled == nil) == (req.Network == nil) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "provide exactly one of enabled or network"})
+			return
+		}
+		if req.Network != nil {
+			network, err := s.applyNetworkUpdate(*req.Network)
+			if err != nil {
+				var input networkInputError
+				var join networkJoinError
+				switch {
+				case errors.As(err, &input):
+					writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+				case errors.As(err, &join):
+					writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error(), "network": network})
+				default:
+					writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()})
+				}
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "network": network})
 			return
 		}
 		policy := canonicalApprovalPolicy(*req.Enabled)
@@ -157,7 +192,12 @@ func (s *server) handlePolicy(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, s.approvalState(policy))
+		state, err := s.settingsState(policy)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, state)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
