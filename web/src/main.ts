@@ -7,6 +7,9 @@ import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
+import { inject } from "@vercel/analytics";
+
+inject();
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
@@ -547,6 +550,7 @@ function bindConsole(root: HTMLElement) {
   }, { threshold: 0.2 });
   io.observe(grid);
 }
+
 
 let drawn: Route | null = null;
 function draw() {
