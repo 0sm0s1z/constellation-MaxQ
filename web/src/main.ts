@@ -7,7 +7,7 @@ import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
-import { inject } from "@vercel/analytics";
+import { inject, track } from "@vercel/analytics";
 
 inject();
 
@@ -552,6 +552,71 @@ function bindConsole(root: HTMLElement) {
 }
 
 
+
+/** Soft-funnel events — Marketing SoT ENG-INSTRUMENTATION-ASK.md. Do not strip utm_*. */
+function currentUtms(): Record<string, string> {
+  const out: Record<string, string> = {};
+  try {
+    const q = new URLSearchParams(location.search);
+    q.forEach((v, k) => {
+      if (k.startsWith("utm_")) out[k] = v;
+    });
+  } catch { /* keep empty */ }
+  return out;
+}
+
+function withUtms(href: string): string {
+  const utms = currentUtms();
+  if (!Object.keys(utms).length) return href;
+  try {
+    const u = new URL(href, location.origin);
+    for (const [k, v] of Object.entries(utms)) {
+      if (!u.searchParams.has(k)) u.searchParams.set(k, v);
+    }
+    return u.toString();
+  } catch {
+    return href;
+  }
+}
+
+function trackHashPageview(route: Route) {
+  track("hash_pageview", { hash: `#${route}`, ...currentUtms() });
+}
+
+function ctaLocation(el: Element): string {
+  if (el.closest(".nav-end, .topbar, [data-topbar]")) return "nav";
+  if (el.closest(".foot, footer")) return "footer";
+  if (el.closest(".cta-row, .launch, .router-hero, .product-hero, .start")) return "hero";
+  return "other";
+}
+
+function bindAnalyticsCtas(root: HTMLElement) {
+  root.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
+    if (a.dataset.analyticsBound) return;
+    const href = a.getAttribute("href") || "";
+    const label = (a.textContent || "").trim().toLowerCase();
+    let cta: string | null = null;
+    if (href === GET_MAXQ || label === "get maxq") cta = "get_maxq";
+    else if (label === "explore maxq") cta = "explore_maxq";
+    else if (href === "#install" || label === "install" || label === "install guide" || label === "install maxq") cta = "install";
+    if (!cta) return;
+    a.dataset.analyticsBound = "1";
+    // Preserve landing UTMs on outbound Soft Form / Explore links
+    if (cta === "get_maxq" || cta === "explore_maxq") {
+      const next = withUtms(href);
+      if (next !== href) a.setAttribute("href", next);
+    }
+    a.addEventListener("click", () => {
+      track("cta_click", {
+        cta,
+        location: ctaLocation(a),
+        href: a.getAttribute("href") || href,
+        ...currentUtms(),
+      });
+    });
+  });
+}
+
 let drawn: Route | null = null;
 function draw() {
   const app = document.getElementById("app");
@@ -568,6 +633,8 @@ function draw() {
     bindConsole(app);
     bindNav(app);
     bindReveal(app);
+    bindAnalyticsCtas(app);
+    trackHashPageview(route);
     app.querySelectorAll<HTMLAnchorElement>("[data-section]").forEach(link => link.addEventListener("click", e => {
       const section = document.getElementById(link.dataset.section!);
       if (!section) return;
