@@ -20,12 +20,14 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | GET | `/policy` | Reads MaxQ approval policy and network settings; missing approval policy is created as Approvals Off / always-allow, missing network config reports Tailscale mode |
 | POST | `/policy` | Approval JSON `{enabled}`, network settings JSON `{network:{mode, login_server, auth_key?, clear_auth_key?}}`, or leave JSON `{network:{action:"leave"}}`; exactly one settings group per request |
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
+| GET | `/ha/allowlist` | Returns only the curated bot-visible Home Assistant entity set, source path, and explicit `curated-allowlist-not-full-dump` semantics |
+| PUT | `/ha/allowlist` | Replaces the curated HA set with JSON `{entities:[{id,label?}]}`; empty is valid |
 | GET | `/connections` | Saved connection metadata; auth values are never returned |
 | POST | `/connections` | JSON `{name, base_url, auth?}`; stores one remote MaxQ API |
 | DELETE | `/connections/{id}` | Remove a saved remote API |
 | GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
-| GET | `/` | thin settings sheet (status, approvals, network, connections, aggregate desktops, proxy) |
+| GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, connections, aggregate desktops, proxy) |
 
 Vault, OAuth, and skills are placeholders for later pages.
 
@@ -56,6 +58,12 @@ The sheet's **Leave / Disconnect** action posts `{network:{action:"leave"}}` and
 An optional auth/preauth key is stored separately in `$HOME/.config/maxq/network.authkey` with mode `0600`; `network.toml` and `network.status` also use mode `0600`. The key is passed as `--auth-key=file:<path>` rather than as a raw command-line secret, is never returned by the API, and is represented only by `auth_key_configured`. Network command errors are redacted against the stored key. See [NETWORK.md](NETWORK.md).
 
 The network leave action does not stop GOST. Use `POST /proxy {"enabled":false}`, `maxq proxy off`, or the sheet's **Proxy Off** control as the companion proxy kill.
+
+## Home Assistant curated allowlist
+
+`$HOME/.config/maxq/ha-allowlist.json` is the visible source of truth for the Home Assistant entities exposed to bot tooling through MaxQ. The file is written atomically with mode `0600`. A missing file is a valid empty curated set and does not cause MaxQ to discover or expose the complete HA inventory.
+
+`GET /ha/allowlist` always returns the explicit semantics marker `curated-allowlist-not-full-dump` plus `bot_visible_only: true`. `PUT /ha/allowlist` replaces the set, validates simple lower-case `domain.object_id` IDs, trims labels, and deduplicates repeated IDs. MaxQ does not add a live HA websocket client or device-control surface here. See [HA.md](HA.md) for the P03 prove boundary and examples.
 
 ## Sheet source
 
