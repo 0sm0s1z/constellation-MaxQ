@@ -1514,6 +1514,70 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 }
 
 
+/* Product previews use existing captures; crops are presentation-only. */
+.product-page { --product-accent: var(--lavender); padding: 3.5rem 0 1rem; }
+.product-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; align-items: end; padding-bottom: 3rem; }
+.product-back { display: inline-block; color: var(--sub); font-size: .85rem; margin-bottom: 1.8rem; }
+.product-page .eyebrow { color: var(--product-accent); }
+.product-hero h1 { font-size: clamp(2.8rem, 5.4vw, 4.7rem); line-height: 1.04; letter-spacing: -.045em; margin: .7rem 0 0; }
+.product-intro .lede { font-size: 1.12rem; max-width: 38rem; margin: 1rem 0 1.5rem; }
+.product-status { font: .75rem IBM Plex Mono, monospace; color: var(--product-accent); letter-spacing: .035em; }
+.product-status::before { content: ""; display: inline-block; width: 6px; height: 6px; background: currentColor; border-radius: 50%; margin-right: .6rem; }
+.product-media { margin: 0 0 3rem; }
+.product-media img { display: block; width: 100%; border-radius: 8px; }
+.product-crop { overflow: hidden; border: 1px solid var(--rule); border-radius: 8px; background: var(--mantle); }
+.product-media figcaption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .6rem 1.5rem; color: var(--sub); font: .78rem/1.6 IBM Plex Mono, monospace; padding-top: .85rem; }
+.product-media figcaption a { white-space: nowrap; }
+.cue-media .product-crop { aspect-ratio: 1.95; }
+.cue-media img { height: 100%; object-fit: cover; object-position: center 40%; }
+.crew-media .product-crop { aspect-ratio: 1.9; }
+.crew-media img { height: 100%; object-fit: cover; object-position: center 28%; }
+.product-story { display: grid; grid-template-columns: 1fr 2fr; gap: 3rem; padding: 2.5rem 0; border-top: 1px solid var(--rule); }
+.product-page h2 { font-family: IBM Plex Sans, ui-sans-serif, system-ui, sans-serif; text-transform: none; color: var(--text); font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.16; letter-spacing: -.025em; margin: 0 0 1rem; }
+.product-story .lede { max-width: 43rem; }
+.product-workflow { list-style: none; padding: 0; margin: 1rem 0 4rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.3rem; }
+.product-workflow li { border-top: 1px solid var(--rule); padding-top: 1rem; }
+.product-step { color: var(--product-accent); font: .85rem IBM Plex Mono, monospace; }
+.product-workflow h3 { font-size: 1.25rem; margin: 1.5rem 0 .6rem; }
+.product-workflow p, .product-boundary p, .product-availability p, .stack-card p { color: var(--sub); }
+.product-boundary { padding: 2rem 2.3rem; background: linear-gradient(110deg, var(--mantle), transparent); border-left: 2px solid var(--product-accent); margin: 2rem 0 4rem; }
+.product-boundary p { max-width: 52rem; }
+.product-availability { border-top: 1px solid var(--rule); display: grid; grid-template-columns: 1.5fr 1fr; gap: 4rem; padding: 3rem 0; scroll-margin-top: 6rem; }
+.product-next { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1rem; }
+.product-next small { color: var(--sub); }
+.stack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+.stack-card { display: flex; flex-direction: column; text-decoration: none; border-top: 1px solid var(--rule); padding: 1.5rem 0; }
+.stack-card h2 { margin-top: 1.5rem; }
+.stack-card p { margin: 0 0 1.5rem; }
+.stack-card img { width: 100%; aspect-ratio: 1.9; object-fit: cover; object-position: top; border: 1px solid var(--rule); border-radius: 6px; margin-top: auto; }
+.stack-card > span:last-child { padding-top: 1rem; color: var(--product-accent); }
+.stack-card:hover h2 { color: var(--product-accent); }
+:focus-visible { outline: 2px solid var(--sky); outline-offset: 5px; }
+.skip-link { position: fixed; top: -5rem; left: 1rem; z-index: 100; padding: .7rem 1rem; background: var(--base); }
+.skip-link:focus { top: 1rem; }
+.panel[hidden] { display: none; }
+@media (max-width: 720px) {
+  .product-page { padding-top: 2rem; }
+  .product-hero, .product-story, .product-availability, .stack-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .product-hero { padding-bottom: 2rem; }
+  .product-hero h1 { font-size: clamp(2.6rem, 10vw, 4rem); }
+  .product-back { margin-bottom: 1rem; }
+  .product-intro .lede { font-size: 1.05rem; }
+  .product-workflow { grid-template-columns: 1fr; gap: 1.2rem; margin-bottom: 2.5rem; }
+  .product-workflow h3 { margin-top: .7rem; }
+  .product-boundary { padding: 1.4rem; margin-bottom: 2.5rem; }
+  .product-media { margin-bottom: 2rem; }
+  .product-crop { aspect-ratio: 1.15 !important; }
+  .cue-media img { width: 155%; max-width: none; object-position: left; }
+  .crew-media img { width: 140%; max-width: none; object-position: left; }
+  .router-media img { height: 100%; object-fit: cover; object-position: left; }
+  .tabs { flex-wrap: wrap; }
+  .nav-toggle { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}
+
 /* #80 Track B — quieter constellation behind Router body */
 main:has(.router-hero) .dia,
 #app:has(.router-hero) .dia {

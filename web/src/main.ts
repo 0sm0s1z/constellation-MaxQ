@@ -1,8 +1,8 @@
 import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
-  renderStack, renderCue, renderCrew, GITHUB, GET_MAXQ, WHY, type Route,
+  GITHUB, GET_MAXQ, WHY, type Route,
 } from "./pages";
-import { renderRouter } from "./router";
+import { renderProduct, renderProductStack } from "./products";
 import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
@@ -10,11 +10,11 @@ import { mountStarfield } from "./starfield";
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
-  stack: { label: "stack", draw: renderStack },
-  router: { label: "router", draw: renderRouter },
+  stack: { label: "stack", draw: renderProductStack },
+  router: { label: "router", draw: () => renderProduct("router") },
   sidecar: { label: "sidecar", draw: renderSidecar },
-  cue: { label: "cue", draw: renderCue },
-  crew: { label: "crew", draw: renderCrew },
+  cue: { label: "cue", draw: () => renderProduct("cue") },
+  crew: { label: "crew", draw: () => renderProduct("crew") },
   install: { label: "install", draw: renderInstall },
   invariants: { label: "invariants", draw: renderInvariants },
   ops: { label: "ops", draw: renderOps },
@@ -27,12 +27,12 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
 /* Topbar: the site is about MaxQ. The why pages sit in the bar on MaxQ/why routes; product pages
    keep the bar product-focused so the 01/02/03 rail does not read like dead secondary nav. */
 const PRODUCTS: { key: Route; num: string; note: string }[] = [
-  { key: "router", num: "01", note: "spend the seats" },
+  { key: "router", num: "01", note: "capacity & decisions" },
   { key: "sidecar", num: "02", note: "local transport" },
   { key: "home", num: "03", note: "the bot's box" },
-  { key: "cue", num: "04", note: "native glass, macOS" },
-  { key: "crew", num: "05", note: "steer computers" },
-  { key: "stack", num: "··", note: "all four, one page" },
+  { key: "cue", num: "04", note: "capture & compose" },
+  { key: "crew", num: "05", note: "persistent teammates" },
+  { key: "stack", num: "··", note: "the product map" },
 ];
 
 function shell(inner: string, route: Route): string {
@@ -49,12 +49,12 @@ function shell(inner: string, route: Route): string {
   }).join("");
   const whyRail = why ? `<span class="nav-sep" aria-hidden="true"></span>${why}` : "";
   const actions = comingSoonProduct
-    ? `<a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>`
+    ? `<a class="btn-ghost btn-sm" href="#stack">Explore the stack</a>`
     : `<a class="btn-ghost btn-sm" href="${GITHUB}">GitHub</a>
         <a class="btn-ghost btn-sm" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
         <a class="btn-solid btn-sm" href="#install">Install</a>`;
   return `
-    <header class="topbar" data-topbar>
+    <a class="skip-link" href="#main-content" data-section="main-content">Skip to content</a><header class="topbar" data-topbar>
       <a class="brand" href="#home">
         <span class="brand-kicker">Constellation</span>
         <img class="namelogo" src="/namelogo.webp" alt="MaxQ" width="1319" height="318" />
@@ -72,7 +72,7 @@ function shell(inner: string, route: Route): string {
       </div>
     </header>
     <div class="accent pastel-flow" aria-hidden="true"></div>
-    ${inner}
+    <main id="main-content" tabindex="-1">${inner}</main>
     <footer class="foot">
       <span>MIT · mocha</span>
       <span>
@@ -103,19 +103,28 @@ function bindTabs(root: HTMLElement) {
   const panels = [...root.querySelectorAll<HTMLElement>("[data-panel]")];
   if (!tabs.length) return;
   const show = (id: string) => {
-    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === id));
-    panels.forEach((p) => {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach(p => {
       const on = p.dataset.panel === id;
-      if (on) {
-        p.hidden = false;
-        requestAnimationFrame(() => p.classList.add("active"));
-      } else {
-        p.classList.remove("active");
-        window.setTimeout(() => { if (!p.classList.contains("active")) p.hidden = true; }, 480);
-      }
+      p.hidden = !on;
+      p.classList.toggle("active", on);
     });
   };
-  tabs.forEach((tab) => tab.addEventListener("click", () => show(tab.dataset.tab ?? "router")));
+  tabs.forEach((tab, i) => {
+    tab.addEventListener("click", () => show(tab.dataset.tab!));
+    tab.addEventListener("keydown", e => {
+      const next = e.key === "ArrowRight" ? (i + 1) % tabs.length : e.key === "ArrowLeft" ? (i + tabs.length - 1) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1;
+      if (next < 0) return;
+      e.preventDefault();
+      show(tabs[next].dataset.tab!);
+      tabs[next].focus();
+    });
+  });
 }
 
 function bindCarousel(root: HTMLElement) {
@@ -159,7 +168,9 @@ function bindCarousel(root: HTMLElement) {
 const APOGEE_S = 3.5;
 function bindLaunch(root: HTMLElement) {
   const launch = root.querySelector<HTMLElement>("[data-launch]");
-  if (!launch || launch.classList.contains("is-live")) return;
+  if (!launch) return;
+  bindGlass(launch);
+  if (launch.classList.contains("is-live")) return;
   const video = launch.querySelector<HTMLVideoElement>("video.launch-video");
   const gif = launch.querySelector<HTMLImageElement>("img.launch-gif");
   let apogeeTimer = 0;
@@ -169,7 +180,6 @@ function bindLaunch(root: HTMLElement) {
     apogeeTimer = window.setTimeout(() => launch.classList.add("is-apogee"), APOGEE_S * 1000);
   };
   const held = () => launch.classList.add("is-apogee", "is-held");
-  bindGlass(launch);
   if (!video) { live(); held(); return; }
   const showGif = () => {
     if (gif) {
@@ -290,7 +300,9 @@ function bindNav(root: HTMLElement) {
         if (!m?.open) return;
         if (!(ev.target instanceof Node) || !m.contains(ev.target)) m.open = false;
       });
-      document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { const m = live(); if (m) m.open = false; } });
+      document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { const m = live(); if (m?.open) { m.open = false; m.querySelector("summary")?.focus(); }
+        const bar = document.querySelector("[data-topbar]");
+        if (bar?.classList.contains("is-open")) { bar.classList.remove("is-open"); const toggle = bar.querySelector<HTMLButtonElement>("[data-nav-toggle]"); toggle?.setAttribute("aria-expanded", "false"); toggle?.focus(); } } });
     }
     menu.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => { menu.open = false; }));
   }
@@ -552,6 +564,15 @@ function draw() {
     bindConsole(app);
     bindNav(app);
     bindReveal(app);
+    app.querySelectorAll<HTMLAnchorElement>("[data-section]").forEach(link => link.addEventListener("click", e => {
+      const section = document.getElementById(link.dataset.section!);
+      if (!section) return;
+      e.preventDefault();
+      section.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      section.tabIndex = -1;
+      section.focus({ preventScroll: true });
+    }));
+    document.title = `${route === "home" ? "MaxQ" : routes[route].label[0].toUpperCase() + routes[route].label.slice(1)} · Constellation`;
   }
   document.querySelector("[data-topbar]")?.classList.remove("is-open");
   const id = (location.hash || "").replace("#", "");
