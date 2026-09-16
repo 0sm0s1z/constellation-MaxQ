@@ -1,14 +1,12 @@
+/** #80 Track B — Router Coming Soon (homepage SoT). Real cropped stills only. */
+
+const EXPLORE_MAXQ = "https://maxq.cxn.sh";
 const ROUTER_GITHUB = "https://github.com/OpenSecurity-Infosec/constellation-router";
 
-const routerScreen = (
-  src: string,
-  alt: string,
-  caption: string,
-  wide = false,
-) => `
-  <figure class="screen router-screen${wide ? " router-screen--wide" : ""}">
+const proof = (src: string, alt: string, caption: string, w: number, h: number) => `
+  <figure class="screen router-proof">
     <div class="screen-frame">
-      <img src="${src}" alt="${alt}" width="1280" height="800" loading="lazy" />
+      <img src="${src}" alt="${alt}" width="${w}" height="${h}" loading="lazy" />
     </div>
     <figcaption>${caption}</figcaption>
   </figure>`;
@@ -17,76 +15,82 @@ export function renderRouter(): string {
   return `
     <article class="block router-hero">
       <p class="coming-soon-badge" role="status">Coming Soon</p>
-      <p class="eyebrow">01 · Router</p>
-      <h1>One API for the <span class="grad">seats you already pay for.</span></h1>
-      <p class="lede">Constellation Router turns paid AI coding and model subscriptions into one governed OpenAI-compatible routing surface. Connect the seats you already use, see usable capacity, and give compatible clients one catalog of what those seats can actually run. It routes subscriptions; it does not host models.</p>
+      <p class="eyebrow">MaxQ Router</p>
+      <h1>One route for the <span class="grad">seats you already pay for.</span></h1>
+      <p class="lede">Constellation Router turns paid AI coding and model subscriptions into one governed OpenAI-compatible path. Connect the seats you already use, see usable capacity, and give compatible clients one honest catalog of what those seats can run. It routes subscriptions — it does not host models.</p>
+      <p class="router-status">The gateway is live. Public Router packaging is coming soon.</p>
       <div class="cta-row">
-        <a class="btn-solid" href="${ROUTER_GITHUB}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
+        <a class="btn-solid" href="${EXPLORE_MAXQ}">Explore MaxQ</a>
       </div>
     </article>
 
-    <article class="block router-purpose">
-      <p class="eyebrow">Purpose</p>
-      <h2>Make paid seats work like one pool.</h2>
-      <p class="lede">Router is for operators already paying for several providers. Instead of wiring each client to each subscription separately, it gives compatible tools one catalog and one routing layer while keeping provider limits and remaining capacity visible.</p>
-    </article>
-
-    <section class="router-showcase" aria-label="Fresh Router product captures">
-      ${routerScreen(
-        "/shots/router-seats-fresh.webp",
-        "Constellation Router seats view showing linked provider seats",
-        "real capture · Seats · linked subscriptions and seat state",
-        true,
+    <section class="router-proof-row" aria-label="Router product proof">
+      ${proof(
+        "/shots/router-seats-crop.webp",
+        "Constellation Router seats panel showing linked subscription seats and online status",
+        "Connected seats — linked subscriptions in one operator view",
+        998,
+        324,
       )}
-      <div class="router-shot-pair">
-        ${routerScreen(
-          "/shots/router-dashboard-fresh.webp",
-          "Constellation Router dashboard showing routing and quota information",
-          "real capture · Dashboard · routing and capacity",
-        )}
-        ${routerScreen(
-          "/shots/router-connect-fresh.webp",
-          "Constellation Router connect view showing provider connection options",
-          "real capture · Connect · provider connection workflow",
-        )}
-      </div>
     </section>
 
     <article class="block">
-      <p class="eyebrow">What it does</p>
-      <h2>A small control surface for a messy subscription stack.</h2>
+      <p class="eyebrow">Why Router</p>
+      <h2>Keep the route simple.</h2>
+      <p class="lede">See the useful path, not the machinery behind it. Router brings connection and routing signals into one focused experience so operators stop wiring every client to every subscription by hand.</p>
     </article>
-    <div class="grid two router-points">
+    <div class="grid three router-why">
       <section>
-        <h2>Connect paid seats</h2>
-        <p>Bring Codex, SuperGrok, Claude Code, Cursor, and custom seats into one operator view.</p>
+        <h2>One catalog</h2>
+        <p>Compatible clients get one place to call the seats you already pay for.</p>
       </section>
       <section>
-        <h2>Route by usable capacity</h2>
-        <p>Constellation Auto can weigh remaining quota, reset timing, and task fit, or you can pin a named model when you want deterministic selection.</p>
+        <h2>Capacity in view</h2>
+        <p>Remaining quota and seat state stay visible so routing stays intentional.</p>
       </section>
       <section>
-        <h2>Keep the catalog honest</h2>
-        <p>Clients see only models and capabilities the connected adapters actually support—no invented provider features.</p>
-      </section>
-      <section>
-        <h2>See the pool</h2>
-        <p>Seats, capacity, connection state, and routing evidence stay visible so the gateway can be operated instead of treated like a black box.</p>
+        <h2>Honest limits</h2>
+        <p>The catalog advertises only what connected adapters actually support.</p>
       </section>
     </div>
 
-    <article class="block router-who">
-      <p class="eyebrow">Who it is for</p>
-      <h2>Operators with several AI subscriptions and several clients.</h2>
-      <p class="lede">If you already pay for multiple seats and want OpenCode, ChatGPT Work, or another OpenAI-compatible client to share one governed pool instead of maintaining a separate setup for every subscription, Router is the layer between them.</p>
+    <section class="router-proof-row" aria-label="Router routing proof">
+      ${proof(
+        "/shots/router-dashboard-crop.webp",
+        "Constellation Router dashboard showing throughput metrics and seat link status",
+        "Routing view — throughput and seat signal at a glance",
+        998,
+        484,
+      )}
+    </section>
+
+    <article class="block">
+      <p class="eyebrow">Grounded capabilities</p>
+      <h2>What the product already shows.</h2>
     </article>
+    <div class="grid three router-caps">
+      <section>
+        <h2>Connected seats</h2>
+        <p>Codex, SuperGrok, Claude Code, Cursor, and custom seats in one pool.</p>
+      </section>
+      <section>
+        <h2>Routing view</h2>
+        <p>Operator surfaces for capacity, connection state, and route evidence.</p>
+      </section>
+      <section>
+        <h2>Operational signal</h2>
+        <p>Online status and linked-seat counts stay on the sell surface — not a telemetry wall.</p>
+      </section>
+    </div>
 
     <article class="block coming-soon-boundary">
-      <p class="eyebrow">Coming Soon</p>
-      <h2>Working internally. Not public self-serve yet.</h2>
-      <p class="lede">The gateway and operator surfaces are already running internally. Public packaging, production hardening, and some provider capabilities are still landing. Until that work is complete, this page is a product preview—not a buy or install prompt.</p>
+      <p class="coming-soon-badge coming-soon-badge--inline" role="status">Coming Soon</p>
+      <p class="eyebrow">Public packaging is next</p>
+      <h2>The gateway is running today.</h2>
+      <p class="lede">We are shaping the public package and onboarding before opening Router broadly. This page is a product preview — not an install prompt.</p>
       <div class="cta-row">
-        <a class="btn-ghost" href="${ROUTER_GITHUB}" target="_blank" rel="noopener noreferrer">Follow Router on GitHub</a>
+        <a class="btn-solid" href="${EXPLORE_MAXQ}">Explore MaxQ</a>
+        <a class="btn-ghost" href="${ROUTER_GITHUB}" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
       </div>
     </article>`;
 }

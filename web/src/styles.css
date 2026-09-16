@@ -1464,11 +1464,32 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   margin: 2.15rem 0 3rem;
 }
 .router-shot-pair { display: grid; gap: 1rem; }
-.router-screen { margin: 0; }
-.router-screen .screen-frame { aspect-ratio: 16 / 9; }
-.router-screen--wide .screen-frame { aspect-ratio: 2.15 / 1; }
-.router-screen .screen-frame img { object-position: 50% 0%; }
-.router-screen figcaption { color: var(--overlay1); }
+.router-proof { margin: 0; }
+.router-proof .screen-frame {
+  aspect-ratio: auto;
+  height: auto;
+  max-height: none;
+}
+.router-proof .screen-frame img {
+  position: static;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.router-proof figcaption { color: var(--overlay1); }
+.router-proof-row {
+  margin: 1.75rem 0 2.25rem;
+  max-width: 56rem;
+}
+.router-status {
+  margin: 0.85rem 0 1.25rem;
+  max-width: 36rem;
+  color: var(--subtext0, #a6adc8);
+  font-size: 0.95rem;
+}
+.router-hero .cta-row { margin-top: 0.25rem; }
+.coming-soon-boundary .cta-row .btn-ghost { opacity: 0.85; }
 .router-points { margin-bottom: 2.8rem; }
 .router-points section {
   padding-top: .85rem;
@@ -1489,6 +1510,12 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 @media (max-width: 720px) {
   .router-hero { padding-top: 1.5rem; }
   .router-showcase { margin: 1.6rem 0 2.4rem; }
-  .router-screen--wide .screen-frame { aspect-ratio: 16 / 9; }
-  .coming-soon-boundary { margin-bottom: 2.5rem; }
+.coming-soon-boundary { margin-bottom: 2.5rem; }
+}
+
+
+/* #80 Track B — quieter constellation behind Router body */
+main:has(.router-hero) .dia,
+#app:has(.router-hero) .dia {
+  opacity: 0.35;
 }
