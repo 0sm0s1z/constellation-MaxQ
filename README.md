@@ -22,7 +22,12 @@ maxq proxy           # GOST settings (local process only)
 maxq proxy on|off
 maxq proxy upstream <url>
 maxq proxy iface <name>
+maxq tabs list       # current-display Chrome page targets via CDP
+maxq tabs prune      # duplicate/blank-only conservative cleanup
+maxq tabs prune --task-url <url>  # keep task + optional ChatGPT/GitHub
 ```
+
+Browser automation should call `maxq tabs prune --task-url <active-task-url>` at the end of a browser task while task context is still known. CDP discovery is current-display/profile scoped and fails soft when unavailable; apply/reconcile do not prune tabs. See [docs/TABS.md](docs/TABS.md).
 
 ### Reproducible curl installs
 
