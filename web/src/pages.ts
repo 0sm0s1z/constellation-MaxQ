@@ -730,7 +730,7 @@ export function renderRouter(): string {
       <div class="cta-row">
         <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
         <a class="btn-ghost" href="#home">Back to MaxQ</a>
-        <a class="btn-ghost" href="https://github.com/0sm0s1z/constellation-router" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
+        <a class="btn-ghost" href="https://github.com/OpenSecurity-Infosec/constellation-router" target="_blank" rel="noopener noreferrer">Router on GitHub</a>
       </div>
     </article>
 
@@ -785,7 +785,7 @@ export function renderRouter(): string {
       <p class="lede">This is not a mock and it is not an unfinished feature presented as live. The router is already serving its control plane, infer hop, seat gateway, catalog, and operator surfaces. “Coming Soon” on this site means Constellation's public packaging is waiting on the open production-discipline program (#134 and its P1 children) and the capability-plane backlog (#78–#83). Those capability issues are specifically about adding real subscription features only after the adapters implement and can honestly advertise them.</p>
       <div class="cta-row">
         <a class="btn-solid" href="${GET_MAXQ}" target="_blank" rel="noopener noreferrer">Get MaxQ</a>
-        <a class="btn-ghost" href="https://github.com/0sm0s1z/constellation-router" target="_blank" rel="noopener noreferrer">Read the Router repo</a>
+        <a class="btn-ghost" href="https://github.com/OpenSecurity-Infosec/constellation-router" target="_blank" rel="noopener noreferrer">Read the Router repo</a>
       </div>
     </article>`;
 }
