@@ -1,72 +1,54 @@
-# Desktop: Ghostty, launcher, shortcuts
+# MaxQ desktop composition and release gates
 
-MaxQ automates build/install/config so a bot needs fewer computer-use hops. Persist-safe only (`$HOME/bin`, `$HOME/.config/maxq`, `$HOME/.local`). PID1 is tini. Nothing in `/usr`. Do not use systemd timers or `update-alternatives`.
+The desktop is composed in layers. The split runtime adds Ghostty, rofi, shortcuts, icons, dark-mode state, and Chrome profile reconciliation around the current core; it does not replace the eyes-proven release gates from issues #68 and #69.
 
-This computer is **X11** (Xvfb + xfwm4 + plank). It is not Hyprland.
+## Wallpaper: core #68 remains authoritative
 
-## Ghostty default terminal
+`maxq-core` installs the MaxQ pastel wallpaper at `$HOME/.local/share/backgrounds/maxq/pastel.png`. In a graphical session, core apply/prove remains fail-closed until a real visual paint succeeds. XFCE backdrop configuration is persistence only and is not accepted by the split desktop module as proof that the visible root changed.
 
-Install a linux amd64 Ghostty into `$HOME/bin/ghostty`.
+`maxq-desktop` deliberately contains no wallpaper setter. This prevents the stale PR #6 behavior from weakening #68.
 
-Order:
+## Ghostty
 
-1. Community Debian/Ubuntu `.deb` from https://github.com/mkasberg/ghostty-ubuntu (Debian 13 Trixie amd64). Extract with `dpkg-deb -x` into a persist prefix; copy the `ghostty` binary to `$HOME/bin`. Do not `dpkg -i` into `/usr`.
-2. Else Universal AppImage from https://github.com/pkgforge-dev/ghostty-appimage (or current ghostty.org community AppImage). Install as `$HOME/bin/ghostty` (wrapper if needed).
-3. Prove: `command -v ghostty` is `$HOME/bin/ghostty` and `--version` works.
+The supplemental desktop layer installs Ghostty 1.3.1 as a HOME-only AppImage-backed wrapper at `$HOME/bin/ghostty`, with Catppuccin Mocha configuration already supplied by the core theme path. It also installs:
 
-Default:
+- `$HOME/.local/share/applications/ghostty.desktop`
+- an XFCE terminal helper under `$HOME/.local/share/xfce4/helpers/`
+- `TerminalEmulator=ghostty` in the managed XFCE helper state
+- a MaxQ Ghostty Plank dockitem file
 
-- `$HOME/.local/share/applications/ghostty.desktop` (`Terminal=false`, `Exec=$HOME/bin/ghostty`)
-- `$HOME/.config/xfce4/helpers.rc` `TerminalEmulator=ghostty` (MaxQ-owned block)
-- plank dockitem for Ghostty
-- `mimeapps.list` x-scheme-handler/terminal if used
+A preexisting `$HOME/bin/ghostty` is backed up before MaxQ takes ownership. Revert restores it when applicable.
 
-Revert removes MaxQ-owned desktop/helpers/dockitem and the `$HOME/bin/ghostty` MaxQ-owned binary. It does not delete Mocha config if something else owns it; MaxQ-owned Ghostty config block is still reverted with theme.
+The final `maxq-desktop-gate` remains authoritative: Ghostty must be executable, answer `--version`, and use the MaxQ Mocha theme. There is no config-only green skip.
 
-## Launcher
+## Launcher and Super+Space
 
-Omarchy 4 (Quattro) merged Walker into a Quickshell Hyprland shell. That does not run here.
+The split desktop installs a HOME-only rofi runtime when a working rofi is not already available, plus a Catppuccin Mocha launcher at `$HOME/bin/maxq-launcher`. The XFCE shortcut target is exactly:
 
-Bias: the **Walker-era** Omarchy launcher — fuzzy, icons, Super+Space.
-
-1. Prefer Walker if a linux amd64 binary runs on this X11 GTK desktop.
-2. Else install persist-safe **rofi** (Catppuccin Mocha) into `$HOME/bin` if the distro package is not already on PATH. Super+Space via xfce/xfwm keybind (home config, not `/usr`).
-
-Launcher entries include:
-
-- installed `.desktop` apps
-- MaxQ shortcuts from `defaults.toml` (AI chat, web chat, Settings, Ghostty)
-
-## Shortcuts (`defaults.toml`)
-
-Persist at `$HOME/.config/maxq/defaults.toml`. Never bake a webhook or secrets. Example:
-
-```toml
-default_ai_chat = "chatgpt"   # chatgpt | grok | claude
-[sites]
-chatgpt = "https://chatgpt.com"
-grok = "https://grok.com"
-claude = "https://claude.ai"
-discord = "https://discord.com/app"
-slack = "https://app.slack.com/client"
+```text
+/commands/custom/<Super>space -> $HOME/bin/maxq-launcher
 ```
 
-First-run setup + Settings → Defaults can change these. Revert does not delete operator overrides.
+The final #69 gate re-applies and reads back the real binding in graphical sessions. It also removes the known stale MaxQ-owned `<Primary><Super>space` binding without removing unrelated operator shortcuts.
 
-Each site gets:
+## Shortcuts and icons
 
-- a real icon PNG/SVG under `$HOME/.local/share/icons/maxq/`
-- a `.desktop` on `$HOME/Desktop` and a plank dockitem
-- `Exec` opens this-agent Chrome (`box-chrome` / current DISPLAY profile), never another agent's Chrome
+`$HOME/.config/maxq/defaults.toml` controls the default AI chat and site URLs. Revert preserves operator edits to this file.
 
-Goal: one click from dock or Super+Space to the site, then computer-use starts.
+The repository supplies PNGs for ChatGPT, Grok, Claude, Discord, Slack, Ghostty, and MaxQ Settings. Apply copies them under `$HOME/.local/share/icons/maxq/` and creates HOME/Desktop and `.desktop` launcher entries. Site launchers use the current-display `box-chrome` path and do not hard-code another agent's Chrome profile.
 
-## Settings
+## Plank
 
-Thin page: default AI chat, chat-link list, launcher keybind, Ghostty status (installed / default / missing).
+The supplemental desktop layer writes the richer MaxQ dockitem files. It does not claim that files alone are visible. The unchanged #69 gate owns the live release criterion: it creates/pins `maxq-launcher.dockitem` into Plank's actual dconf `dock-items`, reloads the current DISPLAY's Plank, and proves the item is live-pinned with a drawable icon.
 
-## Prove
+On top-level revert the #69 gate runs first, so it removes the live pin before supplemental desktop cleanup removes MaxQ dockitem files.
 
-`maxq prove` fails if Ghostty is not `$HOME/bin/ghostty` and not the default terminal helper, or if launcher + shortcut `.desktop` files are missing. Screenshots of dock, desktop icons, Super+Space launcher, and Ghostty window are the human proof.
+## Dark mode and Chrome
 
-See PLAN 7, 36–40.
+XFCE dark theme/cursor state is persisted under HOME and applied live when DISPLAY is present. Previous values are captured for revert.
+
+Chrome Mocha remains profile-scoped and HOME-owned. The desktop helper seeds the official theme's External Extensions JSON into allowed `$HOME/chrome-profile*` roots and extends the HOME-only reconciler for profiles created later. It does not write Chrome managed `ProxyMode` / `ProxyServer`, restore `cxn-egress.json`, signal Chrome, or use `--load-extension`.
+
+## Proof ownership
+
+Top-level `maxq prove` runs the current core proof first, then supplemental desktop/package/noVNC checks, and finally the unchanged #69 desktop gate. That ordering keeps the strongest existing visual and interaction gates authoritative while still proving the complete split runtime shape.
