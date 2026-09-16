@@ -2,7 +2,8 @@
 type Gost = { enabled: boolean; running: boolean; listen: string; upstream: string; iface: string; intercept: boolean };
 type Clis = { installed: string; skipped: string };
 type Status = { state: string; theme: string; gost: Gost; clis: Clis; api: { listen: string } };
-type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; source: string; skip_auto_review: boolean };
+type Network = { mode: "tailscale" | "headscale"; login_server: string; auth_key_configured: boolean };
+type Policy = { approvals: { mode: "off" | "on"; always_allow: boolean }; network: Network; source: string; skip_auto_review: boolean };
 type Connection = { id: string; name: string; base_url: string; auth_configured: boolean };
 type Desktop = { [key: string]: unknown; id?: string; name?: string; title?: string; box_identity?: string; connection_id?: string; connection_name?: string; source_api?: string };
 
@@ -47,6 +48,7 @@ function renderStatusUnavailable(message: string): void {
 }
 
 let policyAvailable = false;
+let networkAvailable = false;
 let busyState = false;
 
 function renderPolicy(policy: Policy): void {
@@ -65,6 +67,37 @@ function renderPolicyUnavailable(message: string): void {
   enabled.checked = false;
   enabled.disabled = true;
   $("st-approvals").textContent = "Unavailable · " + message;
+}
+
+function syncNetworkFields(): void {
+  const mode = $("network-mode") as HTMLSelectElement;
+  const loginServer = $("network-login-server") as HTMLInputElement;
+  const headscale = mode.value === "headscale";
+  $("headscale-fields").hidden = !headscale;
+  loginServer.required = headscale;
+}
+
+function renderNetwork(network: Network): void {
+  networkAvailable = true;
+  const mode = $("network-mode") as HTMLSelectElement;
+  const loginServer = $("network-login-server") as HTMLInputElement;
+  mode.value = network.mode;
+  loginServer.value = network.login_server || "";
+  syncNetworkFields();
+  const parts = [network.mode === "headscale" ? "Headscale" : "Tailscale"];
+  if (network.mode === "headscale" && network.login_server) parts.push(network.login_server);
+  if (network.auth_key_configured) parts.push("auth key stored");
+  $("st-network").textContent = parts.join(" · ");
+  mode.disabled = busyState;
+  loginServer.disabled = busyState;
+  ($("network-auth-key") as HTMLInputElement).disabled = busyState;
+  ($("btn-network-save") as HTMLButtonElement).disabled = busyState;
+}
+
+function renderNetworkUnavailable(message: string): void {
+  networkAvailable = false;
+  ["network-mode", "network-login-server", "network-auth-key", "btn-network-save"].forEach((id) => { ($(id) as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled = true; });
+  $("st-network").textContent = "Unavailable · " + message;
 }
 
 function renderConnections(connections: Connection[]): void {
@@ -108,8 +141,11 @@ function errorText(reason: unknown): string { return reason instanceof Error ? r
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
+  ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
+  ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
+  ($("network-auth-key") as HTMLInputElement).disabled = on || !networkAvailable;
 }
 async function act(fn: () => Promise<unknown>): Promise<void> {
   showMsg(""); busy(true);
@@ -122,8 +158,8 @@ async function refresh(): Promise<void> {
   if (status.status === "fulfilled") renderStatus(status.value);
   else { const message = errorText(status.reason); renderStatusUnavailable(message); errors.push("status: " + message); }
 
-  if (policy.status === "fulfilled") renderPolicy(policy.value);
-  else { const message = errorText(policy.reason); renderPolicyUnavailable(message); errors.push("approvals: " + message); }
+  if (policy.status === "fulfilled") { renderPolicy(policy.value); renderNetwork(policy.value.network); }
+  else { const message = errorText(policy.reason); renderPolicyUnavailable(message); renderNetworkUnavailable(message); errors.push("settings: " + message); }
 
   if (connections.status === "fulfilled") renderConnections(connections.value.connections);
   else { const message = errorText(connections.reason); renderConnectionsUnavailable(message); errors.push("connections: " + message); }
@@ -142,6 +178,19 @@ window.addEventListener("DOMContentLoaded", () => {
   $("approvals-enabled").addEventListener("change", () => {
     const enabled = $("approvals-enabled") as HTMLInputElement;
     act(() => postJSON("/policy", { enabled: enabled.checked }));
+  });
+  $("network-mode").addEventListener("change", syncNetworkFields);
+  $("network-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const mode = $("network-mode") as HTMLSelectElement;
+    const loginServer = $("network-login-server") as HTMLInputElement;
+    const authKey = $("network-auth-key") as HTMLInputElement;
+    act(async () => {
+      const body: { mode: string; login_server: string; auth_key?: string } = { mode: mode.value, login_server: loginServer.value };
+      if (authKey.value.trim()) body.auth_key = authKey.value;
+      await postJSON("/policy", { network: body });
+      authKey.value = "";
+    });
   });
   $("connection-form").addEventListener("submit", (event) => {
     event.preventDefault();
