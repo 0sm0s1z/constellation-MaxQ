@@ -102,6 +102,7 @@ type server struct {
 	localInventory func() ([]map[string]any, error)
 	mu             sync.Mutex
 	connMu         sync.Mutex
+	vault          map[string]*vaultEntry // ephemeral paste→claim; never on disk
 }
 
 func main() {
@@ -220,6 +221,10 @@ func (s *server) serve() error {
 	mux.HandleFunc("PUT /ha/connection", s.handleHAConnection)
 	mux.HandleFunc("GET /ha/state/{id}", s.handleHAState)
 	mux.HandleFunc("POST /ha/action", s.handleHAAction)
+	mux.HandleFunc("GET /vault/credentials", s.handleVaultCredentials)
+	mux.HandleFunc("POST /vault/credentials", s.handleVaultCredentials)
+	mux.HandleFunc("POST /vault/credentials/{id}/claim", s.handleVaultClaim)
+	mux.HandleFunc("DELETE /vault/credentials/{id}", s.handleVaultDelete)
 	mux.HandleFunc("GET /entitlements", s.handleEntitlements)
 	mux.HandleFunc("PUT /entitlements", s.handleEntitlements)
 	mux.HandleFunc("GET /connections", s.handleConnections)
