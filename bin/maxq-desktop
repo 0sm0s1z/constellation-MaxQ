@@ -85,7 +85,7 @@ apply_wallpaper_live(){
   else fail 'DISPLAY set but neither hsetroot nor XFCE backdrop applied the Mocha wallpaper'
   fi
 }
-apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; apply_dark_mode; apply_wallpaper_live; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
+apply_desktop(){ dirs; defaults; valid_defaults || fail 'invalid defaults.toml'; apply_dark_mode; apply_thunar_prefs; apply_wallpaper_live; install_icons; install_ghostty; install_ghostty_desktop; set_default_terminal; install_rofi; install_launcher; install_keybind; install_site_opener; install_apps; install_docks; install_chrome_theme_profiles; echo applied > "$S/state"; }
 revert_desktop(){
   mkdir -p "$C"; remove_chrome_theme_profiles; restore_keybind; restore_default_terminal; remove_shortcuts; restore_dark_mode
   rm -f "$LA" "$OS" "$B/maxq-camoufox" "$R/mocha.rasi"
@@ -98,7 +98,7 @@ revert_desktop(){
 FAIL=0
 ok(){ local n="$1"; shift; if "$@"; then echo "[PASS] $n"; else echo "[FAIL] $n"; FAIL=$((FAIL+1)); fi; }
 check_desktop(){
-  ok 'Mocha wallpaper on disk' test -s "$WP"; ok 'GTK Mocha theme on disk' test -s "$GTK/gtk-3.0/gtk.css"; ok 'xfwm4 Mocha theme on disk' test -d "$GTK/xfwm4"; ok 'cursor Mocha theme on disk' test -s "$CUR/index.theme"; ok 'Ghostty Mocha config on disk' grep -q 'theme = catppuccin-mocha.conf' "$GC"; ok 'Ghostty Mocha theme on disk' test -s "$GT"
+  ok 'Mocha wallpaper on disk' test -s "$WP"; ok 'GTK Mocha theme on disk' test -s "$GTK/gtk-3.0/gtk.css"; ok 'xfwm4 Mocha theme on disk' test -d "$GTK/xfwm4"; ok 'xfwm4 Mocha decorations on disk' test -s "$GTK/xfwm4/title-1-active.png"; ok 'cursor Mocha theme on disk' test -s "$CUR/index.theme"; ok 'Ghostty Mocha config on disk' grep -q 'theme = catppuccin-mocha.conf' "$GC"; ok 'Ghostty Mocha theme on disk' test -s "$GT"
   ok 'XFCE dark mode persisted in home XML' dark_xml_ok
   [ -z "${DISPLAY:-}" ] || ok 'XFCE dark mode live' dark_live_ok
   [ -z "${DISPLAY:-}" ] || ok 'wallpaper live apply recorded' test -s "$S/wallpaper-live"
@@ -117,8 +117,8 @@ check_desktop(){
   local n; for n in ai chatgpt grok claude discord slack settings ghostty camoufox; do ok "PNG icon $n" png_ok "$I/$n.png"; done
   for n in ai chatgpt grok claude discord slack settings camoufox; do ok "shortcut $n" test -s "$A/maxq-$n.desktop"; ok "shortcut $n uses PNG" grep -q "Icon=$I/$n.png" "$A/maxq-$n.desktop"; done
   ok 'Ghostty desktop uses PNG' grep -q "Icon=$I/ghostty.png" "$GD"
-  for n in maxq-05-launcher maxq-13-camoufox maxq-40-ghostty maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings; do ok "plank $n" test -s "$K/$n.dockitem"; done
-  ok 'no chrome.dockitem on managed plank' sh -c 'test ! -e "'"$K"'/chrome.dockitem" && test ! -e "'"$K"'/box-chrome.dockitem" && test ! -e "'"$K"'/google-chrome.dockitem"'
+  for n in maxq-05-launcher maxq-13-camoufox maxq-15-thunar maxq-40-ghostty maxq-41-terminal maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings; do ok "plank $n" test -s "$K/$n.dockitem"; done
+  ok 'Thunar geometry prefs seeded' sh -c 'grep -q last-window-width "$P/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml" && ! grep -q "value=\"444\"" "$P/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml"'; ok 'no chrome.dockitem on managed plank' sh -c 'test ! -e "'"$K"'/chrome.dockitem" && test ! -e "'"$K"'/box-chrome.dockitem" && test ! -e "'"$K"'/google-chrome.dockitem"'
   ok 'dry-run discord uses camoufox under auto' sh -c 'MAXQ_OPEN_SITE_DRY_RUN=1 MAXQ_BROWSER=auto DISPLAY="'"${DISPLAY:-:1}"'" "'"$OS"'" discord | grep -q "^browser=camoufox$"'
   [ ! -f "$B/maxq-reconcile" ] || ok 'reconciler has no /usr/local/bin write' sh -c "! grep -Eq '^[[:space:]]*ln[[:space:]]+-sfn.*\/usr\/local\/bin' '$B/maxq-reconcile'"
 }

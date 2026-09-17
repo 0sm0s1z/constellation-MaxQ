@@ -1,0 +1,3 @@
+MaxQ-owned Catppuccin Mocha xfwm4 pixmap set.
+Official catppuccin/gtk ships only themerc for xfwm4 (no titlebar assets),
+which makes xfwm4 render windows with zero frame extents. These PNGs restore SSD.

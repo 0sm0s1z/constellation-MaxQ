@@ -11,3 +11,4 @@ Copied to `$HOME/.config/maxq/theme/src` on install/apply.
 | ghostty/catppuccin-mocha.conf | Official catppuccin/ghostty Mocha |
 
 Apply installs into `$HOME/.local/share` and `$HOME/.config`. Revert removes MaxQ-owned copies only.
+| xfwm4-mocha/ | MaxQ Mocha xfwm4 SSD pixmaps (catppuccin/gtk ships themerc-only) |

@@ -100,7 +100,9 @@ PY
 }
 
 apply_dark_mode(){
+  ensure_xfwm4_decorations
   [ -d "$GTK/xfwm4" ] || fail 'Mocha xfwm4 theme missing after core apply'
+  [ -s "$GTK/xfwm4/title-1-active.png" ] || fail 'Mocha xfwm4 decorations missing after ensure'
   save_dark_previous
   mkdir -p "$XFCONF_DIR"
   if [ -n "${DISPLAY:-}" ]; then
@@ -152,4 +154,124 @@ restore_dark_mode(){
   restore_one xsettings /Net/ThemeName string "$XSET_XML" /Net/ThemeName "$(prev_get net_theme)"
   restore_one xsettings /Net/CursorThemeName string "$XSET_XML" /Net/CursorThemeName "$(prev_get cursor_theme)"
   restore_one xsettings /Gtk/ApplicationPreferDarkTheme bool "$XSET_XML" /Gtk/ApplicationPreferDarkTheme "$(prev_get prefer_dark)"
+}
+
+# Official catppuccin/gtk ships xfwm4/themerc only (no titlebar pixmaps) → zero frame extents.
+# Copy MaxQ Mocha SSD assets (or generate) so xfwm4 can draw decorations.
+ensure_xfwm4_decorations(){
+  local dest="$GTK/xfwm4" src="$P/.config/maxq/theme/src/xfwm4-mocha"
+  mkdir -p "$dest"
+  if [ ! -s "$dest/title-1-active.png" ]; then
+    if [ -s "$src/title-1-active.png" ]; then
+      cp -f "$src"/*.png "$src"/themerc "$dest/" 2>/dev/null || true
+    fi
+  fi
+  if [ ! -s "$dest/title-1-active.png" ]; then
+    python3 - "$dest" <<'PY'
+import struct,zlib,os,sys
+dst=sys.argv[1]; os.makedirs(dst, exist_ok=True)
+BASE=(0x1e,0x1e,0x2e,255); MANTLE=(0x18,0x18,0x25,255)
+SURFACE0=(0x31,0x32,0x44,255); SURFACE1=(0x45,0x47,0x5a,255)
+MAUVE=(0xcb,0xa6,0xf7,255); RED=(0xf3,0x8b,0xa8,255)
+TEXT=(0xcd,0xd6,0xf4,255); OVERLAY=(0x6c,0x70,0x86,255)
+def write_png(path,w,h,rgba):
+    def chunk(tag,data):
+        return struct.pack('>I',len(data))+tag+data+struct.pack('>I',zlib.crc32(tag+data)&0xffffffff)
+    raw=b''.join(b'\x00'+bytes(rgba[y*w*4:(y+1)*w*4]) for y in range(h))
+    open(path,'wb').write(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b''))
+def solid(path,w,h,color):
+    write_png(path,w,h,bytes(color)*(w*h))
+def button(path,bg,fg,kind):
+    w=h=22; pix=bytearray(bg*(w*h))
+    def setp(x,y,c):
+        if 0<=x<w and 0<=y<h:
+            i=(y*w+x)*4; pix[i:i+4]=bytes(c)
+    cx,cy=w//2,h//2
+    if kind=='close':
+        for d in range(-5,6):
+            setp(cx+d,cy+d,fg); setp(cx+d,cy-d,fg); setp(cx+d+1,cy+d,fg); setp(cx+d+1,cy-d,fg)
+    elif kind=='hide':
+        for x in range(cx-5,cx+6): setp(x,cy+4,fg); setp(x,cy+5,fg)
+    elif kind=='maximize':
+        for x in range(cx-5,cx+6): setp(x,cy-5,fg); setp(x,cy+5,fg)
+        for y in range(cy-5,cy+6): setp(cx-5,y,fg); setp(cx+5,y,fg)
+    elif kind=='menu':
+        for y in (-4,0,4):
+            for x in range(cx-5,cx+6): setp(x,cy+y,fg)
+    write_png(path,w,h,bytes(pix))
+H=22
+for name,color in [
+ ("title-1-active",BASE),("title-2-active",BASE),("title-3-active",BASE),("title-4-active",BASE),("title-5-active",BASE),
+ ("title-1-inactive",MANTLE),("title-2-inactive",MANTLE),("title-3-inactive",MANTLE),("title-4-inactive",MANTLE),("title-5-inactive",MANTLE),
+ ("top-left-active",BASE),("top-right-active",BASE),("top-left-inactive",MANTLE),("top-right-inactive",MANTLE)]:
+    solid(f"{dst}/{name}.png",8,H,color)
+for name,color in [("left-active",BASE),("right-active",BASE),("left-inactive",MANTLE),("right-inactive",MANTLE)]:
+    solid(f"{dst}/{name}.png",4,8,color)
+for name,color in [("bottom-active",BASE),("bottom-inactive",MANTLE),("bottom-left-active",BASE),("bottom-right-active",BASE),("bottom-left-inactive",MANTLE),("bottom-right-inactive",MANTLE)]:
+    solid(f"{dst}/{name}.png",8,4,color)
+for kind,base_name in [('close','close'),('hide','hide'),('maximize','maximize'),('menu','menu')]:
+    button(f"{dst}/{base_name}-active.png", BASE, RED if kind=='close' else TEXT, kind)
+    button(f"{dst}/{base_name}-inactive.png", MANTLE, OVERLAY, kind)
+    button(f"{dst}/{base_name}-prelight.png", SURFACE0, RED if kind=='close' else TEXT, kind)
+    button(f"{dst}/{base_name}-pressed.png", SURFACE1, RED if kind=='close' else TEXT, kind)
+for state,bg,fg in [('active',BASE,TEXT),('inactive',MANTLE,OVERLAY),('prelight',SURFACE0,TEXT),('pressed',SURFACE1,TEXT)]:
+    button(f"{dst}/maximize-toggled-{state}.png", bg, fg, 'maximize')
+    button(f"{dst}/shade-{state}.png", bg, fg, 'hide')
+    button(f"{dst}/shade-toggled-{state}.png", bg, fg, 'hide')
+    button(f"{dst}/stick-{state}.png", bg, fg, 'menu')
+    button(f"{dst}/stick-toggled-{state}.png", bg, MAUVE if state=='active' else fg, 'menu')
+open(f"{dst}/themerc","w").write("""# MaxQ Catppuccin Mocha xfwm4 decorations (managed)
+active_text_color=#cdd6f4
+inactive_text_color=#6c7086
+button_offset=4
+button_spacing=2
+full_width_title=true
+title_horizontal_offset=4
+title_vertical_offset_active=1
+title_vertical_offset_inactive=1
+title_shadow_active=false
+title_shadow_inactive=false
+show_app_icon=false
+shadow_delta_height=2
+shadow_delta_width=0
+shadow_delta_x=0
+shadow_delta_y=-4
+shadow_opacity=40
+""")
+PY
+  fi
+  [ -s "$dest/title-1-active.png" ] || fail 'xfwm4 Mocha decorations missing (title-1-active.png)'
+  if [ -s "$src/themerc" ]; then
+    cp -f "$src/themerc" "$dest/themerc"
+  fi
+  # Live reload when DISPLAY set: toggle theme so xfwm rereads pixmaps.
+  if [ -n "${DISPLAY:-}" ] && command -v xfconf-query >/dev/null 2>&1; then
+    xfconf_set xfwm4 /general/theme string Default || true
+    xfconf_set xfwm4 /general/theme string "$DARK_THEME" || true
+  fi
+}
+
+# Usable first-open Thunar geometry under $HOME only (tiny 444x257 was unusable).
+apply_thunar_prefs(){
+  local xml="$XFCONF_DIR/thunar.xml"
+  mkdir -p "$XFCONF_DIR" "$P/.config/Thunar"
+  local w h
+  w="$(xml_get "$xml" /last-window-width)"
+  h="$(xml_get "$xml" /last-window-height)"
+  if [ -z "$w" ] || [ -z "$h" ] || [ "${w:-0}" -lt 700 ] 2>/dev/null || [ "${h:-0}" -lt 450 ] 2>/dev/null; then
+    xml_set "$xml" thunar /last-window-width int 900
+    xml_set "$xml" thunar /last-window-height int 600
+    xml_set "$xml" thunar /last-window-maximized bool false
+  fi
+  xml_set "$xml" thunar /last-view string ThunarIconView
+  if [ -n "${DISPLAY:-}" ] && command -v xfconf-query >/dev/null 2>&1; then
+    local cur_w cur_h
+    cur_w="$(xfconf_get thunar /last-window-width)"
+    cur_h="$(xfconf_get thunar /last-window-height)"
+    if [ -z "$cur_w" ] || [ -z "$cur_h" ] || [ "${cur_w:-0}" -lt 700 ] 2>/dev/null || [ "${cur_h:-0}" -lt 450 ] 2>/dev/null; then
+      xfconf_set thunar /last-window-width int 900 || true
+      xfconf_set thunar /last-window-height int 600 || true
+      xfconf_set thunar /last-window-maximized bool false || true
+    fi
+  fi
 }

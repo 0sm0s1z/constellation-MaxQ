@@ -1258,6 +1258,27 @@ install_gtk_theme() {
   else
     write_compact_gtk_theme "$GTK_THEME_DIR"
   fi
+  # catppuccin/gtk ships xfwm4/themerc only — overlay MaxQ Mocha SSD pixmaps.
+  install_xfwm4_mocha_decorations
+}
+
+install_xfwm4_mocha_decorations() {
+  local dest="$GTK_THEME_DIR/xfwm4" src="$THEME_SRC/xfwm4-mocha"
+  mkdir -p "$dest"
+  if [ -s "$src/title-1-active.png" ]; then
+    cp -f "$src"/*.png "$src"/themerc "$dest/" 2>/dev/null || true
+  fi
+  if [ ! -s "$dest/title-1-active.png" ]; then
+    # Fallback: copy from Default so xfwm never has empty frame assets.
+    if [ -d /usr/share/themes/Default/xfwm4 ]; then
+      cp -f /usr/share/themes/Default/xfwm4/*.png "$dest/" 2>/dev/null || true
+      cp -f /usr/share/themes/Default/xfwm4/*.xpm "$dest/" 2>/dev/null || true
+    fi
+  fi
+  if [ -s "$src/themerc" ]; then
+    cp -f "$src/themerc" "$dest/themerc"
+  fi
+  mark_owned "$GTK_THEME_DIR"
 }
 
 install_cursor_theme() {

@@ -79,7 +79,7 @@ Default headed browser for `maxq-open-site` when `MAXQ_BROWSER=auto` is **Camouf
 - Force Camoufox: `MAXQ_BROWSER=camoufox`
 - Missing Camoufox binary: AI/Turnstile sites **fail clearly**; non-AI may fall back to box-chrome.
 
-Plank order (dconf): launcher → **Camoufox** → Ghostty → ChatGPT → Grok → Claude → Discord → Slack → Settings. `install_docks` strips leftover `chrome.dockitem` from every `dockN/launchers/`.
+Plank order (dconf): launcher → **Camoufox** → **Thunar** → Ghostty → Terminal (xfce4-terminal) → ChatGPT → Grok → Claude → Discord → Slack → Settings. Core pins include file manager + browser + terminal; `install_docks` strips leftover `chrome.dockitem` from every `dockN/launchers/`.
 
 `http`/`https` mime defaults prefer `maxq-camoufox.desktop` via `mimeapps.list` (Ghostty stays the terminal helper).
 

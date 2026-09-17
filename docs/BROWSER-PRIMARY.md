@@ -29,9 +29,11 @@ MAXQ_OPEN_SITE_DRY_RUN=1 MAXQ_BROWSER=chrome maxq-open-site discord → browser=
 - Strip `chrome.dockitem` / `box-chrome` / `google-chrome` / `chromium` from **every** `$HOME/.config/plank/dock*/launchers/`.
 - Keep Chrome **packages/binaries** installed (`box-chrome` remains).
 - Camoufox dock item **`maxq-13-camoufox`** is **primary** in dconf order: right after launcher.
+- Core pins also include **Thunar** (`maxq-15-thunar` via MaxQ-owned `maxq-thunar.desktop` — Plank rejects system `thunar.desktop` pins) and **Terminal** (`maxq-40-ghostty` + `maxq-41-terminal` / xfce4-terminal).
 
 ```
-['maxq-05-launcher.dockitem', 'maxq-13-camoufox.dockitem', 'maxq-40-ghostty.dockitem',
+['maxq-05-launcher.dockitem', 'maxq-13-camoufox.dockitem', 'maxq-15-thunar.dockitem',
+ 'maxq-40-ghostty.dockitem', 'maxq-41-terminal.dockitem',
  'maxq-10-chatgpt.dockitem', 'maxq-11-grok.dockitem', 'maxq-12-claude.dockitem',
  'maxq-20-discord.dockitem', 'maxq-21-slack.dockitem', 'maxq-30-settings.dockitem']
 ```

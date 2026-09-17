@@ -431,14 +431,37 @@ dconf_write_dock() {
 }
 
 maxq_dock_items_list() {
-  printf "%s" "['maxq-05-launcher.dockitem', 'maxq-13-camoufox.dockitem', 'maxq-40-ghostty.dockitem', 'maxq-10-chatgpt.dockitem', 'maxq-11-grok.dockitem', 'maxq-12-claude.dockitem', 'maxq-20-discord.dockitem', 'maxq-21-slack.dockitem', 'maxq-30-settings.dockitem']"
+  # Core: launcher, Camoufox (browser), Thunar (files), Ghostty (MaxQ terminal), xfce4-terminal (familiar Terminal).
+  # Then AI chats + Discord/Slack + Settings. Chrome stays installed but never pinned.
+  printf "%s" "['maxq-05-launcher.dockitem', 'maxq-13-camoufox.dockitem', 'maxq-15-thunar.dockitem', 'maxq-40-ghostty.dockitem', 'maxq-41-terminal.dockitem', 'maxq-10-chatgpt.dockitem', 'maxq-11-grok.dockitem', 'maxq-12-claude.dockitem', 'maxq-20-discord.dockitem', 'maxq-21-slack.dockitem', 'maxq-30-settings.dockitem']"
 }
 
 install_docks(){
-  # Camoufox is primary on the dock (early: right after launcher). Chrome stays installed but off Plank.
+  # Camoufox is primary browser; Thunar + Terminal stay pinned (Matthew tester feedback).
+  # Chrome stays installed but off Plank.
+  # NOTE: Plank lock-items deletes pins that point at /usr/share/applications/thunar.desktop
+  # (rejects/unpins within ~50ms). Always use a MaxQ-owned wrapper desktop instead.
+  local terminal_desktop
+  cat > "$A/maxq-thunar.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=MaxQ file manager (Thunar)
+Exec=thunar %F
+Icon=org.xfce.thunar
+Terminal=false
+StartupNotify=true
+Categories=System;FileTools;FileManager;Core;
+MimeType=inode/directory;
+X-MaxQ-Managed=true
+EOF
+  terminal_desktop="/usr/share/applications/xfce4-terminal.desktop"
+  [ -f "$terminal_desktop" ] || terminal_desktop="$GD"
   dock maxq-05-launcher "$A/maxq-launcher.desktop"
   dock maxq-13-camoufox "$A/maxq-camoufox.desktop"
+  dock maxq-15-thunar "$A/maxq-thunar.desktop"
   dock maxq-40-ghostty "$GD"
+  dock maxq-41-terminal "$terminal_desktop"
   dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"
   dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"
   local items dockdir dn item bus prefer n
@@ -448,10 +471,20 @@ install_docks(){
     prefer="$(plank_dbus_for_display "$DISPLAY" 2>/dev/null || true)"
     [ -n "$prefer" ] && bus="$prefer"
   fi
+  # Unlock before rewriting pins so Plank does not race-delete new dockitems.
+  if [ -n "$bus" ]; then
+    for dockdir in "$P"/.config/plank/dock*/launchers; do
+      [ -d "$dockdir" ] || continue
+      dn="$(basename "$(dirname "$dockdir")")"
+      timeout 2 env DBUS_SESSION_BUS_ADDRESS="$bus" dconf write "/net/launchpad/plank/docks/${dn}/lock-items" false 2>/dev/null || true
+    done
+  fi
   for dockdir in "$P"/.config/plank/dock*/launchers; do
     [ -d "$dockdir" ] || continue
     rm -f "$dockdir"/chrome.dockitem "$dockdir"/google-chrome.dockitem "$dockdir"/chromium.dockitem "$dockdir"/box-chrome.dockitem 2>/dev/null || true
-    for item in maxq-05-launcher maxq-13-camoufox maxq-40-ghostty maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings; do
+    # Drop unprefixed leftovers / rejected system-thunar pins so Plank cannot revive unsorted pins.
+    rm -f "$dockdir"/thunar.dockitem "$dockdir"/xfce4-terminal.dockitem "$dockdir"/maxq-thunar.dockitem 2>/dev/null || true
+    for item in maxq-05-launcher maxq-13-camoufox maxq-15-thunar maxq-40-ghostty maxq-41-terminal maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings; do
       [ -f "$K/$item.dockitem" ] && cp -f "$K/$item.dockitem" "$dockdir/$item.dockitem" 2>/dev/null || true
     done
     dn="$(basename "$(dirname "$dockdir")")"
@@ -470,7 +503,7 @@ sync_displays_docks(){
 }
 
 remove_shortcuts(){
-  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings,maxq-camoufox}.desktop
+  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings,maxq-camoufox,maxq-thunar}.desktop
   rm -f "$E"/{Ghostty,MaxQ-AI-Chat,ChatGPT,Grok,Claude,Discord,Slack,MaxQ-Settings,Camoufox}.desktop "$K"/maxq-*.dockitem
   rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty,camoufox}.png "$I/.maxq-owned"
   # Keep Chrome packages installed; only strip leftover chrome dock pins from managed docks.
