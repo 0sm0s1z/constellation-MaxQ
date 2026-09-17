@@ -70,3 +70,29 @@ Thin page: default AI chat, chat-link list, launcher keybind, Ghostty status (in
 `maxq prove` fails if Ghostty is not `$HOME/bin/ghostty` and not the default terminal helper, or if launcher + shortcut `.desktop` files are missing. Screenshots of dock, desktop icons, Super+Space launcher, and Ghostty window are the human proof.
 
 See PLAN 7, 36–40.
+
+## Camoufox primary browser (computer-use)
+
+Default headed browser for `maxq-open-site` when `MAXQ_BROWSER=auto` is **Camoufox** (all sites, not AI-only). Chrome (`box-chrome`) remains installed but is **not** pinned on Plank.
+
+- Force Chrome: `MAXQ_BROWSER=chrome`
+- Force Camoufox: `MAXQ_BROWSER=camoufox`
+- Missing Camoufox binary: AI/Turnstile sites **fail clearly**; non-AI may fall back to box-chrome.
+
+Plank order (dconf): launcher → **Camoufox** → **Thunar** → Ghostty → Terminal (xfce4-terminal) → ChatGPT → Grok → Claude → Discord → Slack → Settings. Core pins include file manager + browser + terminal; `install_docks` strips leftover `chrome.dockitem` from every `dockN/launchers/`.
+
+`http`/`https` mime defaults prefer `maxq-camoufox.desktop` via `mimeapps.list` (Ghostty stays the terminal helper).
+
+### Per-DISPLAY / onDesktopCreation
+
+Xvfb agent desks each have their own Plank `dockN`. Apply must run **per DISPLAY**:
+
+```bash
+DISPLAY=:<n> $HOME/bin/maxq-desktop apply
+# or cheap dock-only sync across all live dockN:
+$HOME/bin/maxq-desktop sync-displays
+```
+
+Wire sand/box **onDesktopCreation** (or MaxQ after `POST /desktops/ensure-viewers`) to one of the above so wallpaper, dark mode, Camoufox dock pin, and chrome.dockitem removal land on every new desk — not only the DISPLAY used during the last manual apply.
+
+See `/workspace` pack `BROWSER-PRIMARY.md` on operator boxes for live prove notes.

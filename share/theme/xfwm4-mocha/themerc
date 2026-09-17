@@ -1,0 +1,17 @@
+# MaxQ Catppuccin Mocha xfwm4 decorations (managed)
+active_text_color=#cdd6f4
+inactive_text_color=#6c7086
+button_offset=4
+button_spacing=2
+full_width_title=true
+title_horizontal_offset=4
+title_vertical_offset_active=1
+title_vertical_offset_inactive=1
+title_shadow_active=false
+title_shadow_inactive=false
+show_app_icon=false
+shadow_delta_height=2
+shadow_delta_width=0
+shadow_delta_x=0
+shadow_delta_y=-4
+shadow_opacity=40

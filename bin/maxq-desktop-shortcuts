@@ -8,7 +8,7 @@ PY
 }
 install_icons(){
   local n provider
-  for n in chatgpt grok claude discord slack ghostty settings; do
+  for n in chatgpt grok claude discord slack ghostty settings camoufox; do
     [ -s "$J/$n.png" ] && png_ok "$J/$n.png" || fail "missing repo PNG icon: $J/$n.png"
     cp -f "$J/$n.png" "$I/$n.png"
   done
@@ -21,10 +21,197 @@ PY
   cp -f "$I/$provider.png" "$I/ai.png"
   echo constellation-MaxQ > "$I/.maxq-owned"
 }
-install_site_opener(){ cat > "$OS" <<'EOF'
+install_camoufox_launcher(){ cat > "$B/maxq-camoufox" <<'MAXQ_CAMOUFOX_INSTALL_EOF'
 #!/usr/bin/env bash
+# MaxQ headed Camoufox launcher for computer-use (not Playwright).
+# Finds official Camoufox binary, forces sensible locale, separate profile.
+set -euo pipefail
+
+P="${MAXQ_HOME:-$HOME}"
+C="$P/.config/maxq"
+
+fail() { echo "maxq-camoufox: $*" >&2; exit 1; }
+
+find_camoufox_bin() {
+  if [ -n "${MAXQ_CAMOUFOX_BIN:-}" ]; then
+    [ -x "$MAXQ_CAMOUFOX_BIN" ] || fail "MAXQ_CAMOUFOX_BIN not executable: $MAXQ_CAMOUFOX_BIN"
+    printf '%s\n' "$MAXQ_CAMOUFOX_BIN"
+    return 0
+  fi
+  if [ -n "${CAMOUFOX_BIN:-}" ]; then
+    [ -x "$CAMOUFOX_BIN" ] || fail "CAMOUFOX_BIN not executable: $CAMOUFOX_BIN"
+    printf '%s\n' "$CAMOUFOX_BIN"
+    return 0
+  fi
+  local root="$P/.cache/camoufox/browsers/official" cand
+  if [ -d "$root" ]; then
+    cand="$(find "$root" -maxdepth 2 -type f -name camoufox-bin -executable 2>/dev/null | sort -r | head -n1 || true)"
+    if [ -n "$cand" ]; then printf '%s\n' "$cand"; return 0; fi
+  fi
+  if command -v camoufox-bin >/dev/null 2>&1; then command -v camoufox-bin; return 0; fi
+  if command -v camoufox >/dev/null 2>&1; then
+    cand="$(command -v camoufox)"
+    [ -x "$cand" ] && printf '%s\n' "$cand" && return 0
+  fi
+  fail "Camoufox binary missing. Install: python -m camoufox fetch (see $C/notes/camoufox-computer-use.md)"
+}
+
+# Map LANG/LC_MESSAGES → BCP-47. C/POSIX/empty → en-US.
+resolve_locale() {
+  local raw="${MAXQ_CAMOUFOX_LOCALE:-}"
+  if [ -z "$raw" ]; then
+    raw="${LC_MESSAGES:-}"
+    [ -n "$raw" ] || raw="${LANG:-}"
+  fi
+  raw="${raw%%.*}"
+  raw="${raw%%@*}"
+  case "$raw" in
+    ''|C|POSIX|c|posix) printf 'en-US\n'; return 0 ;;
+  esac
+  # Already BCP-47 with hyphen (en-US / en-GB)
+  if [[ "$raw" == *-* ]]; then
+    local lang="${raw%%-*}" reg="${raw#*-}"
+    lang="$(printf '%s' "$lang" | tr '[:upper:]' '[:lower:]')"
+    reg="$(printf '%s' "${reg%%-*}" | tr '[:lower:]' '[:upper:]')"
+    printf '%s-%s\n' "$lang" "$reg"
+    return 0
+  fi
+  # POSIX style en_US → en-US
+  if [[ "$raw" == *_* ]]; then
+    local lang="${raw%%_*}" reg="${raw#*_}"
+    lang="$(printf '%s' "$lang" | tr '[:upper:]' '[:lower:]')"
+    reg="$(printf '%s' "$reg" | tr '[:lower:]' '[:upper:]')"
+    printf '%s-%s\n' "$lang" "$reg"
+    return 0
+  fi
+  # language-only → en-US for en, else language + upper region guess
+  local lang
+  lang="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$lang" in
+    en) printf 'en-US\n' ;;
+    *) printf '%s-%s\n' "$lang" "$(printf '%s' "$lang" | tr '[:lower:]' '[:upper:]')" ;;
+  esac
+}
+
+profile_dir() {
+  local n="${DISPLAY#:}"
+  n="${n%%.*}"
+  [ -n "$n" ] || n=1
+  if [ -n "${MAXQ_CAMOUFOX_PROFILE:-}" ]; then
+    printf '%s\n' "$MAXQ_CAMOUFOX_PROFILE"
+    return 0
+  fi
+  if [ "$n" = "1" ]; then
+    printf '%s\n' "$C/camoufox-profile"
+  else
+    printf '%s\n' "$C/camoufox-profile-$n"
+  fi
+}
+
+ensure_profile() {
+  local prof="$1" locale="$2" lang region accept
+  mkdir -p "$prof"
+  lang="${locale%%-*}"
+  region="${locale#*-}"
+  [ "$region" != "$locale" ] || region="US"
+  accept="${locale},${lang};q=0.9"
+  cat > "$prof/user.js" <<PREFS
+// MaxQ Camoufox computer-use profile prefs (managed)
+user_pref("intl.locale.requested", "${locale}");
+user_pref("intl.accept_languages", "${locale}, ${lang}");
+user_pref("general.useragent.locale", "${locale}");
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("datareporting.policy.dataSubmissionEnabled", false);
+user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("browser.tabs.warnOnClose", false);
+PREFS
+  export CAMOU_CONFIG_1
+  CAMOU_CONFIG_1="$(python3 - "$locale" "$lang" "$region" "$accept" <<'PY'
+import json,sys
+locale,lang,region,accept=sys.argv[1:5]
+print(json.dumps({
+  "locale:language": lang,
+  "locale:region": region,
+  "navigator.language": locale,
+  "navigator.languages": [locale, lang],
+  "headers.Accept-Language": accept,
+}, separators=(",", ":")))
+PY
+)"
+}
+
+bin="$(find_camoufox_bin)"
+bindir="$(dirname "$bin")"
+locale="$(resolve_locale)"
+
+# System language env for the process. C/POSIX/empty → English (do not leave Spanish).
+_raw_lang="${LC_MESSAGES:-${LANG:-}}"
+_raw_lang="${_raw_lang%%.*}"; _raw_lang="${_raw_lang%%@*}"
+case "${_raw_lang}" in
+  ''|C|POSIX|c|posix)
+    export LANG="en_US.UTF-8"
+    export LC_MESSAGES="en_US.UTF-8"
+    export LANGUAGE="en_US:en"
+    # Avoid LC_ALL when en_US.UTF-8 is not generated on the box (setlocale noise).
+    # Camoufox UI language is enforced via CAMOU_CONFIG_1 + profile user.js.
+    ;;
+  *)
+    :
+    ;;
+esac
+unset _raw_lang
+
+prof="$(profile_dir)"
+case "$prof" in
+  *chrome-profile*) fail "refusing chrome-profile path for Camoufox: $prof" ;;
+esac
+ensure_profile "$prof" "$locale"
+
+if [ -z "${FONTCONFIG_PATH:-}" ]; then
+  if [ -f "$bindir/fontconfig/linux/fonts.conf" ]; then
+    export FONTCONFIG_PATH="$bindir/fontconfig/linux"
+  elif [ -f "$bindir/fontconfigs/linux/fonts.conf" ]; then
+    export FONTCONFIG_PATH="$bindir/fontconfigs/linux"
+  fi
+fi
+
+[ -n "${DISPLAY:-}" ] || fail "DISPLAY unset; headed computer-use requires an X display"
+
+url="${1:-}"
+shift || true
+
+if [ "${MAXQ_CAMOUFOX_DRY_RUN:-0}" = "1" ] || [ "${MAXQ_OPEN_SITE_DRY_RUN:-0}" = "1" ]; then
+  printf 'browser=camoufox\nbinary=%s\nprofile=%s\nlocale=%s\nCAMOU_CONFIG_1=%s\nurl=%s\nDISPLAY=%s\n' \
+    "$bin" "$prof" "$locale" "$CAMOU_CONFIG_1" "${url:-}" "$DISPLAY"
+  exit 0
+fi
+
+args=( --new-instance --profile "$prof" --no-remote )
+if [ -n "$url" ]; then
+  args+=( --new-window "$url" )
+fi
+args+=( "$@" )
+
+export DISPLAY
+export CAMOU_CONFIG_1
+[ -n "${FONTCONFIG_PATH:-}" ] && export FONTCONFIG_PATH
+exec "$bin" "${args[@]}"
+
+MAXQ_CAMOUFOX_INSTALL_EOF
+chmod +x "$B/maxq-camoufox"; }
+
+install_site_opener(){
+  install_camoufox_launcher
+  cat > "$OS" <<'MAXQ_OPEN_SITE_INSTALL_EOF'
+#!/usr/bin/env bash
+# MaxQ site opener: Camoufox is primary when MAXQ_BROWSER=auto; Chrome only on explicit request or missing Camoufox (AI never silent-falls back).
 set -euo pipefail
 P="${MAXQ_HOME:-$HOME}"; D="$P/.config/maxq/defaults.toml"; target="${1:-ai}"
+
+fail() { echo "maxq-open-site: $*" >&2; exit 1; }
+
 if [ "$target" = settings ]; then url=http://127.0.0.1:7432/; else
  url="$(python3 - "$D" "$target" <<'PY'
 import sys,tomllib
@@ -33,9 +220,112 @@ PY
 )"
 fi
 [ -n "$url" ] && [ -n "${DISPLAY:-}" ] || exit 3
-if [ -x "$P/bin/box-chrome" ]; then chrome="$P/bin/box-chrome"; elif command -v box-chrome >/dev/null 2>&1; then chrome="$(command -v box-chrome)"; else echo 'box-chrome missing; refusing generic Chrome/profile fallback' >&2; exit 4; fi
+
+# Resolve site key used for browser policy (ai → default_ai_chat)
+site_key="$(python3 - "$D" "$target" <<'PY'
+import sys,tomllib
+d=tomllib.load(open(sys.argv[1],'rb')); t=sys.argv[2]
+print(d.get('default_ai_chat','chatgpt') if t=='ai' else t)
+PY
+)"
+
+is_ai_site() {
+  case "$1" in chatgpt|grok|claude|ai) return 0;; *) return 1;; esac
+}
+
+no_gpu() {
+  [ ! -e /dev/dri ] && return 0
+  [ "${SAND_CHROME_LEGACY_GPU:-0}" = "1" ] && return 0
+  return 1
+}
+
+camoufox_bin_present() {
+  if [ -n "${MAXQ_CAMOUFOX_BIN:-}" ] && [ -x "${MAXQ_CAMOUFOX_BIN}" ]; then return 0; fi
+  if [ -n "${CAMOUFOX_BIN:-}" ] && [ -x "${CAMOUFOX_BIN}" ]; then return 0; fi
+  local root="$P/.cache/camoufox/browsers/official"
+  if [ -d "$root" ] && find "$root" -maxdepth 2 -type f -name camoufox-bin -executable 2>/dev/null | grep -q .; then
+    return 0
+  fi
+  command -v camoufox-bin >/dev/null 2>&1 && return 0
+  command -v camoufox >/dev/null 2>&1 && return 0
+  return 1
+}
+
+resolve_browser() {
+  local mode="${MAXQ_BROWSER:-auto}"
+  mode="$(printf '%s' "$mode" | tr '[:upper:]' '[:lower:]')"
+  case "$mode" in
+    chrome|chromium) printf 'chrome\n'; return 0 ;;
+    camoufox|firefox) printf 'camoufox\n'; return 0 ;;
+    auto|'')
+      # Camoufox is primary for all sites under auto (not AI-only).
+      printf 'camoufox\n'
+      ;;
+    *) fail "MAXQ_BROWSER must be auto|chrome|camoufox (got: $mode)" ;;
+  esac
+}
+
+browser="$(resolve_browser)"
+
+find_chrome() {
+  if [ -x "$P/bin/box-chrome" ]; then printf '%s\n' "$P/bin/box-chrome"; return 0; fi
+  if command -v box-chrome >/dev/null 2>&1; then command -v box-chrome; return 0; fi
+  fail 'box-chrome missing; refusing generic Chrome/profile fallback'
+}
+
+find_camoufox_launcher() {
+  if [ -x "$P/bin/maxq-camoufox" ]; then printf '%s\n' "$P/bin/maxq-camoufox"; return 0; fi
+  if command -v maxq-camoufox >/dev/null 2>&1; then command -v maxq-camoufox; return 0; fi
+  fail 'maxq-camoufox missing; run maxq-desktop apply or install $HOME/bin/maxq-camoufox'
+}
+
+# If auto selected Camoufox but binary is missing: AI fails hard; non-AI may fall back to chrome.
+_mode_raw="$(printf '%s' "${MAXQ_BROWSER:-auto}" | tr '[:upper:]' '[:lower:]')"
+if [ "$browser" = camoufox ] && { [ "$_mode_raw" = "auto" ] || [ -z "${MAXQ_BROWSER:-}" ]; }; then
+  if ! camoufox_bin_present; then
+    if is_ai_site "$site_key"; then
+      fail "Camoufox binary missing (required for Turnstile AI sites). Install: python -m camoufox fetch. Or set MAXQ_BROWSER=chrome to force Chrome."
+    fi
+    # non-AI optional chrome fallback only when binary missing
+    if [ -x "$P/bin/box-chrome" ] || command -v box-chrome >/dev/null 2>&1; then
+      browser=chrome
+    else
+      fail "Camoufox binary missing and box-chrome unavailable"
+    fi
+  fi
+fi
+unset _mode_raw
+
+if [ "${MAXQ_OPEN_SITE_DRY_RUN:-0}" = "1" ]; then
+  if [ "$browser" = camoufox ]; then
+    launcher="$(find_camoufox_launcher)"
+    printf 'browser=camoufox\nlauncher=%s\nsite=%s\nurl=%s\nreason=' "$launcher" "$site_key" "$url"
+    case "$(printf '%s' "${MAXQ_BROWSER:-auto}" | tr '[:upper:]' '[:lower:]')" in
+      camoufox|firefox) printf 'MAXQ_BROWSER=%s\n' "${MAXQ_BROWSER}" ;;
+      *)
+        if no_gpu; then printf 'camoufox-primary-no-gpu\n'; else printf 'camoufox-primary\n'; fi
+        ;;
+    esac
+  else
+    chrome="$(find_chrome)"
+    printf 'browser=chrome\nlauncher=%s\nsite=%s\nurl=%s\nreason=' "$chrome" "$site_key" "$url"
+    case "$(printf '%s' "${MAXQ_BROWSER:-auto}" | tr '[:upper:]' '[:lower:]')" in
+      chrome|chromium) printf 'MAXQ_BROWSER=%s\n' "${MAXQ_BROWSER}" ;;
+      *) printf 'camoufox-missing-fallback\n' ;;
+    esac
+  fi
+  exit 0
+fi
+
+if [ "$browser" = camoufox ]; then
+  launcher="$(find_camoufox_launcher)"
+  # Explicit camoufox mode: still fail clearly if binary missing (launcher fails).
+  exec env DISPLAY="$DISPLAY" MAXQ_HOME="$P" "$launcher" "$url"
+fi
+
+chrome="$(find_chrome)"
 exec env DISPLAY="$DISPLAY" "$chrome" "$url"
-EOF
+MAXQ_OPEN_SITE_INSTALL_EOF
 chmod +x "$OS"; }
 app(){ local id="$1" name="$2" ic="$3" target="$4"; cat > "$A/$id.desktop" <<EOF
 [Desktop Entry]
@@ -48,51 +338,183 @@ Categories=Network;Chat;
 X-MaxQ-Managed=true
 EOF
 }
-managed_desktop_copy(){
-  local src="$1" dest="$2" key backup marker
-  key="$(basename "$dest")"
-  backup="$S/shortcut-prev/$key"
-  marker="$S/shortcut-owned/$key"
-  mkdir -p "$S/shortcut-prev" "$S/shortcut-owned"
-  if [ -e "$dest" ] && [ ! -e "$marker" ] && [ ! -e "$backup" ]; then
-    cp -a "$dest" "$backup"
-  fi
-  cp -f "$src" "$dest"
-  : > "$marker"
-}
-restore_desktop_copy(){
-  local dest="$1" key backup marker
-  key="$(basename "$dest")"
-  backup="$S/shortcut-prev/$key"
-  marker="$S/shortcut-owned/$key"
-  [ -e "$marker" ] || return 0
-  rm -f "$dest"
-  if [ -e "$backup" ]; then mv -f "$backup" "$dest"; fi
-  rm -f "$marker"
-}
 install_apps(){
   app maxq-ai 'MaxQ AI Chat' ai ai; app maxq-chatgpt ChatGPT chatgpt chatgpt; app maxq-grok Grok grok grok; app maxq-claude Claude claude claude; app maxq-discord Discord discord discord; app maxq-slack Slack slack slack; app maxq-settings 'MaxQ Settings' settings settings
-  managed_desktop_copy "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"
-  managed_desktop_copy "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"
-  managed_desktop_copy "$A/maxq-grok.desktop" "$E/Grok.desktop"
-  managed_desktop_copy "$A/maxq-claude.desktop" "$E/Claude.desktop"
-  managed_desktop_copy "$A/maxq-discord.desktop" "$E/Discord.desktop"
-  managed_desktop_copy "$A/maxq-slack.desktop" "$E/Slack.desktop"
-  managed_desktop_copy "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
-  chmod +x "$E/Ghostty.desktop" "$E/MaxQ-AI-Chat.desktop" "$E/ChatGPT.desktop" "$E/Grok.desktop" "$E/Claude.desktop" "$E/Discord.desktop" "$E/Slack.desktop" "$E/MaxQ-Settings.desktop"
+  # Dedicated Camoufox launcher: default AI chat URL through Camoufox (not Chrome).
+  cat > "$A/maxq-camoufox.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Camoufox
+Exec=env MAXQ_BROWSER=camoufox $OS ai
+Icon=$I/camoufox.png
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/http;x-scheme-handler/https;
+X-MaxQ-Managed=true
+EOF
+  # Prefer Camoufox as default http(s) handler without touching Ghostty TerminalEmulator.
+  # xdg-settings fails when $BROWSER is set (common on this box → box-chrome); write mimeapps.list instead.
+  python3 - "$P/.config/mimeapps.list" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1]); p.parent.mkdir(parents=True, exist_ok=True)
+lines=p.read_text(encoding="utf-8").splitlines() if p.exists() else []
+out=[]; section=None; seen_default=False; wrote_http=False; wrote_https=False
+for line in lines:
+    if line.startswith("[") and line.endswith("]"):
+        section=line
+        if section=="[Default Applications]":
+            seen_default=True
+        out.append(line); continue
+    if section=="[Default Applications]" and (line.startswith("x-scheme-handler/http=") or line.startswith("x-scheme-handler/https=")):
+        continue
+    out.append(line)
+if not seen_default:
+    if out and out[-1].strip(): out.append("")
+    out.append("[Default Applications]")
+# append after Default Applications header
+final=[]; section=None; injected=False
+for line in out:
+    final.append(line)
+    if line=="[Default Applications]" and not injected:
+        final.append("x-scheme-handler/http=maxq-camoufox.desktop")
+        final.append("x-scheme-handler/https=maxq-camoufox.desktop")
+        injected=True
+if not injected:
+    final += ["", "[Default Applications]", "x-scheme-handler/http=maxq-camoufox.desktop", "x-scheme-handler/https=maxq-camoufox.desktop"]
+p.write_text("\n".join(final).rstrip()+"\n", encoding="utf-8")
+PY
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$A" 2>/dev/null || true
+  fi
+  # Best-effort xdg-settings when $BROWSER unset
+  if [ -z "${BROWSER:-}" ] && command -v xdg-settings >/dev/null 2>&1; then
+    xdg-settings set default-web-browser maxq-camoufox.desktop 2>/dev/null || true
+  fi
+  cp -f "$A/maxq-ai.desktop" "$E/MaxQ-AI-Chat.desktop"; cp -f "$A/maxq-chatgpt.desktop" "$E/ChatGPT.desktop"; cp -f "$A/maxq-grok.desktop" "$E/Grok.desktop"; cp -f "$A/maxq-claude.desktop" "$E/Claude.desktop"; cp -f "$A/maxq-discord.desktop" "$E/Discord.desktop"; cp -f "$A/maxq-slack.desktop" "$E/Slack.desktop"; cp -f "$A/maxq-settings.desktop" "$E/MaxQ-Settings.desktop"
+  cp -f "$A/maxq-camoufox.desktop" "$E/Camoufox.desktop"
+  chmod +x "$E/Ghostty.desktop" "$E/MaxQ-AI-Chat.desktop" "$E/ChatGPT.desktop" "$E/Grok.desktop" "$E/Claude.desktop" "$E/Discord.desktop" "$E/Slack.desktop" "$E/MaxQ-Settings.desktop" "$E/Camoufox.desktop"
 }
 dock(){ printf '[PlankDockItemPreferences]\nLauncher=file://%s\n' "$2" > "$K/$1.dockitem"; }
-install_docks(){ dock maxq-00-ai "$A/maxq-ai.desktop"; dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"; dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"; dock maxq-40-ghostty "$GD"; }
+# Resolve DBUS_SESSION_BUS_ADDRESS for a given DISPLAY by inspecting that display's plank (or any) process.
+plank_dbus_for_display() {
+  local disp="$1" pid environ d
+  for pid in $(pgrep -f 'plank --name' 2>/dev/null || true); do
+    environ="/proc/$pid/environ"
+    [ -r "$environ" ] || continue
+    d="$(tr '\0' '\n' < "$environ" 2>/dev/null | awk -F= '/^DISPLAY=/{print $2; exit}')"
+    [ "$d" = "$disp" ] || [ "$d" = "${disp%.0}" ] || continue
+    tr '\0' '\n' < "$environ" 2>/dev/null | awk -F= '/^DBUS_SESSION_BUS_ADDRESS=/{print substr($0,index($0,"=")+1); exit}'
+    return 0
+  done
+  return 1
+}
+
+any_plank_dbus() {
+  local pid environ addr
+  for pid in $(pgrep -f 'plank --name' 2>/dev/null || true); do
+    environ="/proc/$pid/environ"
+    [ -r "$environ" ] || continue
+    addr="$(tr '\0' '\n' < "$environ" 2>/dev/null | awk -F= '/^DBUS_SESSION_BUS_ADDRESS=/{print substr($0,index($0,"=")+1); exit}')"
+    [ -n "$addr" ] || continue
+    printf '%s\n' "$addr"
+    return 0
+  done
+  [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && { printf '%s\n' "$DBUS_SESSION_BUS_ADDRESS"; return 0; }
+  return 1
+}
+
+dconf_write_dock() {
+  local dn="$1" items="$2" bus="$3"
+  [ -n "$bus" ] || return 0
+  timeout 2 env DBUS_SESSION_BUS_ADDRESS="$bus" dconf write "/net/launchpad/plank/docks/${dn}/dock-items" "$items" 2>/dev/null || true
+  timeout 2 env DBUS_SESSION_BUS_ADDRESS="$bus" dconf write "/net/launchpad/plank/docks/${dn}/lock-items" true 2>/dev/null || true
+}
+
+maxq_dock_items_list() {
+  # Core: launcher, Camoufox (browser), Thunar (files), Ghostty (MaxQ terminal), xfce4-terminal (familiar Terminal).
+  # Then AI chats + Discord/Slack + Settings. Chrome stays installed but never pinned.
+  printf "%s" "['maxq-05-launcher.dockitem', 'maxq-13-camoufox.dockitem', 'maxq-15-thunar.dockitem', 'maxq-40-ghostty.dockitem', 'maxq-41-terminal.dockitem', 'maxq-10-chatgpt.dockitem', 'maxq-11-grok.dockitem', 'maxq-12-claude.dockitem', 'maxq-20-discord.dockitem', 'maxq-21-slack.dockitem', 'maxq-30-settings.dockitem']"
+}
+
+install_docks(){
+  # Camoufox is primary browser; Thunar + Terminal stay pinned (Matthew tester feedback).
+  # Chrome stays installed but off Plank.
+  # NOTE: Plank lock-items deletes pins that point at /usr/share/applications/thunar.desktop
+  # (rejects/unpins within ~50ms). Always use a MaxQ-owned wrapper desktop instead.
+  local terminal_desktop
+  # Prefer absolute hicolor icon so Plank always paints a visible Files pin.
+  _thunar_icon="/usr/share/icons/hicolor/48x48/apps/org.xfce.thunar.png"
+  [ -s "$_thunar_icon" ] || _thunar_icon="org.xfce.thunar"
+  cat > "$A/maxq-thunar.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=MaxQ file manager (Thunar)
+Exec=thunar %F
+Icon=$_thunar_icon
+Terminal=false
+StartupNotify=true
+StartupWMClass=Thunar
+Categories=System;FileTools;FileManager;Core;
+MimeType=inode/directory;
+X-MaxQ-Managed=true
+EOF
+  unset _thunar_icon
+  terminal_desktop="/usr/share/applications/xfce4-terminal.desktop"
+  [ -f "$terminal_desktop" ] || terminal_desktop="$GD"
+  dock maxq-05-launcher "$A/maxq-launcher.desktop"
+  dock maxq-13-camoufox "$A/maxq-camoufox.desktop"
+  dock maxq-15-thunar "$A/maxq-thunar.desktop"
+  dock maxq-40-ghostty "$GD"
+  dock maxq-41-terminal "$terminal_desktop"
+  dock maxq-10-chatgpt "$A/maxq-chatgpt.desktop"; dock maxq-11-grok "$A/maxq-grok.desktop"; dock maxq-12-claude "$A/maxq-claude.desktop"
+  dock maxq-20-discord "$A/maxq-discord.desktop"; dock maxq-21-slack "$A/maxq-slack.desktop"; dock maxq-30-settings "$A/maxq-settings.desktop"
+  local items dockdir dn item bus prefer n
+  items="$(maxq_dock_items_list)"
+  bus="$(any_plank_dbus 2>/dev/null || true)"
+  if [ -n "${DISPLAY:-}" ]; then
+    prefer="$(plank_dbus_for_display "$DISPLAY" 2>/dev/null || true)"
+    [ -n "$prefer" ] && bus="$prefer"
+  fi
+  # Unlock before rewriting pins so Plank does not race-delete new dockitems.
+  if [ -n "$bus" ]; then
+    for dockdir in "$P"/.config/plank/dock*/launchers; do
+      [ -d "$dockdir" ] || continue
+      dn="$(basename "$(dirname "$dockdir")")"
+      timeout 2 env DBUS_SESSION_BUS_ADDRESS="$bus" dconf write "/net/launchpad/plank/docks/${dn}/lock-items" false 2>/dev/null || true
+    done
+  fi
+  for dockdir in "$P"/.config/plank/dock*/launchers; do
+    [ -d "$dockdir" ] || continue
+    rm -f "$dockdir"/chrome.dockitem "$dockdir"/google-chrome.dockitem "$dockdir"/chromium.dockitem "$dockdir"/box-chrome.dockitem 2>/dev/null || true
+    # Drop unprefixed leftovers / rejected system-thunar pins so Plank cannot revive unsorted pins.
+    rm -f "$dockdir"/thunar.dockitem "$dockdir"/xfce4-terminal.dockitem "$dockdir"/maxq-thunar.dockitem 2>/dev/null || true
+    for item in maxq-05-launcher maxq-13-camoufox maxq-15-thunar maxq-40-ghostty maxq-41-terminal maxq-10-chatgpt maxq-11-grok maxq-12-claude maxq-20-discord maxq-21-slack maxq-30-settings; do
+      [ -f "$K/$item.dockitem" ] && cp -f "$K/$item.dockitem" "$dockdir/$item.dockitem" 2>/dev/null || true
+    done
+    dn="$(basename "$(dirname "$dockdir")")"
+    dconf_write_dock "$dn" "$items" "$bus"
+  done
+  if [ -n "${DISPLAY:-}" ]; then
+    n="${DISPLAY#:}"; n="${n%%.*}"; [ -n "$n" ] || n=1
+    dconf_write_dock "dock${n}" "$items" "$bus"
+  fi
+}
+
+sync_displays_docks(){
+  dirs
+  install_docks
+  echo "synced-docks $(maxq_dock_items_list)"
+}
+
 remove_shortcuts(){
-  restore_desktop_copy "$E/MaxQ-AI-Chat.desktop"
-  restore_desktop_copy "$E/ChatGPT.desktop"
-  restore_desktop_copy "$E/Grok.desktop"
-  restore_desktop_copy "$E/Claude.desktop"
-  restore_desktop_copy "$E/Discord.desktop"
-  restore_desktop_copy "$E/Slack.desktop"
-  restore_desktop_copy "$E/MaxQ-Settings.desktop"
-  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings}.desktop
-  rm -f "$K"/maxq-*.dockitem
-  rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty}.png "$I/.maxq-owned"
-  rmdir "$S/shortcut-prev" "$S/shortcut-owned" 2>/dev/null || true
+  rm -f "$A"/{ghostty,maxq-ai,maxq-chatgpt,maxq-grok,maxq-claude,maxq-discord,maxq-slack,maxq-settings,maxq-camoufox,maxq-thunar}.desktop
+  rm -f "$E"/{Ghostty,MaxQ-AI-Chat,ChatGPT,Grok,Claude,Discord,Slack,MaxQ-Settings,Camoufox}.desktop "$K"/maxq-*.dockitem
+  rm -f "$I"/{ai,chatgpt,grok,claude,discord,slack,settings,ghostty,camoufox}.png "$I/.maxq-owned"
+  # Keep Chrome packages installed; only strip leftover chrome dock pins from managed docks.
+  local dockdir
+  for dockdir in "$P"/.config/plank/dock*/launchers; do
+    [ -d "$dockdir" ] || continue
+    rm -f "$dockdir"/chrome.dockitem "$dockdir"/google-chrome.dockitem "$dockdir"/chromium.dockitem "$dockdir"/box-chrome.dockitem 2>/dev/null || true
+  done
 }

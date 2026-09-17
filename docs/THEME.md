@@ -5,7 +5,8 @@ Default in `maxq.toml` is `theme = "mocha"`. Latte is reserved as a future flag 
 ## What apply installs (persist under `$HOME`)
 
 - Wallpaper: `$HOME/.local/share/backgrounds/maxq/mocha.png`, applied live on the current DISPLAY through `hsetroot` or XFCE backdrop state.
-- GTK: `$HOME/.local/share/themes/MaxQ-Catppuccin-Mocha` (official catppuccin/gtk Mocha Mauve, renamed), including the `xfwm4` window-manager theme.
+- GTK: `$HOME/.local/share/themes/MaxQ-Catppuccin-Mocha` (official catppuccin/gtk Mocha Mauve, renamed).
+- xfwm4 decorations: official catppuccin/gtk ships only `xfwm4/themerc` (no titlebar pixmaps), which yields zero frame extents / missing title bars. MaxQ overlays `$HOME/.config/maxq/theme/src/xfwm4-mocha/` PNGs into that theme so SSD title bars render. Thunar default geometry is seeded to ~900×600 under `$HOME` xfconf XML.
 - Cursors: `$HOME/.local/share/icons/MaxQ-Catppuccin-Mocha` (official catppuccin/cursors Mocha Mauve, renamed).
 - GTK settings: `$HOME/.config/gtk-3.0/settings.ini` and `gtk-4.0/settings.ini` with `gtk-application-prefer-dark-theme=1` in the MaxQ-owned block.
 - XFCE dark defaults persisted in `$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/` and applied live when DISPLAY is set:
