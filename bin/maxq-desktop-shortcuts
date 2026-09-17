@@ -442,19 +442,24 @@ install_docks(){
   # NOTE: Plank lock-items deletes pins that point at /usr/share/applications/thunar.desktop
   # (rejects/unpins within ~50ms). Always use a MaxQ-owned wrapper desktop instead.
   local terminal_desktop
+  # Prefer absolute hicolor icon so Plank always paints a visible Files pin.
+  _thunar_icon="/usr/share/icons/hicolor/48x48/apps/org.xfce.thunar.png"
+  [ -s "$_thunar_icon" ] || _thunar_icon="org.xfce.thunar"
   cat > "$A/maxq-thunar.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Files
 Comment=MaxQ file manager (Thunar)
 Exec=thunar %F
-Icon=org.xfce.thunar
+Icon=$_thunar_icon
 Terminal=false
 StartupNotify=true
+StartupWMClass=Thunar
 Categories=System;FileTools;FileManager;Core;
 MimeType=inode/directory;
 X-MaxQ-Managed=true
 EOF
+  unset _thunar_icon
   terminal_desktop="/usr/share/applications/xfce4-terminal.desktop"
   [ -f "$terminal_desktop" ] || terminal_desktop="$GD"
   dock maxq-05-launcher "$A/maxq-launcher.desktop"
