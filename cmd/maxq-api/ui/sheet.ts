@@ -11,6 +11,8 @@ type HAConnection = { base_url: string; token_configured: boolean; configured: b
 type HAAllowlist = { entities: HAEntity[]; source: string; semantics: "curated-allowlist-not-full-dump"; bot_visible_only: boolean };
 type EntitlementEntry = { action: "allow" | "deny"; kind: string; value: string; label?: string; source: string };
 type Entitlements = { entries: EntitlementEntry[]; source: string; semantics: "merged-allow-deny-with-source-labels" };
+type VaultMeta = { id: string; label: string; purpose: string; created_at: string; expires_at: string };
+type VaultList = { credentials: VaultMeta[]; semantics: string; note?: string };
 
 const $ = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -36,6 +38,8 @@ async function getHAAllowlist(): Promise<HAAllowlist> { return requestJSON<HAAll
 async function getEntitlements(): Promise<Entitlements> { return requestJSON<Entitlements>("/entitlements"); }
 async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
 async function getDesktops(): Promise<{ desktops: Desktop[]; errors: { connection_name: string; error: string }[] }> { return requestJSON("/desktops"); }
+async function getVault(): Promise<VaultList> { return requestJSON("/vault/credentials"); }
+async function deleteJSON(path: string): Promise<void> { await requestJSON(path, { method: "DELETE" }); }
 async function postJSON(path: string, body: unknown): Promise<unknown> {
   return requestJSON(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
 }
@@ -406,8 +410,36 @@ async function act(fn: () => Promise<unknown>, opts?: { network?: boolean }): Pr
     busy(false);
   }
 }
+function renderVault(list: VaultList): void {
+  const pending = list.credentials || [];
+  $("st-vault").textContent = pending.length
+    ? pending.length + " pending · bot claims via POST /vault/credentials/{id}/claim"
+    : "Empty · paste above for an ephemeral bot handoff";
+  const ul = $("vault-pending");
+  ul.replaceChildren();
+  pending.forEach((c) => {
+    const item = document.createElement("li"); item.className = "connection";
+    const text = document.createElement("div");
+    const strong = document.createElement("strong"); strong.textContent = c.label; text.append(strong);
+    const detail = document.createElement("small");
+    detail.textContent = c.purpose + " · expires " + c.expires_at + " · id " + c.id;
+    text.append(detail);
+    const actions = document.createElement("div"); actions.className = "row";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "remove"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => act(async () => { await deleteJSON("/vault/credentials/" + encodeURIComponent(c.id)); }));
+    actions.append(cancel);
+    item.append(text, actions);
+    ul.append(item);
+  });
+}
+
+function renderVaultUnavailable(message: string): void {
+  $("st-vault").textContent = "Unavailable · " + message;
+  $("vault-pending").replaceChildren();
+}
+
 async function refresh(): Promise<void> {
-  const [status, policy, haConn, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
+  const [status, policy, haConn, ha, entitlements, connections, desktops, vault] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops(), getVault()]);
   const errors: string[] = [];
 
   if (status.status === "fulfilled") renderStatus(status.value);
@@ -429,6 +461,9 @@ async function refresh(): Promise<void> {
 
   if (desktops.status === "fulfilled") renderDesktops(desktops.value.desktops, desktops.value.errors || []);
   else { const message = errorText(desktops.reason); renderDesktops([], [{ connection_name: "Desktops", error: message }]); errors.push("desktops: " + message); }
+
+  if (vault.status === "fulfilled") renderVault(vault.value);
+  else { const message = errorText(vault.reason); renderVaultUnavailable(message); errors.push("vault: " + message); }
 
   showMsg(errors.join(" · "));
 }
@@ -493,6 +528,18 @@ window.addEventListener("DOMContentLoaded", () => {
     const baseURL = $("connection-url") as HTMLInputElement;
     const auth = $("connection-auth") as HTMLInputElement;
     act(async () => { await postJSON("/connections", { name: name.value, base_url: baseURL.value, auth: auth.value }); name.value = ""; baseURL.value = ""; auth.value = ""; });
+  });
+  $("vault-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const label = ($("vault-label") as HTMLInputElement).value;
+    const purpose = ($("vault-purpose") as HTMLInputElement).value;
+    const secret = ($("vault-secret") as HTMLInputElement).value;
+    act(async () => {
+      await postJSON("/vault/credentials", { label, purpose, secret });
+      ($("vault-label") as HTMLInputElement).value = "";
+      ($("vault-purpose") as HTMLInputElement).value = "";
+      ($("vault-secret") as HTMLInputElement).value = "";
+    });
   });
   busy(false);
   refresh().catch((e) => showMsg(errorText(e)));

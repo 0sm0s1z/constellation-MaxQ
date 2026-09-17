@@ -33,9 +33,18 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | DELETE | `/connections/{id}` | Remove a saved remote API |
 | GET | `/desktops` | Returns local X11 desktops and concurrently aggregates `GET /desktops` from every connection |
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
-| GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, entitlements, connections, aggregate desktops, proxy) |
+| GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, entitlements, vault handoff, connections, aggregate desktops, proxy) |
+| GET | `/vault/credentials` | List ephemeral pending credentials (metadata only — never secrets) |
+| POST | `/vault/credentials` | Paste JSON `{label,purpose,secret,ttl_sec?}` → metadata; in-memory TTL default 10m |
+| POST | `/vault/credentials/{id}/claim` | One-shot claim returns `{secret,...}` then deletes; 404 if missing/expired |
+| DELETE | `/vault/credentials/{id}` | Cancel a pending handoff |
 
-Vault, OAuth, and skills are placeholders for later pages.
+OAuth and skills remain placeholders for later pages.
+
+## Vault handoff (Phase 1 / #118)
+
+Local sheet paste → ephemeral in-memory store → bot one-shot claim. Loopback only (`127.0.0.1:7432`). Secrets never hit disk, never appear in GET list responses, and leave memory on claim, cancel, or TTL. Not a 1Password bridge (Phase 2 later when platform-connected).
+
 
 ## Approval policy / host Auto-review
 
