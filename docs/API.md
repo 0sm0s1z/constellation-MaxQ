@@ -17,6 +17,10 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/apply` | runs `maxq apply` |
 | POST | `/revert` | runs `maxq revert` (API exits) |
 | POST | `/proxy` | JSON `{enabled, upstream, iface}` — GOST process only |
+| POST | `/vault/credentials` | JSON `{label, purpose, secret}`; returns metadata only and keeps the secret in memory |
+| GET | `/vault/credentials` | Lists pending credential metadata only; never returns secrets |
+| POST | `/vault/credentials/{id}/claim` | One-shot bot claim; returns the secret and deletes the entry |
+| DELETE | `/vault/credentials/{id}` | Cancels a pending credential |
 | GET | `/policy` | Reads MaxQ approval policy and network settings; missing approval policy is created as Approvals Off / always-allow, missing network config reports Tailscale mode |
 | POST | `/policy` | Approval JSON `{enabled}`, network settings JSON `{network:{mode, login_server, auth_key?, clear_auth_key?}}`, or leave JSON `{network:{action:"leave"}}`; exactly one settings group per request |
 | POST | `/policy/decision` | JSON `{action, channel}`; authoritative decision for whether host Auto-review may run |
@@ -35,7 +39,15 @@ Loopback-only HTTP API plus a thin Catppuccin Mocha settings sheet. Not an admin
 | POST | `/desktops/action` | JSON `{connection_id, desktop_id, action, payload?}`; routes to the owning API |
 | GET | `/` | thin settings sheet (status, approvals, network, HA allowlist, entitlements, connections, aggregate desktops, proxy) |
 
-Vault, OAuth, and skills are placeholders for later pages.
+OAuth and skills remain placeholders for later phases; the local sheet now includes the ephemeral credential handoff described below.
+
+## Ephemeral credential handoff
+
+The loopback-only vault is a deliberately small Phase 1 handoff for a bot that needs a credential during login. `POST /vault/credentials` accepts `{ "label": "GitHub", "purpose": "login", "secret": "..." }`. The secret is kept only in the API process memory, with a 10-minute TTL by default; it is never persisted or logged. The create response contains `{id, label, purpose, created_at, expires_at}` and omits the secret.
+
+`GET /vault/credentials` returns pending metadata only. A bot claims one with `POST /vault/credentials/{id}/claim`; the response includes the secret plus metadata, and the entry is deleted atomically so a second claim returns `404`. Expired entries are purged on vault operations. `DELETE /vault/credentials/{id}` cancels an entry. This is not a password manager or 1Password integration; Phase 2 is intentionally out of scope.
+
+The sheet's **Credential handoff** card submits a label, purpose/what-for, and password field, then renders pending label/purpose/expiry metadata with the bot claim path and a Cancel action.
 
 ## Approval policy / host Auto-review
 

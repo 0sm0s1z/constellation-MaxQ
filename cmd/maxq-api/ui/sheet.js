@@ -34,6 +34,9 @@ async function getHAAllowlist() {
 async function getEntitlements() {
   return requestJSON("/entitlements");
 }
+async function getVaultCredentials() {
+  return requestJSON("/vault/credentials");
+}
 async function getConnections() {
   return requestJSON("/connections");
 }
@@ -69,6 +72,7 @@ let policyAvailable = false;
 let networkAvailable = false;
 let haAvailable = false;
 let entitlementsAvailable = false;
+let vaultAvailable = false;
 let busyState = false;
 let haEntities = [];
 let operatorEntitlements = [];
@@ -351,6 +355,54 @@ function addEntitlementFromInputs() {
   showMsg("");
   renderEntitlementRows();
 }
+function vaultTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function renderVault(credentials) {
+  vaultAvailable = true;
+  const list = $("vault-credentials");
+  list.replaceChildren();
+  if (!credentials.length) {
+    $("vault-status").textContent = "No pending credentials.";
+  } else {
+    $("vault-status").textContent = credentials.length + " pending credential" + (credentials.length === 1 ? "" : "s") + " \xB7 each claim is one-shot";
+    credentials.forEach((credential) => {
+      const item = document.createElement("li");
+      item.className = "connection";
+      const text = document.createElement("div");
+      const label = document.createElement("strong");
+      label.textContent = credential.label;
+      text.append(label);
+      const detail = document.createElement("small");
+      detail.textContent = credential.purpose + " \xB7 expires " + vaultTime(credential.expires_at) + " \xB7 bot claim: POST /vault/credentials/" + credential.id + "/claim";
+      text.append(detail);
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "remove";
+      cancel.textContent = "Cancel";
+      cancel.addEventListener("click", () => act(() => requestJSON("/vault/credentials/" + encodeURIComponent(credential.id), { method: "DELETE" })));
+      item.append(text, cancel);
+      list.append(item);
+    });
+  }
+  ["vault-label", "vault-purpose", "vault-secret", "btn-vault-submit"].forEach((id) => {
+    $(id).disabled = busyState;
+  });
+}
+function renderVaultUnavailable(message) {
+  vaultAvailable = false;
+  $("vault-status").textContent = "Unavailable \xB7 " + message;
+  const list = $("vault-credentials");
+  list.replaceChildren();
+  const item = document.createElement("li");
+  item.className = "msg";
+  item.textContent = "Unavailable \xB7 " + message;
+  list.append(item);
+  ["vault-label", "vault-purpose", "vault-secret", "btn-vault-submit"].forEach((id) => {
+    $(id).disabled = true;
+  });
+}
 function renderConnections(connections) {
   const list = $("connections");
   list.replaceChildren();
@@ -455,7 +507,7 @@ function showMsg(text) {
 }
 function busy(on) {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => {
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save", "btn-vault-submit"].forEach((id) => {
     $(id).disabled = on;
   });
   $("approvals-enabled").disabled = on || !policyAvailable;
@@ -468,6 +520,9 @@ function busy(on) {
   $("entitlement-kind").disabled = on || !entitlementsAvailable;
   $("entitlement-value").disabled = on || !entitlementsAvailable;
   $("entitlement-label").disabled = on || !entitlementsAvailable;
+  $("vault-label").disabled = on || !vaultAvailable;
+  $("vault-purpose").disabled = on || !vaultAvailable;
+  $("vault-secret").disabled = on || !vaultAvailable;
 }
 async function act(fn, opts) {
   showMsg("");
@@ -490,7 +545,7 @@ async function act(fn, opts) {
   }
 }
 async function refresh() {
-  const [status, policy, haConn, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
+  const [status, policy, haConn, ha, entitlements, vault, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getVaultCredentials(), getConnections(), getDesktops()]);
   const errors = [];
   if (status.status === "fulfilled") renderStatus(status.value);
   else {
@@ -523,6 +578,12 @@ async function refresh() {
     const message = errorText(entitlements.reason);
     renderEntitlementsUnavailable(message);
     errors.push("entitlements: " + message);
+  }
+  if (vault.status === "fulfilled") renderVault(vault.value.credentials || []);
+  else {
+    const message = errorText(vault.reason);
+    renderVaultUnavailable(message);
+    errors.push("vault: " + message);
   }
   if (connections.status === "fulfilled") renderConnections(connections.value.connections);
   else {
@@ -592,6 +653,16 @@ window.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
     act(() => putJSON("/entitlements", { entries: operatorEntitlements }));
   });
+  $("vault-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const label = $("vault-label");
+    const purpose = $("vault-purpose");
+    const secret = $("vault-secret");
+    act(async () => {
+      await postJSON("/vault/credentials", { label: label.value, purpose: purpose.value, secret: secret.value });
+      secret.value = "";
+    });
+  });
   $("connection-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const name = $("connection-name");
@@ -607,4 +678,3 @@ window.addEventListener("DOMContentLoaded", () => {
   busy(false);
   refresh().catch((e) => showMsg(errorText(e)));
 });
-

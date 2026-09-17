@@ -160,8 +160,19 @@
         <button type="button" id="btn-proxy-off">Off</button>
       </div>
     </section>
+    <section class="card" id="vault-card">
+      <h2>credential handoff</h2>
+      <p class="hint">Paste one credential for a bot to claim during login. It stays in memory only, expires in 10 minutes, and is deleted after one claim.</p>
+      <form id="vault-form" class="connection-form">
+        <label>Label <input id="vault-label" required maxlength="200" placeholder="GitHub account"></label>
+        <label>Purpose / what-for <input id="vault-purpose" required maxlength="500" placeholder="login to the repo"></label>
+        <label>Credential <input id="vault-secret" required type="password" maxlength="10000" autocomplete="off" placeholder="Paste credential"></label>
+        <button id="btn-vault-submit" type="submit">Submit for bot</button>
+      </form>
+      <p id="vault-status" class="muted">Loading pending credentials…</p>
+      <ul id="vault-credentials" class="connections" aria-live="polite"></ul>
+    </section>
     <nav class="soon">
-      <span title="later">vault</span>
       <span title="later">oauth</span>
       <span title="later">skills</span>
     </nav>

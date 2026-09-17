@@ -102,6 +102,8 @@ type server struct {
 	localInventory func() ([]map[string]any, error)
 	mu             sync.Mutex
 	connMu         sync.Mutex
+	vault          map[string]vaultCredential
+	vaultTTL       time.Duration
 }
 
 func main() {
@@ -211,6 +213,10 @@ func (s *server) serve() error {
 	mux.HandleFunc("POST /apply", s.handleApply)
 	mux.HandleFunc("POST /revert", s.handleRevert)
 	mux.HandleFunc("POST /proxy", s.handleProxy)
+	mux.HandleFunc("GET /vault/credentials", s.handleVaultCredentials)
+	mux.HandleFunc("POST /vault/credentials", s.handleVaultCredentials)
+	mux.HandleFunc("POST /vault/credentials/{id}/claim", s.handleVaultClaim)
+	mux.HandleFunc("DELETE /vault/credentials/{id}", s.handleVaultDelete)
 	mux.HandleFunc("GET /policy", s.handlePolicy)
 	mux.HandleFunc("POST /policy", s.handlePolicy)
 	mux.HandleFunc("POST /policy/decision", s.handlePolicyDecision)

@@ -11,6 +11,7 @@ type HAConnection = { base_url: string; token_configured: boolean; configured: b
 type HAAllowlist = { entities: HAEntity[]; source: string; semantics: "curated-allowlist-not-full-dump"; bot_visible_only: boolean };
 type EntitlementEntry = { action: "allow" | "deny"; kind: string; value: string; label?: string; source: string };
 type Entitlements = { entries: EntitlementEntry[]; source: string; semantics: "merged-allow-deny-with-source-labels" };
+type VaultCredential = { id: string; label: string; purpose: string; created_at: string; expires_at: string };
 
 const $ = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -34,6 +35,7 @@ async function getPolicy(): Promise<Policy> { return requestJSON<Policy>("/polic
 async function getHAConnection(): Promise<HAConnection> { return requestJSON<HAConnection>("/ha/connection"); }
 async function getHAAllowlist(): Promise<HAAllowlist> { return requestJSON<HAAllowlist>("/ha/allowlist"); }
 async function getEntitlements(): Promise<Entitlements> { return requestJSON<Entitlements>("/entitlements"); }
+async function getVaultCredentials(): Promise<{ credentials: VaultCredential[] }> { return requestJSON("/vault/credentials"); }
 async function getConnections(): Promise<{ connections: Connection[] }> { return requestJSON("/connections"); }
 async function getDesktops(): Promise<{ desktops: Desktop[]; errors: { connection_name: string; error: string }[] }> { return requestJSON("/desktops"); }
 async function postJSON(path: string, body: unknown): Promise<unknown> {
@@ -62,6 +64,7 @@ let policyAvailable = false;
 let networkAvailable = false;
 let haAvailable = false;
 let entitlementsAvailable = false;
+let vaultAvailable = false;
 let busyState = false;
 let haEntities: HAEntity[] = [];
 let operatorEntitlements: EntitlementEntry[] = [];
@@ -312,6 +315,46 @@ function addEntitlementFromInputs(): void {
   renderEntitlementRows();
 }
 
+function vaultTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function renderVault(credentials: VaultCredential[]): void {
+  vaultAvailable = true;
+  const list = $("vault-credentials");
+  list.replaceChildren();
+  if (!credentials.length) {
+    $("vault-status").textContent = "No pending credentials.";
+  } else {
+    $("vault-status").textContent = credentials.length + " pending credential" + (credentials.length === 1 ? "" : "s") + " · each claim is one-shot";
+    credentials.forEach((credential) => {
+      const item = document.createElement("li"); item.className = "connection";
+      const text = document.createElement("div");
+      const label = document.createElement("strong"); label.textContent = credential.label; text.append(label);
+      const detail = document.createElement("small");
+      detail.textContent = credential.purpose + " · expires " + vaultTime(credential.expires_at) + " · bot claim: POST /vault/credentials/" + credential.id + "/claim";
+      text.append(detail);
+      const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "remove"; cancel.textContent = "Cancel";
+      cancel.addEventListener("click", () => act(() => requestJSON("/vault/credentials/" + encodeURIComponent(credential.id), { method: "DELETE" })));
+      item.append(text, cancel); list.append(item);
+    });
+  }
+  ["vault-label", "vault-purpose", "vault-secret", "btn-vault-submit"].forEach((id) => {
+    ($(id) as HTMLInputElement | HTMLButtonElement).disabled = busyState;
+  });
+}
+
+function renderVaultUnavailable(message: string): void {
+  vaultAvailable = false;
+  $("vault-status").textContent = "Unavailable · " + message;
+  const list = $("vault-credentials"); list.replaceChildren();
+  const item = document.createElement("li"); item.className = "msg"; item.textContent = "Unavailable · " + message; list.append(item);
+  ["vault-label", "vault-purpose", "vault-secret", "btn-vault-submit"].forEach((id) => {
+    ($(id) as HTMLInputElement | HTMLButtonElement).disabled = true;
+  });
+}
+
 function renderConnections(connections: Connection[]): void {
   const list = $("connections"); list.replaceChildren();
   if (!connections.length) { const empty = document.createElement("li"); empty.className = "muted"; empty.textContent = "No remote APIs connected."; list.append(empty); return; }
@@ -374,7 +417,7 @@ function setNetworkError(text: string): void {
 function showMsg(text: string): void { const el = $("msg"); el.hidden = !text; el.textContent = text; }
 function busy(on: boolean): void {
   busyState = on;
-  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
+  ["btn-apply", "btn-revert", "btn-proxy-on", "btn-proxy-off", "btn-network-save", "btn-network-leave", "btn-network-clear-key", "btn-ha-connection-save", "btn-ha-token-clear", "btn-ha-add", "btn-ha-save", "btn-entitlement-add", "btn-entitlement-save", "btn-vault-submit"].forEach((id) => { ($(id) as HTMLButtonElement).disabled = on; });
   ($("approvals-enabled") as HTMLInputElement).disabled = on || !policyAvailable;
   ($("network-mode") as HTMLSelectElement).disabled = on || !networkAvailable;
   ($("network-login-server") as HTMLInputElement).disabled = on || !networkAvailable;
@@ -385,6 +428,9 @@ function busy(on: boolean): void {
   ($("entitlement-kind") as HTMLSelectElement).disabled = on || !entitlementsAvailable;
   ($("entitlement-value") as HTMLInputElement).disabled = on || !entitlementsAvailable;
   ($("entitlement-label") as HTMLInputElement).disabled = on || !entitlementsAvailable;
+  ($("vault-label") as HTMLInputElement).disabled = on || !vaultAvailable;
+  ($("vault-purpose") as HTMLInputElement).disabled = on || !vaultAvailable;
+  ($("vault-secret") as HTMLInputElement).disabled = on || !vaultAvailable;
 }
 async function act(fn: () => Promise<unknown>, opts?: { network?: boolean }): Promise<void> {
   showMsg("");
@@ -407,7 +453,7 @@ async function act(fn: () => Promise<unknown>, opts?: { network?: boolean }): Pr
   }
 }
 async function refresh(): Promise<void> {
-  const [status, policy, haConn, ha, entitlements, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getConnections(), getDesktops()]);
+  const [status, policy, haConn, ha, entitlements, vault, connections, desktops] = await Promise.allSettled([getStatus(), getPolicy(), getHAConnection(), getHAAllowlist(), getEntitlements(), getVaultCredentials(), getConnections(), getDesktops()]);
   const errors: string[] = [];
 
   if (status.status === "fulfilled") renderStatus(status.value);
@@ -423,6 +469,9 @@ async function refresh(): Promise<void> {
 
   if (entitlements.status === "fulfilled") renderEntitlements(entitlements.value);
   else { const message = errorText(entitlements.reason); renderEntitlementsUnavailable(message); errors.push("entitlements: " + message); }
+
+  if (vault.status === "fulfilled") renderVault(vault.value.credentials || []);
+  else { const message = errorText(vault.reason); renderVaultUnavailable(message); errors.push("vault: " + message); }
 
   if (connections.status === "fulfilled") renderConnections(connections.value.connections);
   else { const message = errorText(connections.reason); renderConnectionsUnavailable(message); errors.push("connections: " + message); }
@@ -486,6 +535,16 @@ window.addEventListener("DOMContentLoaded", () => {
   $("entitlements-form").addEventListener("submit", (event) => {
     event.preventDefault();
     act(() => putJSON("/entitlements", { entries: operatorEntitlements }));
+  });
+  $("vault-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const label = $("vault-label") as HTMLInputElement;
+    const purpose = $("vault-purpose") as HTMLInputElement;
+    const secret = $("vault-secret") as HTMLInputElement;
+    act(async () => {
+      await postJSON("/vault/credentials", { label: label.value, purpose: purpose.value, secret: secret.value });
+      secret.value = "";
+    });
   });
   $("connection-form").addEventListener("submit", (event) => {
     event.preventDefault();
