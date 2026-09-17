@@ -1,13 +1,18 @@
-export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops";
+import { renderDocs } from "./docs";
+
+export type Route = "home" | "stack" | "router" | "cue" | "crew" | "install" | "invariants" | "ops" | "docs";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
 
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
+  if (hash === "docs" || hash.startsWith("docs/")) return "docs";
   const known: Route[] = ["home", "stack", "router", "cue", "crew", "install", "invariants", "ops"];
   return (known as string[]).includes(hash) ? (hash as Route) : "home";
 }
+
+export { renderDocs };
 
 const installLine = () => `
   <div class="term"><code><span class="ps1">$</span><span class="cmd">${INSTALL}</span><span class="cursor"></span></code><button class="copy" type="button" data-copy="${INSTALL}">copy</button></div>`;
