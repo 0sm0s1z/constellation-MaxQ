@@ -109,6 +109,13 @@ apply_dark_mode(){
     xfconf_set xsettings /Net/ThemeName string "$DARK_THEME" || fail 'failed to set live GTK theme'
     xfconf_set xsettings /Net/CursorThemeName string "$DARK_THEME" || fail 'failed to set live cursor theme'
     xfconf_set xsettings /Gtk/ApplicationPreferDarkTheme bool true || fail 'failed to enable live GTK dark preference'
+    # Common race: xfconf accepts write then briefly returns empty; re-assert once.
+    if ! dark_live_ok; then
+      xfconf_set xfwm4 /general/theme string "$DARK_THEME" || true
+      xfconf_set xsettings /Net/ThemeName string "$DARK_THEME" || true
+      xfconf_set xsettings /Net/CursorThemeName string "$DARK_THEME" || true
+      xfconf_set xsettings /Gtk/ApplicationPreferDarkTheme bool true || true
+    fi
   fi
   xml_set "$XFWM_XML" xfwm4 /general/theme string "$DARK_THEME"
   xml_set "$XSET_XML" xsettings /Net/ThemeName string "$DARK_THEME"
