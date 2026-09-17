@@ -1,6 +1,6 @@
 import {
   parseRoute, renderHome, renderInstall, renderInvariants, renderOps,
-  renderStack, renderRouter, renderCue, renderCrew, GITHUB, type Route,
+  renderStack, renderRouter, renderCue, renderCrew, renderDocs, GITHUB, type Route,
 } from "./pages";
 import { mountStarfield } from "./starfield";
 
@@ -13,9 +13,10 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   install: { label: "install", draw: renderInstall },
   invariants: { label: "invariants", draw: renderInvariants },
   ops: { label: "ops", draw: renderOps },
+  docs: { label: "docs", draw: renderDocs },
 };
 
-const NAV: Route[] = ["home", "stack", "router", "cue", "crew"];
+const NAV: Route[] = ["home", "stack", "router", "cue", "crew", "docs"];
 
 function shell(inner: string, route: Route): string {
   const links = NAV.map((key) => {
