@@ -554,13 +554,22 @@ function bindConsole(root: HTMLElement) {
 
 
 
-let drawn: Route | null = null;
+/** Full hash for docs/shareables so slug/tab changes re-render. */
+let drawnKey: string | null = null;
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
   const route = parseRoute();
-  if (route !== drawn) {
-    drawn = route;
+  const hash = (location.hash || "#home").replace(/^#/, "") || "home";
+  const key =
+    hash === "docs" ||
+    hash.startsWith("docs/") ||
+    hash === "shareables" ||
+    hash.startsWith("shareables/")
+      ? hash
+      : route;
+  if (key !== drawnKey) {
+    drawnKey = key;
     app.innerHTML = shell(routes[route].draw(), route);
     bindCopy(app);
     bindTabs(app);
