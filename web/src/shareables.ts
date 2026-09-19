@@ -22,12 +22,13 @@ const HERDR: Shareable = {
   name: "Herdr",
   tagline: "Terminal multiplexer for coding agents — panes, tabs, workspaces.",
   description:
-    "Control Herdr when the operator explicitly asks. Requires HERDR_ENV=1. Pair with poll + webhook routines for a Grok Bot ↔ remote TUI development loop.",
+    "Control Herdr when the operator explicitly asks (HERDR_ENV=1). Pair with poll (~30m) and webhook routines for a Grok Bot ↔ remote TUI development loop.",
   icon: "/icons/herdr.svg",
   packPath: "share/skills/herdr",
   github: "https://github.com/0sm0s1z/constellation-MaxQ/tree/main/share/skills/herdr",
   related: [
     { label: "SKILL.md on GitHub", href: "https://github.com/0sm0s1z/constellation-MaxQ/blob/main/share/skills/herdr/SKILL.md" },
+    { label: "Official Herdr skill", href: "https://github.com/herdrdev/herdr/blob/main/skills/herdr/SKILL.md" },
     { label: "Docs (when live)", href: "#docs" },
   ],
   frontmatter: {
@@ -35,16 +36,16 @@ const HERDR: Shareable = {
     description:
       "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr. Requires HERDR_ENV=1. Release-matched details: herdr --skill.",
   },
-  body: `Herdr organizes terminals into workspaces, tabs, and panes, recognizes coding agents inside panes, and exposes the current session through the \`herdr\` CLI.
+  body: `Herdr organizes terminals into workspaces, tabs, and panes.
 
 ## Principle
-MaxQ ships the **opportunity** — this installable skill plus \`herdr\` on PATH. It does **not** configure Herdr layouts or agents for the operator.
+Optional MaxQ skill for a Grok Bot developer. MaxQ ships the opportunity — this installable skill plus \`herdr\` on PATH. It does not configure Herdr for you.
 
 ## When to use
-Only when the operator explicitly asks about **Herdr** (panes, tabs, workspaces, agent control).
+Only when the operator explicitly asks about Herdr (panes, tabs, workspaces, agent control). Often used with the official Herdr skill. A companion skill on the remote TUI (Grok Bot, OpenCode, or similar) fires a webhook when a TUI run completes.
 
 ## Guard
-Before any control command, verify this agent is inside a Herdr-managed pane:
+Requires \`HERDR_ENV=1\`. Before any control command, verify this agent is inside a Herdr-managed pane:
 
 \`\`\`bash
 test "\${HERDR_ENV:-}" = 1
@@ -52,16 +53,23 @@ test "\${HERDR_ENV:-}" = 1
 
 If that fails, say you are not inside Herdr and stop.
 
-## Learn the current CLI
+## Dev loop
+Two routines: poll Herdr panes on an interval (~30 minutes), and again on webhook.
+
+1. Bot prompts the TUI.
+2. TUI finishes.
+3. Companion skill fires the webhook.
+4. Bot re-checks Herdr and re-prompts.
+
+## Learn CLI
+The installed binary is authority. Do not run bare \`herdr\` (that attaches the TUI).
+
 \`\`\`bash
 herdr --help
 herdr --skill
 herdr agent
 herdr pane
-\`\`\`
-
-## Dev loop (why this is the first shareable)
-Install this skill on the Grok Bot that drives development, plus poll + webhook routines that re-check Herdr panes. On the remote TUI host, install a companion skill that fires the webhook when a run completes. The bot prompts the TUI; the TUI finishes and pings the bot back.`,
+\`\`\``,
 };
 
 export const SHAREABLES: Shareable[] = [HERDR];
@@ -184,7 +192,7 @@ export function renderShareables(): string {
     <section class="share-hero block">
       <p class="eyebrow">Shareables</p>
       <h1>From our desk to <span class="grad">yours.</span></h1>
-      <p class="lede">Bots, skills, and tools we actually run with MaxQ and Grok Bot — polished enough to share. Install the pack; MaxQ does not configure it for you.</p>
+      <p class="lede">Bots, skills, and tools we actually run with MaxQ and Grok Bot — packaged to share. Install the pack; MaxQ does not configure it for you.</p>
     </section>
     <section class="share-shell${open ? " has-panel" : ""}" data-share-shell>
       <div class="share-main">
