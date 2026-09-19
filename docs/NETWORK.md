@@ -128,7 +128,7 @@ Alongside the settings-sheet UI path, MaxQ ships an installable bot skill so an
 operator can ask the box bot for a guided Tailscale/Headscale setup.
 
 - Source in repo: `share/skills/tailscale-setup-maxq-self-serve/SKILL.md`
-- Installed by `maxq apply` to `$HOME/.local/share/maxq/skills/tailscale-setup-maxq-self-serve/SKILL.md`
+- Installed by `maxq apply` to `$HOME/.local/share/maxq/skills/tailscale-setup-maxq-self-serve/SKILL.md` (same multi-pack installer as [SHAREABLES.md](SHAREABLES.md))
 - When `$HOME/agent-data/workflows` exists (MaxQ bot box), apply also mirrors the skill there
 
 The skill walks: pick Tailscale vs Headscale → set `login_server` when Headscale →

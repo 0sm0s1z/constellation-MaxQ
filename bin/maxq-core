@@ -1927,26 +1927,36 @@ skill_pack_candidates() {
 
 install_skills() {
   mkdir -p "$SKILLS_DEST"
-  local cand skill_src=""
+  local cand skill_src="" id
   while IFS= read -r cand; do
     [ -n "$cand" ] || continue
-    [ -d "$cand/$SKILL_NETWORK_SETUP" ] || continue
-    [ -s "$cand/$SKILL_NETWORK_SETUP/SKILL.md" ] || continue
+    [ -d "$cand" ] || continue
     skill_src="$cand"
     break
   done < <(skill_pack_candidates)
   if [ -z "$skill_src" ]; then
-    echo "maxq: warning: network setup skill pack not found under share/skills" >&2
+    echo "maxq: warning: skill packs not found under share/skills" >&2
     return 0
   fi
-  mkdir -p "$SKILLS_DEST/$SKILL_NETWORK_SETUP"
-  cp -f "$skill_src/$SKILL_NETWORK_SETUP/SKILL.md" "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
-  chmod 0644 "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
-  if [ -d "$PREFIX/agent-data/workflows" ]; then
-    mkdir -p "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP"
-    cp -f "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md" \
-      "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
-    chmod 0644 "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
+  # Install every pack directory that contains SKILL.md (#93 network, #124 herdr, …)
+  for id in "$skill_src"/*/SKILL.md; do
+    [ -f "$id" ] || continue
+    id="$(basename "$(dirname "$id")")"
+    mkdir -p "$SKILLS_DEST/$id"
+    cp -f "$skill_src/$id/SKILL.md" "$SKILLS_DEST/$id/SKILL.md"
+    chmod 0644 "$SKILLS_DEST/$id/SKILL.md"
+    if [ -d "$PREFIX/agent-data/workflows" ]; then
+      mkdir -p "$PREFIX/agent-data/workflows/$id"
+      cp -f "$SKILLS_DEST/$id/SKILL.md" "$PREFIX/agent-data/workflows/$id/SKILL.md"
+      chmod 0644 "$PREFIX/agent-data/workflows/$id/SKILL.md"
+    fi
+  done
+  # Keep explicit warnings for known packs so prove failures stay actionable
+  if [ ! -s "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md" ]; then
+    echo "maxq: warning: network setup skill pack missing after install" >&2
+  fi
+  if [ ! -s "$SKILLS_DEST/herdr/SKILL.md" ]; then
+    echo "maxq: warning: herdr skill pack missing after install" >&2
   fi
 }
 
@@ -2293,6 +2303,7 @@ assert_applied_tree() {
   prove_ok "GET /status json state applied" api_status_applied
   prove_ok "GET / serves settings sheet" api_ui_ok
   prove_ok "network setup skill installed" test -s "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
+  prove_ok "herdr skill installed" test -s "$SKILLS_DEST/herdr/SKILL.md"
   prove_grep "profile prepends HOME/bin" "$PROFILE_SNIPPET" 'PATH="\$HOME/bin:\$PATH"'
   local _n
   if [ -d "$MANAGED_CLIS" ]; then
