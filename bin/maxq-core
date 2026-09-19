@@ -14,6 +14,7 @@ CONFIG="$PREFIX/.config/maxq"
 LOCAL="$PREFIX/.local"
 SKILLS_DEST="$LOCAL/share/maxq/skills"
 SKILL_NETWORK_SETUP="tailscale-setup-maxq-self-serve"
+SKILL_HERDR="herdr"
 TOML="$CONFIG/maxq.toml"
 STATE_FILE="$CONFIG/state"
 PROFILE_SNIPPET="$CONFIG/profile.sh"
@@ -1925,29 +1926,47 @@ skill_pack_candidates() {
   printf '%s\n' "$here/share/skills"
 }
 
+install_one_skill_pack() {
+  local id="$1"
+  local src="$2"
+  mkdir -p "$SKILLS_DEST/$id"
+  cp -f "$src" "$SKILLS_DEST/$id/SKILL.md"
+  chmod 0644 "$SKILLS_DEST/$id/SKILL.md"
+  if [ -d "$PREFIX/agent-data/workflows" ]; then
+    mkdir -p "$PREFIX/agent-data/workflows/$id"
+    cp -f "$SKILLS_DEST/$id/SKILL.md" \
+      "$PREFIX/agent-data/workflows/$id/SKILL.md"
+    chmod 0644 "$PREFIX/agent-data/workflows/$id/SKILL.md"
+  fi
+}
+
 install_skills() {
   mkdir -p "$SKILLS_DEST"
-  local cand skill_src=""
+  local cand skill_src="" d id found
   while IFS= read -r cand; do
     [ -n "$cand" ] || continue
-    [ -d "$cand/$SKILL_NETWORK_SETUP" ] || continue
-    [ -s "$cand/$SKILL_NETWORK_SETUP/SKILL.md" ] || continue
+    [ -d "$cand" ] || continue
+    found=0
+    for d in "$cand"/*; do
+      [ -d "$d" ] || continue
+      [ -s "$d/SKILL.md" ] || continue
+      found=1
+      break
+    done
+    [ "$found" -eq 1 ] || continue
     skill_src="$cand"
     break
   done < <(skill_pack_candidates)
   if [ -z "$skill_src" ]; then
-    echo "maxq: warning: network setup skill pack not found under share/skills" >&2
+    echo "maxq: warning: no skill packs found under share/skills" >&2
     return 0
   fi
-  mkdir -p "$SKILLS_DEST/$SKILL_NETWORK_SETUP"
-  cp -f "$skill_src/$SKILL_NETWORK_SETUP/SKILL.md" "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
-  chmod 0644 "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
-  if [ -d "$PREFIX/agent-data/workflows" ]; then
-    mkdir -p "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP"
-    cp -f "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md" \
-      "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
-    chmod 0644 "$PREFIX/agent-data/workflows/$SKILL_NETWORK_SETUP/SKILL.md"
-  fi
+  for d in "$skill_src"/*; do
+    [ -d "$d" ] || continue
+    [ -s "$d/SKILL.md" ] || continue
+    id="$(basename "$d")"
+    install_one_skill_pack "$id" "$d/SKILL.md"
+  done
 }
 
 
@@ -2293,6 +2312,7 @@ assert_applied_tree() {
   prove_ok "GET /status json state applied" api_status_applied
   prove_ok "GET / serves settings sheet" api_ui_ok
   prove_ok "network setup skill installed" test -s "$SKILLS_DEST/$SKILL_NETWORK_SETUP/SKILL.md"
+  prove_ok "herdr skill installed" test -s "$SKILLS_DEST/$SKILL_HERDR/SKILL.md"
   prove_grep "profile prepends HOME/bin" "$PROFILE_SNIPPET" 'PATH="\$HOME/bin:\$PATH"'
   local _n
   if [ -d "$MANAGED_CLIS" ]; then
