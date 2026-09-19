@@ -2,7 +2,7 @@ import { kitIcons, type KitIcon } from "./icons/pack";
 
 export type Route =
   | "home" | "stack" | "router" | "sidecar" | "cue" | "crew" | "install" | "invariants" | "ops" | "frontier"
-  | "docs" | "access" | "control" | "telemetry";
+  | "docs" | "shareables" | "access" | "control" | "telemetry";
 export const INSTALL =
   "curl -fsSL https://raw.githubusercontent.com/0sm0s1z/constellation-MaxQ/main/install.sh | bash";
 export const GITHUB = "https://github.com/0sm0s1z/constellation-MaxQ";
@@ -12,13 +12,14 @@ export const GET_MAXQ = "https://maxq.cxn.sh";
 const HOME_HASHES = new Set(["", "home", "desk", "door", "how", "kit", "console", "trust", "why", "surfaces", "start"]);
 const KNOWN: Route[] = [
   "home", "stack", "router", "sidecar", "cue", "crew", "install", "invariants", "ops", "frontier",
-  "docs", "access", "control", "telemetry",
+  "docs", "shareables", "access", "control", "telemetry",
 ];
 
 export function parseRoute(): Route {
   const hash = (location.hash || "#home").replace("#", "");
   if (HOME_HASHES.has(hash)) return "home";
   if (hash === "docs" || hash.startsWith("docs/")) return "docs";
+  if (hash === "shareables" || hash.startsWith("shareables/")) return "shareables";
   const product = hash.replace(/-availability$/, "");
   if (["cue", "crew", "router"].includes(product)) return product as Route;
   return (KNOWN as string[]).includes(hash) ? (hash as Route) : "home";

@@ -1684,3 +1684,154 @@ main:has(.router-hero) .dia,
   }
   .docs-mobile-nav a.active { color: var(--peach); }
 }
+
+/* #123 Shareables — homepage craft */
+.share-hero { max-width: 44rem; padding-top: 2rem; }
+.share-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  padding-bottom: 3rem;
+  align-items: start;
+}
+.share-shell.has-panel {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+}
+.share-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.share-tabs { display: flex; gap: .35rem; flex-wrap: wrap; }
+.share-tab {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--overlay1);
+  border-radius: 999px;
+  padding: .4rem .95rem;
+  font: inherit;
+  cursor: pointer;
+}
+.share-tab:hover { color: var(--text); }
+.share-tab.active {
+  color: var(--crust);
+  background: var(--peach);
+  border-color: transparent;
+}
+.share-search input {
+  width: min(11rem, 40vw);
+  padding: .4rem .75rem;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--mantle) 70%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: .9rem;
+}
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.share-tile {
+  display: flex;
+  gap: .85rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: 1rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--mantle) 55%, transparent);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.share-tile:hover, .share-tile.is-open {
+  border-color: color-mix(in srgb, var(--peach) 45%, transparent);
+  box-shadow: 0 10px 28px -18px var(--peach);
+}
+.share-tile-icon {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  color: var(--peach);
+}
+.share-tile-icon img { width: 2rem; height: 2rem; display: block; }
+.share-tile-name { display: block; font-weight: 650; margin-bottom: .2rem; }
+.share-tile-tag { display: block; color: var(--sub); font-size: .9rem; line-height: 1.35; }
+.share-empty { color: var(--sub); padding: 1rem 0; }
+.share-panel {
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100vh - 6.5rem);
+  overflow: auto;
+  padding: 1.25rem 1.35rem 1.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--mantle) 72%, transparent);
+  backdrop-filter: blur(10px);
+}
+.share-panel-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+.share-panel-close {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--overlay1);
+  border-radius: 999px;
+  padding: .3rem .75rem;
+  cursor: pointer;
+  font: inherit;
+}
+.share-panel-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.share-panel-icon { color: var(--peach); }
+.share-panel h1 { margin: 0 0 .4rem; font-size: clamp(1.5rem, 2.5vw, 2rem); }
+.share-panel .lede { margin: 0; }
+.share-panel-meta {
+  display: grid;
+  gap: .45rem;
+  margin: 0 0 1rem;
+  font-size: .9rem;
+}
+.share-panel-meta .k {
+  display: inline-block;
+  min-width: 3.5rem;
+  color: var(--overlay1);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .72rem;
+}
+.share-panel-body h3 { margin: 1.35rem 0 .5rem; font-size: 1.05rem; }
+.share-panel-body p, .share-panel-body li { color: var(--sub); }
+.share-panel-body pre {
+  margin: 0 0 1rem;
+  padding: .85rem 1rem;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--crust) 70%, transparent);
+}
+.share-panel-body code { color: var(--peach); font-family: IBM Plex Mono, ui-monospace, monospace; font-size: .9em; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
+@media (max-width: 900px) {
+  .share-shell.has-panel { grid-template-columns: 1fr; }
+  .share-panel { position: static; max-height: none; }
+}

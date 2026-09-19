@@ -8,6 +8,7 @@ import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
 import { renderDocs } from "./docs";
+import { renderShareables, bindShareables } from "./shareables";
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
@@ -21,6 +22,7 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   ops: { label: "ops", draw: renderOps },
   frontier: { label: "frontier", draw: renderFrontier },
   docs: { label: "docs", draw: renderDocs },
+  shareables: { label: "shareables", draw: renderShareables },
   access: { label: "access", draw: () => renderWhy("access") },
   control: { label: "control", draw: () => renderWhy("control") },
   telemetry: { label: "telemetry", draw: () => renderWhy("telemetry") },
@@ -68,6 +70,7 @@ function shell(inner: string, route: Route): string {
         </details>
         ${whyRail}
         <a class="${route === "docs" ? "active" : ""}" href="#docs"><span class="nav-num">··</span>docs</a>
+        <a class="${route === "shareables" ? "active" : ""}" href="#shareables"><span class="nav-num">··</span>share</a>
       </nav>
       <div class="nav-end">
         ${actions}
@@ -80,6 +83,7 @@ function shell(inner: string, route: Route): string {
       <span>MIT · mocha</span>
       <span>
         <a href="#docs">docs</a>
+        · <a href="#shareables">share</a>
         · <a href="#invariants">invariants</a>
         · <a href="#ops">ops</a>
         · <a href="#frontier">frontier</a>
@@ -579,6 +583,7 @@ function draw() {
     bindConsole(app);
     bindNav(app);
     bindReveal(app);
+    bindShareables(app);
     app.querySelectorAll<HTMLAnchorElement>("[data-section]").forEach(link => link.addEventListener("click", e => {
       const section = document.getElementById(link.dataset.section!);
       if (!section) return;
