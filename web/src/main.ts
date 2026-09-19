@@ -7,6 +7,7 @@ import { renderSidecar } from "./sidecar";
 import { renderWhy } from "./why";
 import { renderFrontier } from "./frontier";
 import { mountStarfield } from "./starfield";
+import { renderDocs } from "./docs";
 
 const routes: Record<Route, { label: string; draw: () => string }> = {
   home: { label: "maxq", draw: renderHome },
@@ -19,6 +20,7 @@ const routes: Record<Route, { label: string; draw: () => string }> = {
   invariants: { label: "invariants", draw: renderInvariants },
   ops: { label: "ops", draw: renderOps },
   frontier: { label: "frontier", draw: renderFrontier },
+  docs: { label: "docs", draw: renderDocs },
   access: { label: "access", draw: () => renderWhy("access") },
   control: { label: "control", draw: () => renderWhy("control") },
   telemetry: { label: "telemetry", draw: () => renderWhy("telemetry") },
@@ -65,6 +67,7 @@ function shell(inner: string, route: Route): string {
           <div class="menu-sheet">${products}</div>
         </details>
         ${whyRail}
+        <a class="${route === "docs" ? "active" : ""}" href="#docs"><span class="nav-num">··</span>docs</a>
       </nav>
       <div class="nav-end">
         ${actions}
@@ -76,7 +79,8 @@ function shell(inner: string, route: Route): string {
     <footer class="foot">
       <span>MIT · mocha</span>
       <span>
-        <a href="#invariants">invariants</a>
+        <a href="#docs">docs</a>
+        · <a href="#invariants">invariants</a>
         · <a href="#ops">ops</a>
         · <a href="#frontier">frontier</a>
         · <a href="${GITHUB}">github</a>
@@ -550,13 +554,22 @@ function bindConsole(root: HTMLElement) {
 
 
 
-let drawn: Route | null = null;
+/** Full hash for docs/shareables so slug/tab changes re-render. */
+let drawnKey: string | null = null;
 function draw() {
   const app = document.getElementById("app");
   if (!app) return;
   const route = parseRoute();
-  if (route !== drawn) {
-    drawn = route;
+  const hash = (location.hash || "#home").replace(/^#/, "") || "home";
+  const key =
+    hash === "docs" ||
+    hash.startsWith("docs/") ||
+    hash === "shareables" ||
+    hash.startsWith("shareables/")
+      ? hash
+      : route;
+  if (key !== drawnKey) {
+    drawnKey = key;
     app.innerHTML = shell(routes[route].draw(), route);
     bindCopy(app);
     bindTabs(app);
