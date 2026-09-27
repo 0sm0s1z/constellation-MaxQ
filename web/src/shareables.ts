@@ -9,6 +9,8 @@ export type Shareable = {
   tagline: string;
   description: string;
   icon: string;
+  /** Optional wide hero above the panel title (skill masthead). */
+  masthead?: string;
   packPath?: string;
   github: string;
   related?: { label: string; href: string }[];
@@ -24,6 +26,7 @@ const HERDR: Shareable = {
   description:
     "Control Herdr when the operator explicitly asks (HERDR_ENV=1). Pair with poll (~30m) and webhook routines for a Grok Bot ↔ remote TUI development loop.",
   icon: "/icons/herdr.svg",
+  masthead: "/shots/herdr-masthead.webp",
   packPath: "share/skills/herdr",
   github: "https://github.com/0sm0s1z/constellation-MaxQ/tree/main/share/skills/herdr",
   related: [
@@ -167,6 +170,11 @@ export function renderShareables(): string {
         <p class="eyebrow">${open.kind} · shareable</p>
         <button type="button" class="share-panel-close" data-share-close aria-label="Close">Close</button>
       </div>
+      ${open.masthead
+        ? `<figure class="share-panel-masthead">
+        <img src="${open.masthead}" alt="" width="1774" height="887" loading="eager" />
+      </figure>`
+        : ""}
       <div class="share-panel-head">
         <img class="share-panel-icon" src="${open.icon}" alt="" width="56" height="56" />
         <div>
