@@ -56,14 +56,14 @@ apt_download_one(){
   return 1
 }
 install_netadmin(){
-  if [ -x "$B/traceroute" ] && [ -x "$B/dig" ] && [ -x "$B/nslookup" ] && [ -x "$B/host" ] && [ -x "$B/pingpp" ] && [ -x "$B/ping" ] && owned traceroute && owned dig && owned nslookup && owned host && owned pingpp && owned ping; then return 0; fi
+  if [ -x "$B/traceroute" ] && [ -x "$B/dig" ] && [ -x "$B/nslookup" ] && [ -x "$B/host" ] && [ -x "$B/ping" ] && [ -x "$B/pingpp" ] && owned traceroute && owned dig && owned nslookup && owned host && owned ping && owned pingpp && "$B/ping" -V 2>&1 | grep -qi iputils; then return 0; fi
   command -v apt-get >/dev/null 2>&1 && command -v apt-cache >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1 || fail 'apt-get/apt-cache/dpkg-deb required for HOME-only netadmin extract'
-  local tops=(traceroute bind9-dnsutils bind9-host) p dep real n
+  local tops=(traceroute bind9-dnsutils bind9-host iputils-ping) p dep real n
   for p in "${tops[@]}"; do apt_download_one "$p" || fail "netadmin package download failed: $p"; done
   while IFS= read -r dep; do [ -z "$dep" ] || apt_download_one "$dep" || true; done < <(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "${tops[@]}" 2>/dev/null | awk '/^[[:space:]|]*Depends:/ {gsub(/[<>]/,"",$2); if($2!="")print $2}' | sort -u)
   rm -rf "$NET_ROOT"; mkdir -p "$NET_ROOT"
   for p in "$NET_CACHE"/*.deb; do [ ! -f "$p" ] || dpkg-deb -x "$p" "$NET_ROOT" || true; done
-  for n in traceroute dig nslookup host; do
+  for n in traceroute dig nslookup host ping; do
     case "$n" in
       traceroute) real="$(find "$NET_ROOT" -type f \( -name traceroute.db -o -name traceroute \) -perm -u+x -print | head -n1)" ;;
       *) real="$(find "$NET_ROOT" -type f -name "$n" -perm -u+x -print | head -n1)" ;;
@@ -120,13 +120,6 @@ raise SystemExit(f'pingpp: TCP connect failed: {last}')
 PY
 EOF
   chmod +x "$B/pingpp"
-  claim_target ping
-  cat > "$B/ping" <<EOF
-#!/usr/bin/env bash
-case "\${1:-}" in --version|-version|-V) exec "$B/pingpp" --version;; esac
-exec "$B/pingpp" -no-icmp "\$@"
-EOF
-  chmod +x "$B/ping"
 }
 
 install_go(){
@@ -198,7 +191,7 @@ refresh_sbom(){
   sbom_cmd nslookup "$B/nslookup" "$(source_of nslookup)" -version
   sbom_cmd host "$B/host" "$(source_of host)" -V
   sbom_cmd pingpp "$B/pingpp" "$(source_of pingpp)" --version
-  sbom_cmd ping "$B/ping" "$(source_of ping)" --version
+  sbom_cmd ping "$B/ping" "$(source_of ping)" -V
   sbom_cmd go "$B/go" "$(source_of go)" version
   sbom_cmd bun "$B/bun" "$(source_of bun)" --version
   sbom_cmd node "$B/node" "$(source_of node)" --version
@@ -269,8 +262,9 @@ prove_packages(){
   check 'dig version' "$B/dig" -v
   check 'nslookup version' "$B/nslookup" -version
   check 'host version' "$B/host" -V
-  check 'ping++ version only (no ICMP)' "$B/pingpp" --version
-  check 'ping wrapper version only (no ICMP)' "$B/ping" --version
+  check 'ping++ version only (TCP; separate from ping)' "$B/pingpp" --version
+  check 'ping is iputils (not pingpp)' bash -c '"$1" -V 2>&1 | grep -qi iputils' _ "$B/ping"
+  check 'ping accepts -c (not pingpp shadow)' bash -c 'out=$("$1" -c 1 -W 1 127.0.0.1 2>&1 || true); ! printf %s "$out" | grep -qi "flag provided but not defined"' _ "$B/ping"
   check 'Go version' "$B/go" version
   check 'Bun version' "$B/bun" --version
   check 'Node version' "$B/node" --version

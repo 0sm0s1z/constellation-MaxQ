@@ -24,7 +24,7 @@ The final gate ordering is intentional: issue #69 remains authoritative for the 
 
 `maxq-packages` provisions:
 
-- netadmin tools: `traceroute`, `dig`, `nslookup`, `host`, `pingpp`, and the TCP-only `ping` wrapper
+- netadmin tools: `traceroute`, `dig`, `nslookup`, `host`, and real ICMP `ping` (extracted `iputils-ping`); `pingpp` remains a separate TCP-only scanner and must not own the `ping` name. On some Grok Bot images unprivileged ICMP is disabled (`net.ipv4.ping_group_range=1 0` / missing `CAP_NET_RAW`) — live `ping -c` then waits on box-image/sysctl (CON-24), but MaxQ still ships real iputils naming+extract.
 - pinned Go under `$HOME/.local/go`
 - Bun, Node, and TypeScript under `$HOME/.local`
 - static Docker CLI under HOME (no daemon installation)
