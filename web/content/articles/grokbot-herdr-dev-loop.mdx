@@ -1,0 +1,79 @@
+<section class="article-masthead article-masthead--herdr" aria-hidden="true">
+  <div class="article-masthead-copy">
+    <span>agent desk / herdr</span>
+    <strong>prompt → pane → signal → continue</strong>
+    <small>Keep the work visible. Keep the loop moving.</small>
+  </div>
+  <div class="article-orbit article-orbit--herdr">
+    <i></i><i></i><i></i><i></i>
+  </div>
+</section>
+
+<p class="eyebrow article-kicker">Agent desk · development loop</p>
+
+# Developing with Grok Bot and Herdr
+
+<p class="article-lede">Herdr gives a coding agent a visible terminal desk. Grok Bot can prompt work, step away while the TUI executes, then return on a completion signal or the next poll instead of holding one long fragile session open.</p>
+
+<p class="article-meta">Shell article · MaxQ Shareables · prototype copy</p>
+
+<aside class="article-callout">
+  <strong>The boundary</strong>
+  <p>Herdr is the terminal multiplexer. Grok Bot, OpenCode, or another coding TUI does the development work. MaxQ can ship the Herdr skill path, but it does not configure Herdr for you.</p>
+</aside>
+
+## The loop we are designing around
+
+The useful unit is not “an agent in a terminal.” It is a repeatable handoff: a bot places work into a known pane, the coding TUI runs, a signal says the turn is done, and the bot comes back with enough context to decide what happens next.
+
+<figure class="article-figure">
+  <div class="article-flow" aria-label="Grok Bot to Herdr development loop diagram">
+    <span><b>01</b> Grok Bot</span>
+    <i>→</i>
+    <span><b>02</b> Herdr pane</span>
+    <i>→</i>
+    <span><b>03</b> Coding TUI</span>
+    <i>→</i>
+    <span><b>04</b> Webhook / poll</span>
+  </div>
+  <figcaption>A control loop, not a fake IDE: the workspace remains inspectable while the worker changes underneath it.</figcaption>
+</figure>
+
+## Guard the workspace first
+
+Before a control command, make sure the bot is actually inside a Herdr-managed pane. The installed binary remains the source of truth for the release on that machine.
+
+<div class="article-code-title"><span>terminal</span><strong>prove Herdr context, then inspect the CLI</strong></div>
+
+```bash
+test "${HERDR_ENV:-}" = 1
+herdr --help
+herdr --skill
+herdr agent
+herdr pane
+```
+
+Do not use bare `herdr` for discovery; that attaches the TUI. The guard is intentionally boring because the loop should fail closed before it starts driving the wrong terminal.
+
+## A shell workflow
+
+1. Put a concrete development task into the intended Herdr pane.
+2. Let the coding TUI own implementation, tests, and its local feedback cycle.
+3. Treat the completion webhook as the fast path and a roughly 30-minute pane poll as the recovery path.
+4. Re-open the pane state, read what changed, and issue the next prompt only when there is an actual next action.
+
+> Herdr owns the workspace; the coding TUI owns the work. Grok Bot owns the decision to continue.
+
+That separation is the useful part. It makes the agent desk observable without turning the multiplexer into an orchestration product it is not.
+
+## What belongs in the real essay later
+
+This shell leaves room for measured examples: how many concurrent panes remain understandable, what state Grok Bot should retain between turns, how completion hooks fail, and when a human should interrupt the loop. Those are operating questions, not landing-page promises, so the finished article should answer them with real runs.
+
+<section class="article-related">
+  <p class="eyebrow">Related</p>
+  <div class="article-related-grid">
+    <a href="#shareables/skills/herdr"><strong>Herdr skill</strong><span>The self-serve MaxQ pack and guardrails.</span></a>
+    <a href="#shareables/articles/grokbot-tailscale-headscale"><strong>Private network path</strong><span>Reach the MaxQ host with Tailscale or Headscale.</span></a>
+  </div>
+</section>

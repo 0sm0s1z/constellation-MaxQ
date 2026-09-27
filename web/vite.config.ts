@@ -1,4 +1,22 @@
-import { defineConfig, type PreviewServer, type ViteDevServer } from "vite";
+import { readFile } from "node:fs/promises";
+import { marked } from "marked";
+import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from "vite";
+
+function staticMdxHtml(): Plugin {
+  return {
+    name: "maxq-static-mdx-html",
+    enforce: "pre",
+    async load(id) {
+      const [filename, query = ""] = id.split("?", 2);
+      if (!filename.endsWith(".mdx") || !new URLSearchParams(query).has("html")) return null;
+
+      this.addWatchFile(filename);
+      const source = await readFile(filename, "utf8");
+      const html = String(await marked.parse(source, { gfm: true }));
+      return `export default ${JSON.stringify(html)};`;
+    },
+  };
+}
 
 function movAsMp4(server: ViteDevServer | PreviewServer) {
   server.middlewares.use((req, res, next) => {
@@ -16,6 +34,7 @@ export default defineConfig({
   preview: { allowedHosts: ["host.docker.internal"] },
   server: { allowedHosts: ["host.docker.internal"] },
   plugins: [
+    staticMdxHtml(),
     {
       name: "mov-as-mp4",
       configureServer: movAsMp4,
