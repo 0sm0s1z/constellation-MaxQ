@@ -24,7 +24,7 @@ const HERDR: Shareable = {
   name: "Herdr",
   tagline: "Terminal multiplexer for coding agents — panes, tabs, workspaces.",
   description:
-    "Control Herdr when the operator explicitly asks (HERDR_ENV=1). Pair with poll (~30m) and webhook routines for a Grok Bot ↔ remote TUI development loop.",
+    "A terminal workspace shepherd for coding agents. Herdr keeps panes, tabs, and workspaces organized so agent sessions stay visible and ready for the next task.",
   icon: "/icons/herdr.svg",
   masthead: "/shots/herdr-masthead.webp",
   packPath: "share/skills/herdr",
@@ -39,13 +39,21 @@ const HERDR: Shareable = {
     description:
       "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr. Requires HERDR_ENV=1. Release-matched details: herdr --skill.",
   },
-  body: `Herdr organizes terminals into workspaces, tabs, and panes.
+  body: `Keep the flock moving. Herdr is the terminal multiplexer that gives coding agents a structured place to work — panes, tabs, and workspaces you can still see and drive.
 
 ## Principle
-Optional MaxQ skill for a Grok Bot developer. MaxQ ships the opportunity — this installable skill plus \`herdr\` on PATH. It does not configure Herdr for you.
+Optional MaxQ skill for a Grok Bot developer. MaxQ ships the opportunity — this installable skill plus \`herdr\` on PATH. It does **not** configure Herdr for you.
+
+Herdr manages the workspace. The TUI does the work (Grok Bot, OpenCode, or similar). Do not call Herdr itself a TUI.
 
 ## When to use
-Only when the operator explicitly asks about Herdr (panes, tabs, workspaces, agent control). Often used with the official Herdr skill. A companion skill on the remote TUI (Grok Bot, OpenCode, or similar) fires a webhook when a TUI run completes.
+Only when the operator explicitly asks about Herdr (panes, tabs, workspaces, agent control). Often used with the official Herdr skill. A companion skill on the remote TUI fires a webhook when a TUI run completes.
+
+A common pattern:
+- A bot prompts a TUI session running inside Herdr.
+- The TUI works through the assigned task.
+- A companion skill webhook signals completion.
+- The bot re-checks Herdr and continues the loop.
 
 ## Guard
 Requires \`HERDR_ENV=1\`. Before any control command, verify this agent is inside a Herdr-managed pane:
@@ -65,14 +73,15 @@ Two routines: poll Herdr panes on an interval (~30 minutes), and again on webhoo
 4. Bot re-checks Herdr and re-prompts.
 
 ## Learn CLI
-The installed binary is authority. Do not run bare \`herdr\` (that attaches the TUI).
+The installed binary is authority. Do **not** run bare \`herdr\` (that attaches the TUI).
 
 \`\`\`bash
 herdr --help
 herdr --skill
 herdr agent
 herdr pane
-\`\`\``,
+\`\`\`
+`,
 };
 
 export const SHAREABLES: Shareable[] = [HERDR];
