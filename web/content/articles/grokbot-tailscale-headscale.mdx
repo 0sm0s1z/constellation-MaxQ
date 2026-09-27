@@ -1,0 +1,70 @@
+<section class="article-masthead article-masthead--network" aria-hidden="true">
+  <div class="article-masthead-copy">
+    <span>network path / maxq</span>
+    <strong>operator → tailnet → Grok Bot host</strong>
+    <small>Tailscale or Headscale. Your network, your control plane.</small>
+  </div>
+  <div class="article-network-map">
+    <i class="node-a"></i><i class="node-b"></i><i class="node-c"></i><i class="link-a"></i><i class="link-b"></i>
+  </div>
+</section>
+
+<p class="eyebrow article-kicker">Connectivity · self-serve network path</p>
+
+# Getting Grok Bot set up with Tailscale
+
+<p class="article-lede">A MaxQ host is more useful when you can reach it without exposing a management surface to the public internet. Tailscale is the straightforward path; Headscale is the self-hosted control-plane option for teams that want that boundary under their own administration.</p>
+
+<p class="article-meta">Shell article · MaxQ Shareables · prototype copy</p>
+
+<aside class="article-callout article-callout--warning">
+  <strong>Self-serve means self-serve</strong>
+  <p>MaxQ can expose controls and a setup path, but MaxQ does not configure your Tailscale or Headscale network for you. Tailnet ownership, ACLs, routes, DNS, identity, and enrollment policy remain operator decisions.</p>
+</aside>
+
+## Pick the control plane first
+
+The host-side mechanics can look similar while the ownership model is different. With Tailscale, the hosted service provides the coordination plane. With Headscale, you operate a compatible coordination server yourself. The article should keep that distinction explicit instead of presenting Headscale as a cosmetic toggle.
+
+<figure class="article-figure">
+  <div class="article-network-path" aria-label="Private network path diagram">
+    <span><b>operator</b><small>laptop / workstation</small></span>
+    <i>encrypted path</i>
+    <span><b>tailnet</b><small>Tailscale or Headscale</small></span>
+    <i>private reachability</i>
+    <span><b>MaxQ</b><small>Grok Bot host</small></span>
+  </div>
+  <figcaption>The diagram is deliberately infrastructure-level: no invented MaxQ UI, no pretend network wizard.</figcaption>
+</figure>
+
+## A setup sequence worth documenting
+
+1. Decide whether the coordination plane is Tailscale-hosted or your Headscale deployment.
+2. Enroll the MaxQ host using the network’s normal device-registration process.
+3. Prove the expected private address and name resolution from the operator device.
+4. Apply the access policy you actually intend before treating the path as operational.
+5. Verify disconnect / leave behavior so the host can be deliberately removed from the private network.
+
+<div class="article-code-title"><span>terminal</span><strong>verification shape — replace placeholders with your environment</strong></div>
+
+```bash
+tailscale status
+tailscale ip -4
+# Then verify the MaxQ host from an enrolled operator device.
+```
+
+The final essay can add the release-matched MaxQ controls and exact Headscale enrollment notes once those interfaces are stable enough to document as contract rather than prototype.
+
+> Private reachability is not the same thing as authorization. The tailnet gets you to the host; your policy still decides who should be there.
+
+## What the finished article should prove
+
+The real version should show a clean join, a clean operator connection, policy behavior, and a clean leave/disconnect. It should also state which side owns each failure mode: MaxQ host configuration, the local Tailscale client, the coordination plane, or the operator’s ACL and identity policy.
+
+<section class="article-related">
+  <p class="eyebrow">Related</p>
+  <div class="article-related-grid">
+    <a href="#docs"><strong>MaxQ docs</strong><span>Current operator-facing setup and control surfaces.</span></a>
+    <a href="#shareables/articles/grokbot-herdr-dev-loop"><strong>Agent development loop</strong><span>Use the private path to reach a visible Herdr workspace.</span></a>
+  </div>
+</section>

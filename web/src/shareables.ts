@@ -1,10 +1,15 @@
-/** #123 Shareables — bots / skills / tools. Homepage craft SoT. First skill: Herdr. */
+/** #123 Shareables — bots / skills / tools / articles. Homepage craft SoT. */
 
-export type ShareKind = "bots" | "skills" | "tools";
+import grokbotHerdrDevLoop from "../content/articles/grokbot-herdr-dev-loop.mdx?html";
+import grokbotTailscaleHeadscale from "../content/articles/grokbot-tailscale-headscale.mdx?html";
 
-export type Shareable = {
+export type ShareKind = "bots" | "skills" | "tools" | "articles";
+
+type PackKind = Exclude<ShareKind, "articles">;
+
+type PackShareable = {
   id: string;
-  kind: ShareKind;
+  kind: PackKind;
   name: string;
   tagline: string;
   description: string;
@@ -18,7 +23,18 @@ export type Shareable = {
   body: string;
 };
 
-const HERDR: Shareable = {
+type ArticleShareable = {
+  id: string;
+  kind: "articles";
+  name: string;
+  tagline: string;
+  description: string;
+  html: string;
+};
+
+export type Shareable = PackShareable | ArticleShareable;
+
+const HERDR: PackShareable = {
   id: "herdr",
   kind: "skills",
   name: "Herdr",
@@ -32,6 +48,7 @@ const HERDR: Shareable = {
   related: [
     { label: "SKILL.md on GitHub", href: "https://github.com/0sm0s1z/constellation-MaxQ/blob/main/share/skills/herdr/SKILL.md" },
     { label: "Official Herdr skill", href: "https://github.com/herdrdev/herdr/blob/main/skills/herdr/SKILL.md" },
+    { label: "Developing with Grok Bot + Herdr", href: "#shareables/articles/grokbot-herdr-dev-loop" },
     { label: "Docs (when live)", href: "#docs" },
   ],
   frontmatter: {
@@ -84,12 +101,34 @@ herdr pane
 `,
 };
 
-export const SHAREABLES: Shareable[] = [HERDR];
+const ARTICLES: ArticleShareable[] = [
+  {
+    id: "grokbot-herdr-dev-loop",
+    kind: "articles",
+    name: "Developing with Grok Bot and Herdr",
+    tagline: "A visible agent desk: panes, completion signals, and the next prompt.",
+    description:
+      "A shell article for the MaxQ development loop: Herdr owns the workspace, a coding TUI owns the task, and Grok Bot keeps the loop moving.",
+    html: grokbotHerdrDevLoop,
+  },
+  {
+    id: "grokbot-tailscale-headscale",
+    kind: "articles",
+    name: "Getting Grok Bot set up with Tailscale",
+    tagline: "Tailscale or Headscale as the self-serve network path into MaxQ.",
+    description:
+      "A shell article for reaching a MaxQ host over a private network path, including both Tailscale and Headscale without pretending MaxQ configures the network for you.",
+    html: grokbotTailscaleHeadscale,
+  },
+];
+
+export const SHAREABLES: Shareable[] = [HERDR, ...ARTICLES];
 
 const KINDS: { id: ShareKind; label: string; empty: string }[] = [
   { id: "bots", label: "Bots", empty: "No shared bots yet — Skills first." },
   { id: "skills", label: "Skills", empty: "No skills in this filter." },
   { id: "tools", label: "Tools", empty: "No shared tools yet — Skills first." },
+  { id: "articles", label: "Articles", empty: "No articles in this filter." },
 ];
 
 function escapeHtml(s: string): string {
@@ -101,7 +140,7 @@ function escapeHtml(s: string): string {
 }
 
 function mdLite(src: string): string {
-  // Minimal markdown for panel body — headings, code fences, paragraphs, bold
+  // Minimal markdown for pack panels — headings, code fences, paragraphs, bold.
   const lines = src.split("\n");
   const out: string[] = [];
   let inCode = false;
@@ -139,7 +178,7 @@ function mdLite(src: string): string {
 
 function parseShareHash(): { kind: ShareKind; id: string | null } {
   const hash = (location.hash || "#shareables").replace("#", "");
-  // shareables | shareables/skills | shareables/skills/herdr
+  // shareables | shareables/skills | shareables/skills/herdr | shareables/articles/<slug>
   const parts = hash.split("/");
   const kind = (parts[1] as ShareKind) || "skills";
   const valid = KINDS.some((k) => k.id === kind) ? kind : "skills";
@@ -147,33 +186,8 @@ function parseShareHash(): { kind: ShareKind; id: string | null } {
   return { kind: valid, id };
 }
 
-export function renderShareables(): string {
-  const { kind, id } = parseShareHash();
-  const tabs = KINDS.map(
-    (k) =>
-      `<button type="button" class="share-tab${k.id === kind ? " active" : ""}" data-share-kind="${k.id}" aria-selected="${k.id === kind}">${k.label}</button>`
-  ).join("");
-
-  const items = SHAREABLES.filter((s) => s.kind === kind);
-  const tiles =
-    items.length === 0
-      ? `<p class="share-empty">${escapeHtml(KINDS.find((k) => k.id === kind)!.empty)}</p>`
-      : `<div class="share-grid" data-share-grid>${items
-          .map(
-            (s) => `
-        <button type="button" class="share-tile${id === s.id ? " is-open" : ""}" data-share-open="${s.id}" data-share-kind="${s.kind}">
-          <span class="share-tile-icon" aria-hidden="true"><img src="${s.icon}" alt="" width="40" height="40" /></span>
-          <span class="share-tile-copy">
-            <span class="share-tile-name">${escapeHtml(s.name)}</span>
-            <span class="share-tile-tag">${escapeHtml(s.tagline)}</span>
-          </span>
-        </button>`
-          )
-          .join("")}</div>`;
-
-  const open = id ? SHAREABLES.find((s) => s.id === id && s.kind === kind) : null;
-  const panel = open
-    ? `
+function renderPackPanel(open: PackShareable): string {
+  return `
     <aside class="share-panel is-open" data-share-panel role="dialog" aria-label="${escapeHtml(open.name)} details">
       <div class="share-panel-bar">
         <p class="eyebrow">${open.kind} · shareable</p>
@@ -202,16 +216,60 @@ export function renderShareables(): string {
           .join("")}
       </div>
       <div class="share-panel-body">${mdLite(open.body)}</div>
-    </aside>`
+    </aside>`;
+}
+
+function renderArticlePanel(open: ArticleShareable): string {
+  return `
+    <aside class="share-panel share-article-panel is-open" data-share-panel role="dialog" aria-label="${escapeHtml(open.name)} article">
+      <div class="share-panel-bar article-panel-bar">
+        <p class="eyebrow">article · shareable</p>
+        <button type="button" class="share-panel-close" data-share-close aria-label="Close">Close</button>
+      </div>
+      <article class="share-article">${open.html}</article>
+    </aside>`;
+}
+
+export function renderShareables(): string {
+  const { kind, id } = parseShareHash();
+  const tabs = KINDS.map(
+    (k) =>
+      `<button type="button" class="share-tab${k.id === kind ? " active" : ""}" data-share-kind="${k.id}" aria-selected="${k.id === kind}">${k.label}</button>`
+  ).join("");
+
+  const items = SHAREABLES.filter((s) => s.kind === kind);
+  const tiles =
+    items.length === 0
+      ? `<p class="share-empty">${escapeHtml(KINDS.find((k) => k.id === kind)!.empty)}</p>`
+      : `<div class="share-grid${kind === "articles" ? " share-grid-articles" : ""}" data-share-grid>${items
+          .map(
+            (s) => `
+        <button type="button" class="share-tile${id === s.id ? " is-open" : ""}" data-share-open="${s.id}" data-share-kind="${s.kind}">
+          ${s.kind === "articles"
+            ? `<span class="share-tile-icon share-article-mark" aria-hidden="true">A</span>`
+            : `<span class="share-tile-icon" aria-hidden="true"><img src="${s.icon}" alt="" width="40" height="40" /></span>`}
+          <span class="share-tile-copy">
+            <span class="share-tile-name">${escapeHtml(s.name)}</span>
+            <span class="share-tile-tag">${escapeHtml(s.tagline)}</span>
+          </span>
+        </button>`
+          )
+          .join("")}</div>`;
+
+  const open = id ? SHAREABLES.find((s) => s.id === id && s.kind === kind) : null;
+  const panel = open
+    ? open.kind === "articles"
+      ? renderArticlePanel(open)
+      : renderPackPanel(open)
     : `<aside class="share-panel" data-share-panel hidden></aside>`;
 
   return `
     <section class="share-hero block">
       <p class="eyebrow">Shareables</p>
       <h1>From our desk to <span class="grad">yours.</span></h1>
-      <p class="lede">Bots, skills, and tools we actually run with MaxQ and Grok Bot — packaged to share. Install the pack; MaxQ does not configure it for you.</p>
+      <p class="lede">Bots, skills, tools, and field notes we actually run with MaxQ and Grok Bot — packaged to share. Install the pack; MaxQ does not configure it for you.</p>
     </section>
-    <section class="share-shell${open ? " has-panel" : ""}" data-share-shell>
+    <section class="share-shell${open ? " has-panel" : ""}${open?.kind === "articles" ? " article-open" : ""}" data-share-shell>
       <div class="share-main">
         <div class="share-toolbar">
           <div class="share-tabs" role="tablist">${tabs}</div>
