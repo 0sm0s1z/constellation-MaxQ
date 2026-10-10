@@ -35,7 +35,7 @@ const PRODUCTS: { key: Route; num: string; note: string }[] = [
   { key: "sidecar", num: "02", note: "local transport" },
   { key: "home", num: "03", note: "the bot's box" },
   { key: "cue", num: "04", note: "capture & compose" },
-  { key: "crew", num: "05", note: "persistent teammates" },
+  { key: "crew", num: "05", note: "projects & execution" },
   { key: "stack", num: "··", note: "the product map" },
 ];
 
