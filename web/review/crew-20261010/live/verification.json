@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-10-10T19:12:20.791Z",
+  "url": "https://maxq.cxn.sh/#crew",
+  "results": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "checks": [
+        "Crew direct route",
+        "availability scroll",
+        "full-capture link",
+        "stack navigation and back",
+        "home shared copy",
+        "product menu",
+        "Cue/Router/Stack regressions",
+        "Crew menu across all routes",
+        "Docs slug navigation",
+        "Shareables article open/close",
+        "no overflow",
+        "no broken local assets",
+        "no page errors"
+      ],
+      "errors": [],
+      "failedAssets": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "checks": [
+        "Crew direct route",
+        "availability scroll",
+        "full-capture link",
+        "stack navigation and back",
+        "home shared copy",
+        "product menu",
+        "Cue/Router/Stack regressions",
+        "Crew menu across all routes",
+        "Docs slug navigation",
+        "Shareables article open/close",
+        "no overflow",
+        "no broken local assets",
+        "no page errors"
+      ],
+      "errors": [],
+      "failedAssets": []
+    }
+  ]
+}

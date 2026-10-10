@@ -1,0 +1,345 @@
+{
+  "url": "https://maxq.cxn.sh",
+  "checks": [
+    {
+      "path": "/rocket-path.css",
+      "status": 200
+    },
+    {
+      "path": "/apple-touch.png",
+      "status": 200
+    },
+    {
+      "path": "/loader.svg",
+      "status": 200
+    },
+    {
+      "path": "/namelogo.png",
+      "status": 200
+    },
+    {
+      "path": "/mark.svg",
+      "status": 200
+    },
+    {
+      "path": "/favicon-32.png",
+      "status": 200
+    },
+    {
+      "path": "/og.jpg",
+      "status": 200
+    },
+    {
+      "path": "/hero-video.css",
+      "status": 200
+    },
+    {
+      "path": "/namelogo.webp",
+      "status": 200
+    },
+    {
+      "path": "/namelogo.svg",
+      "status": 200
+    },
+    {
+      "path": "/research/frontier-400cap.webp",
+      "status": 200
+    },
+    {
+      "path": "/research/frontier-capacity.webp",
+      "status": 200
+    },
+    {
+      "path": "/research/fig-2.svg",
+      "status": 200
+    },
+    {
+      "path": "/research/fig-3.svg",
+      "status": 200
+    },
+    {
+      "path": "/research/fig-1.svg",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-orbit.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-launch-poster.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/ops.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-static.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/desk.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/float-shapes.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-exhaust-shaft.svg",
+      "status": 200
+    },
+    {
+      "path": "/art/maxq-launch.webm",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-pad-plume.svg",
+      "status": 200
+    },
+    {
+      "path": "/art/maxq-launch-still.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/maxq-launch.safari.mov",
+      "status": 200
+    },
+    {
+      "path": "/art/maxq-launch.gif",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-launch.webm",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-laptop.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-exhaust-shaft.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/hero-pad-plume.webp",
+      "status": 200
+    },
+    {
+      "path": "/icons/herdr.svg",
+      "status": 200
+    },
+    {
+      "path": "/shots/ghostty.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/rofi.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/plank.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-seats.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/bots-desk.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-clients-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/chrome-mocha.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-seats-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/packages.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/cue-macos.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-dashboard-crop.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/bots-desk-cine.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/desktops.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/desktops-eva-wide.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/ROUTER-SHOTS-MANIFEST.md",
+      "status": 200
+    },
+    {
+      "path": "/shots/bots-desk-stage.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/bots-desk-wall.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/desktops-eva-cine.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/resources.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-seats-crop.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/crew-macos.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-chat-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/proxy.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/triggers.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/herdr-masthead.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/bots-desk-dock.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/sidecar-cmd-crop.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/settings.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-dashboard-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-dashboard.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/cue-macos-2.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/desktops-eva.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-ops-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/collage.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/router-connect-fresh.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/sidecar-docs-crop.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/prove.webp",
+      "status": 200
+    },
+    {
+      "path": "/shots/maxq-desktop.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/rocket-trim.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/rocket-trim.png",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/smoke-puff-01.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/rocket.png",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/plate.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/flame-trail.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/smoke-puff-04.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/smoke-puff-03.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/plate.png",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-layers/smoke-puff-02.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-frames/frame-a-ignition.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-frames/frame-c-ascent.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-frames/frame-d-departing.webp",
+      "status": 200
+    },
+    {
+      "path": "/art/rocket-frames/frame-b-building.webp",
+      "status": 200
+    }
+  ]
+}
