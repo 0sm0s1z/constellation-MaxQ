@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-10-10T19:30:55.369Z",
+  "url": "http://127.0.0.1:4319/#crew",
+  "results": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "checks": [
+        "two current full-aspect Crew captures",
+        "both full-capture popup links",
+        "availability scroll",
+        "stack and home use current Dashboard",
+        "home/stack contain-fit",
+        "navigation/back/menu",
+        "all shared routes",
+        "neighbor image decode",
+        "Docs navigation",
+        "Shareables open/close",
+        "no Crew overflow",
+        "no page errors or failed site assets"
+      ],
+      "errors": [],
+      "failedAssets": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "checks": [
+        "two current full-aspect Crew captures",
+        "both full-capture popup links",
+        "availability scroll",
+        "stack and home use current Dashboard",
+        "home/stack contain-fit",
+        "navigation/back/menu",
+        "all shared routes",
+        "neighbor image decode",
+        "Docs navigation",
+        "Shareables open/close",
+        "no Crew overflow",
+        "no page errors or failed site assets"
+      ],
+      "errors": [],
+      "failedAssets": []
+    }
+  ]
+}

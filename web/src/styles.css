@@ -1530,8 +1530,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
 .product-media figcaption a { white-space: nowrap; }
 .cue-media .product-crop { aspect-ratio: 1.95; }
 .cue-media img { height: 100%; object-fit: cover; object-position: center 40%; }
-.crew-media .product-crop { aspect-ratio: 1.9; }
-.crew-media img { height: 100%; object-fit: cover; object-position: center 28%; }
+.crew-media .product-crop { aspect-ratio: auto; }
+.crew-media img { height: auto; object-fit: contain; }
 .product-story { display: grid; grid-template-columns: 1fr 2fr; gap: 3rem; padding: 2.5rem 0; border-top: 1px solid var(--rule); }
 .product-page h2 { font-family: IBM Plex Sans, ui-sans-serif, system-ui, sans-serif; text-transform: none; color: var(--text); font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.16; letter-spacing: -.025em; margin: 0 0 1rem; }
 .product-story .lede { max-width: 43rem; }
@@ -1569,7 +1569,8 @@ ul.inv li { padding: .42rem 0; border-bottom: 1px solid var(--rule); color: var(
   .product-media { margin-bottom: 2rem; }
   .product-crop { aspect-ratio: 1.15 !important; }
   .cue-media img { width: 155%; max-width: none; object-position: left; }
-  .crew-media img { width: 140%; max-width: none; object-position: left; }
+  .crew-media .product-crop { aspect-ratio: auto !important; }
+  .crew-media img { width: 100%; }
   .router-media img { height: 100%; object-fit: cover; object-position: left; }
   .tabs { flex-wrap: wrap; }
   .nav-toggle { width: 44px; height: 44px; }
@@ -2159,3 +2160,5 @@ main:has(.router-hero) .dia,
   .article-code-title { align-items: flex-start; flex-direction: column; gap: .25rem; }
   .article-related-grid { grid-template-columns: 1fr; }
 }
+
+#panel-crew .screen-frame img, .stack-card[href="#crew"] img { object-fit: contain; background: var(--mantle); }

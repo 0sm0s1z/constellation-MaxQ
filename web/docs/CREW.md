@@ -22,3 +22,9 @@ Update the Crew product page, home surface, product menu and stack description t
 ## Images
 
 Fresh native window screenshots require macOS screen-capture permission. Capture only Crew and review every image for credentials, personal content, repository paths and unrelated windows before adding it to `public/shots/`. Record capture date, app state and any limitations here. Website desktop/mobile screenshots belong in `review/` and demonstrate the page layout only.
+
+### 2026-10-10 supplied captures
+
+The user supplied two native CrewMac window captures from build `61b9d3f-dirty`, with the visible build timestamp 2026-10-10 19:10:17 UTC. `crew-dashboard-20261010.webp` shows Dashboard project counts and cards. `crew-execution-20261010.webp` shows the Crew project execution binding and Sessions list, with its output panel awaiting session selection. These captures establish the visible development UI only.
+
+Local user/repository paths, machine identity and an unrelated project name are covered with explicit redaction masks. Original uploads remain outside the public repository. Dashboard is shared by the Crew page, home Crew panel and stack card; Execution is a second linked capture on the Crew page. Both full captures remain accessible.
